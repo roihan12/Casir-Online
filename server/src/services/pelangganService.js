@@ -1,0 +1,183 @@
+const prisma = require("../config/db");
+const { createAuditLog } = require("../utils/auditLog");
+const { ResponseError } = require("../error/responseError");
+const { validate } = require("../validation/validation");
+const {
+  createPelangganSchema,
+  updatePelangganSchema,
+} = require("../validation/pelangganValidation");
+
+const createPelanggan = async (data, { userId, ipAddress }) => {
+  const validData = validate(createPelangganSchema, data);
+
+  const cabang = await prisma.cabang.findUnique({
+    where: { id: data.cabang_id },
+  });
+
+  if (!cabang) {
+    throw new ResponseError(404, "Branch not found");
+  }
+
+  const pelangganExists = await prisma.pelanggan.findFirst({
+    where: { namaPelanggan: validData.namaPelanggan },
+  });
+
+  if (pelangganExists) {
+    throw new ResponseError(400, "Pelanggan already exists");
+  }
+
+  const pelangganNew = await prisma.pelanggan.create({
+    data: validData,
+  });
+
+  await createAuditLog(prisma, {
+    userId,
+    ipAddress,
+    cabang_id: data.cabang_id,
+    action: "CREATE",
+    tableName: "pelanggan",
+    record_id: pelangganNew.id,
+    oldValues: null,
+    new_values: validData,
+  });
+
+  return pelangganNew;
+};
+
+const updatePelanggan = async (id, data, { userId, ipAddress }) => {
+  const validData = validate(updatePelangganSchema, data);
+
+  const oldData = await prisma.pelanggan.findUnique({ where: { id } });
+
+  if (!oldData) {
+    throw new ResponseError(404, "Pelanggan not found");
+  }
+
+  const updated = await prisma.pelanggan.update({
+    where: { id },
+    data: validData,
+  });
+
+  await createAuditLog(prisma, {
+    userId,
+    ipAddress,
+    cabang_id: data.cabang_id,
+    action: "UPDATE",
+    tableName: "pelanggan",
+    record_id: updated.id,
+    oldValues: oldData,
+    new_values: validData,
+  });
+
+  return updated;
+};
+
+const deletePelanggan = async (id, { userId, ipAddress }) => {
+  const oldData = await prisma.pelanggan.findUnique({ where: { id } });
+
+  if (!oldData) {
+    throw new ResponseError(404, "Pelanggan not found");
+  }
+
+  await prisma.pelanggan.delete({ where: { id } });
+
+  await createAuditLog(prisma, {
+    userId,
+    ipAddress,
+    cabang_id: oldData.cabang_id,
+    action: "DELETE",
+    tableName: "pelanggan",
+    record_id: oldData.id,
+    oldValues: oldData,
+    new_values: null,
+  });
+
+  return { message: "Pelanggan deleted successfully" };
+};
+
+const getAllPelanggan = async ({ page = 1, limit = 10, search = "" }) => {
+  const skip = (page - 1) * limit;
+  const whereClause = search
+    ? { namaPelanggan: { contains: search, mode: "insensitive" } }
+    : {};
+
+  const [data, total] = await Promise.all([
+    prisma.pelanggan.findMany({
+      skip,
+      take: limit,
+      where: whereClause,
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.pelanggan.count({ where: whereClause }),
+  ]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    data,
+    pagination: {
+      totalItems: total,
+      totalPages,
+      currentPage: parseInt(page),
+      itemsPerPage: parseInt(limit),
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
+    },
+  };
+};
+
+const getPelangganById = async (id) => {
+  const pelanggan = await prisma.pelanggan.findUnique({ where: { id } });
+
+  if (!pelanggan) {
+    throw new ResponseError(404, "Pelanggan not found");
+  }
+
+  return pelanggan;
+};
+
+const getPelangganByCabang = async (
+  cabang_id,
+  { page = 1, limit = 10, search = "" }
+) => {
+  const skip = (page - 1) * limit;
+  const whereClause = {
+    cabang_id,
+    namaPelanggan: search
+      ? { contains: search, mode: "insensitive" }
+      : undefined,
+  };
+
+  const [data, total] = await Promise.all([
+    prisma.pelanggan.findMany({
+      skip,
+      take: limit,
+      where: whereClause,
+      orderBy: { created_at: "desc" },
+    }),
+    prisma.pelanggan.count({ where: whereClause }),
+  ]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    data,
+    pagination: {
+      totalItems: total,
+      totalPages,
+      currentPage: parseInt(page),
+      itemsPerPage: parseInt(limit),
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
+    },
+  };
+};
+
+module.exports = {
+  createPelanggan,
+  updatePelanggan,
+  deletePelanggan,
+  getAllPelanggan,
+  getPelangganById,
+  getPelangganByCabang,
+};

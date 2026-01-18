@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="<%= options.language %>">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Receipt <%= number %></title>
+    <style>
+      /* Default responsive receipt template that works for both thermal and A4 */
+      body {
+        font-family: 'Arial', sans-serif;
+        font-size: <%= receiptConfig.fontSize || 12 %>px;
+        max-width: <%= options.paperWidth %>mm;
+        margin: 0 auto;
+        padding: 10px;
+        box-sizing: border-box;
+      }
+
+      .receipt-container {
+        width: 100%;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 15px;
+      }
+
+      .logo {
+        max-width: 80%;
+        max-height: 70px;
+        margin: 0 auto;
+        display: block;
+      }
+
+      .company-name {
+        font-size: 1.3em;
+        font-weight: bold;
+        margin: 5px 0;
+      }
+
+      .contact-info {
+        margin-bottom: 3px;
+      }
+
+      .divider {
+        border-top: 1px solid #ccc;
+        margin: 8px 0;
+      }
+
+      .transaction-info {
+        margin: 10px 0;
+      }
+
+      .items-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 15px 0;
+      }
+
+      .items-table th {
+        text-align: left;
+        padding: 5px;
+        border-bottom: 1px solid #ddd;
+        font-weight: bold;
+      }
+
+      .items-table td {
+        padding: 5px;
+        border-bottom: 1px solid #eee;
+      }
+
+      .right-align {
+        text-align: right;
+      }
+
+      .summary {
+        margin: 15px 0;
+        width: 100%;
+      }
+
+      .summary-row {
+        display: flex;
+        justify-content: space-between;
+        margin: 5px 0;
+      }
+
+      .summary-total {
+        font-weight: bold;
+        border-top: 1px solid #000;
+        padding-top: 5px;
+        margin-top: 5px;
+      }
+
+      .payment-info {
+        margin: 15px 0;
+      }
+
+      .footer {
+        text-align: center;
+        margin-top: 20px;
+      }
+
+      .thank-you {
+        font-weight: bold;
+        margin: 10px 0;
+      }
+
+      .qr-code {
+        text-align: center;
+        margin: 15px 0;
+      }
+
+      .qr-code img {
+        max-width: 100px;
+        max-height: 100px;
+      }
+
+      /* Add custom CSS if provided */
+      <%= receiptConfig.customCss || '' %>
+    </style>
+  </head>
+  <body>
+    <div class="receipt-container">
+      <% if (options.includeHeader) { %>
+      <div class="header">
+        <% if (options.includeLogo && receiptConfig.logoUrl) { %>
+        <img
+          class="logo"
+          src="<%= receiptConfig.logoUrl %>"
+          alt="<%= branchName %> Logo"
+        />
+        <% } %>
+        <h1 class="company-name"><%= receiptConfig.headerText %></h1>
+        <% if (branchAddress) { %>
+        <div class="contact-info"><%= branchAddress %></div>
+        <% } %> <% if (branchPhone) { %>
+        <div class="contact-info">Tel: <%= branchPhone %></div>
+        <% } %>
+      </div>
+      <div class="divider"></div>
+      <% } %>
+
+      <div class="transaction-info">
+        <h2><%= translations[options.language].receipt %></h2>
+        <p>
+          <strong><%= translations[options.language].date %>:</strong> <%=
+          formatDate(date) %>
+        </p>
+        <p><strong>Receipt No:</strong> <%= number %></p>
+        <% if (customerInfo) { %>
+        <p>
+          <strong><%= translations[options.language].customer %>:</strong> <%=
+          customerInfo.name %>
+        </p>
+        <% if (customerInfo.contact) { %>
+        <p><strong>Contact:</strong> <%= customerInfo.contact %></p>
+        <% } %> <% } %> <% if (receiptConfig.showCashierName) { %>
+        <p>
+          <strong><%= translations[options.language].cashier %>:</strong> <%=
+          cashierName %>
+        </p>
+        <% } %>
+      </div>
+
+      <div class="divider"></div>
+
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th><%= translations[options.language].item %></th>
+            <th><%= translations[options.language].qty %></th>
+            <th class="right-align">
+              <%= translations[options.language].price %>
+            </th>
+            <th class="right-align">
+              <%= translations[options.language].subtotal %>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <% items.forEach(item => { %>
+          <tr>
+            <td><%= item.name %></td>
+            <td><%= item.quantity %></td>
+            <td class="right-align"><%= formatCurrency(item.price) %></td>
+            <td class="right-align"><%= formatCurrency(item.subtotal) %></td>
+          </tr>
+          <% if (item.discount > 0 || item.discountPercentage > 0) { %>
+          <tr>
+            <td colspan="3">
+              <%= translations[options.language].discount %> (<%=
+              item.discountPercentage %>%)
+            </td>
+            <td class="right-align">-<%= formatCurrency(item.discount) %></td>
+          </tr>
+          <% } %> <% }); %>
+        </tbody>
+      </table>
+
+      <div class="divider"></div>
+
+      <div class="summary">
+        <div class="summary-row">
+          <span><%= translations[options.language].subtotal %>:</span>
+          <span><%= formatCurrency(subtotal) %></span>
+        </div>
+        <% if (discount > 0) { %>
+        <div class="summary-row">
+          <span><%= translations[options.language].discount %>:</span>
+          <span>-<%= formatCurrency(discount) %></span>
+        </div>
+        <% } %> <% if (receiptConfig.showTaxDetails && tax > 0) { %>
+        <div class="summary-row">
+          <span><%= translations[options.language].tax %>:</span>
+          <span><%= formatCurrency(tax) %></span>
+        </div>
+        <% } %> <% if (additionalFee > 0) { %>
+        <div class="summary-row">
+          <span>Additional Fee:</span>
+          <span><%= formatCurrency(additionalFee) %></span>
+        </div>
+        <% } %>
+        <div class="summary-row summary-total">
+          <span
+            ><strong><%= translations[options.language].total %>:</strong></span
+          >
+          <span><strong><%= formatCurrency(total) %></strong></span>
+        </div>
+      </div>
+
+      <div class="payment-info">
+        <h3>Payment Information</h3>
+        <% payments.forEach(payment => { %>
+        <div class="summary-row">
+          <span
+            ><%= payment.method %><%= payment.provider ? ' (' + payment.provider
+            + ')' : '' %>:</span
+          >
+          <span><%= formatCurrency(payment.amount) %></span>
+        </div>
+        <% if (payment.change > 0) { %>
+        <div class="summary-row">
+          <span><%= translations[options.language].change %>:</span>
+          <span><%= formatCurrency(payment.change) %></span>
+        </div>
+        <% } %> <% if (payment.reference) { %>
+        <div>Reference: <%= payment.reference %></div>
+        <% } %> <% }); %>
+      </div>
+
+      <% if (notes) { %>
+      <div class="notes">
+        <strong>Notes:</strong>
+        <p><%= notes %></p>
+      </div>
+      <% } %> <% if (options.includeFooter) { %>
+      <div class="divider"></div>
+
+      <% if (receiptConfig.showQrCode && qrCode) { %>
+      <div class="qr-code">
+        <img src="<%= qrCode %>" alt="QR Code" />
+        <p>Scan to verify receipt</p>
+      </div>
+      <% } %>
+
+      <div class="footer">
+        <div class="thank-you">
+          <%= receiptConfig.thankYouMessage ||
+          translations[options.language].thankYou %>
+        </div>
+        <div><%= receiptConfig.footerText %></div>
+      </div>
+      <% } %>
+    </div>
+  </body>
+</html>

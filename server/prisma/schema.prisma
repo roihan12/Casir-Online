@@ -1,0 +1,2008 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DIRECT_URL")
+  // directUrl = env("DIRECT_URL")
+}
+
+model Cabang {
+  id                  String               @id @map("cabang_id")
+  namaCabang          String               @map("nama_cabang") @db.VarChar(100)
+  alamat              String?
+  telepon             String?              @db.VarChar(20)
+  latitude            Decimal?             @db.Decimal(10, 8)
+  longitude           Decimal?             @db.Decimal(11, 8)
+  radiusGeofence      Int?                 @map("radius_geofence")
+  status              CabangStatus         @default(aktif)
+  deletedAt           DateTime?            @map("deleted_at")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  InventoryMovement   InventoryMovement[]
+  NotificationConfig  NotificationConfig[]
+  Pelanggan           Pelanggan[]
+  produk              Produk[]
+  ProdukPriceHistory  ProdukPriceHistory[]
+  ProdukRequest       ProdukRequest[]
+  promoDiskon         PromoDiskon[]
+  ReceiptConfig       ReceiptConfig[]
+  shifts              Shift[]
+  StockNotification   StockNotification[]
+  stockTransferAsal   StockTransfer[]      @relation("CabangAsal")
+  stockTransferTujuan StockTransfer[]      @relation("CabangTujuan")
+  Supplier            Supplier[]
+  TaxConfig           TaxConfig?
+  Transaksi           Transaksi[]
+  userCabang          UserCabang[]
+  userRoles           UserRole[]
+  marketingCampaigns  MarketingCampaign[]
+  hutang              Hutang[]
+  operationalHours    OperationalHours[]
+  BotConfig           BotConfig[]
+  ProdukSupplier      ProdukSupplier[]
+  loyaltyConfig       LoyaltyConfig[]
+  absensiPegawai      AbsensiPegawai[]
+  userLokasiAbsensi   UserLokasiAbsensi[]
+  jadwalKerja         JadwalKerja[]
+  lokasiAbsensi       LokasiAbsensi[]
+
+  @@map("cabang")
+}
+
+model User {
+  id                String              @id @default(uuid()) @map("user_id")
+  username          String              @unique @db.VarChar(50)
+  password          String              @db.VarChar(255)
+  namaLengkap       String              @map("nama_lengkap") @db.VarChar(100)
+  email             String              @db.VarChar(100)
+  telepon           String?             @db.VarChar(20)
+  avatarUrl         String?             @map("avatar_url") @db.VarChar(255)
+  // Face Recognition Data
+  faceImageUrl      String?             @map("face_image_url") @db.VarChar(255) // URL foto wajah untuk referensi face recognition
+  faceDataJson      String?             @map("face_data_json") @db.Text // Data wajah dalam format JSON untuk face recognition
+  faceRecognitionEnabled Boolean         @default(false) @map("face_recognition_enabled") // Flag apakah user menggunakan face recognition
+  lastFaceUpdate    DateTime?           @map("last_face_update") // Kapan terakhir data wajah diperbarui
+  status            UserStatus          @default(aktif)
+  deletedAt         DateTime?           @map("deleted_at")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  lastLogin         DateTime?           @map("last_login")
+  createdBy         String?             @map("created_by")
+  updatedBy         String?             @map("updated_by")
+  createdByUserId   String?             @map("created_by_user_id")
+  updatedByUserId   String?             @map("updated_by_user_id")
+  deletedBy         String?             @map("deleted_by")
+  deletedByUserId   String?             @map("deleted_by_user_id")
+  inventoryMovement InventoryMovement[]
+
+  requestsApproved ProdukRequest[] @relation("requestApproved")
+
+  // Stock transfer approval relation
+  stockTransfersApproved StockTransfer[] @relation("ApproverUser")
+
+  ProdukRequestAttachment ProdukRequestAttachment[]
+  shifts                  Shift[]
+  absensi                 AbsensiPegawai[]
+  jadwalKerja             JadwalKerja[]
+
+  userCabang       UserCabang[]
+  userRoles        UserRole[]
+  sessions         UserSession[]
+  approvedCredits  KreditSetting[]    @relation("ApprovedCredit")
+  pembayaranHutang PembayaranHutang[]
+
+  // Audit trail relations
+  produkCreated Produk[] @relation("ProdukCreatedByUserId")
+  produkUpdated Produk[] @relation("ProdukUpdatedByUserId")
+  produkDeleted Produk[] @relation("ProdukDeletedByUserId")
+
+  pelangganCreated Pelanggan[] @relation("PelangganCreatedByUserId")
+  pelangganUpdated Pelanggan[] @relation("PelangganUpdatedByUserId")
+  pelangganDeleted Pelanggan[] @relation("PelangganDeletedByUserId")
+
+  transaksiCreated Transaksi[] @relation("TransaksiCreatedByUserId")
+  transaksiUpdated Transaksi[] @relation("TransaksiUpdatedByUserId")
+  transaksiDeleted Transaksi[] @relation("TransaksiDeletedByUserId")
+
+  kategoriCreated Kategori[] @relation("KategoriCreatedByUserId")
+  kategoriUpdated Kategori[] @relation("KategoriUpdatedByUserId")
+  kategoriDeleted Kategori[] @relation("KategoriDeletedByUserId")
+
+  produkMasterCreated ProdukMaster[] @relation("ProdukMasterCreatedByUserId")
+  produkMasterUpdated ProdukMaster[] @relation("ProdukMasterUpdatedByUserId")
+  produkMasterDeleted ProdukMaster[] @relation("ProdukMasterDeletedByUserId")
+
+  supplierCreated    Supplier[]    @relation("SupplierCreatedByUserId")
+  supplierUpdated    Supplier[]    @relation("SupplierUpdatedByUserId")
+  supplierDeleted    Supplier[]    @relation("SupplierDeletedByUserId")
+  PromoDiskonCreated PromoDiskon[] @relation("PromoDiskonCreatedByUserId")
+  PromoDiskonDeleted PromoDiskon[] @relation("PromoDiskonDeletedByUserId")
+  PromoDiskonUpdated PromoDiskon[] @relation("PromoDiskonUpdatedByUserId")
+  // Audit trail relations - Shift
+  shiftCreated       Shift[]       @relation("ShiftCreatedByUserId")
+  shiftUpdated       Shift[]       @relation("ShiftUpdatedByUserId")
+  shiftDeleted       Shift[]       @relation("ShiftDeletedByUserId")
+
+  // Audit trail relations - ProdukSupplier
+  produkSupplierCreated ProdukSupplier[] @relation("ProdukSupplierCreatedByUserId")
+  produkSupplierUpdated ProdukSupplier[] @relation("ProdukSupplierUpdatedByUserId")
+  produkSupplierDeleted ProdukSupplier[] @relation("ProdukSupplierDeletedByUserId")
+
+  // Audit trail relations - ProdukPriceHistory
+  produkPriceHistoryCreated ProdukPriceHistory[] @relation("ProdukPriceHistoryCreatedByUserId")
+  produkPriceHistoryUpdated ProdukPriceHistory[] @relation("ProdukPriceHistoryUpdatedByUserId")
+  produkPriceHistoryDeleted ProdukPriceHistory[] @relation("ProdukPriceHistoryDeletedByUserId")
+
+  // Audit trail relations - StockTransfer
+  stockTransferCreated StockTransfer[] @relation("StockTransferCreatedByUserId")
+  stockTransferUpdated StockTransfer[] @relation("StockTransferUpdatedByUserId")
+  stockTransferDeleted StockTransfer[] @relation("StockTransferDeletedByUserId")
+
+  // Audit trail relations - Pembayaran
+  pembayaranCreated Pembayaran[] @relation("PembayaranCreatedByUserId")
+  pembayaranUpdated Pembayaran[] @relation("PembayaranUpdatedByUserId")
+  pembayaranDeleted Pembayaran[] @relation("PembayaranDeletedByUserId")
+  AuditLog          AuditLog[]
+
+  // Audit trail relations - MarketingCampaign
+  marketingCampaignCreated MarketingCampaign[] @relation("MarketingCampaignCreatedByUserId")
+  marketingCampaignUpdated MarketingCampaign[] @relation("MarketingCampaignUpdatedByUserId")
+  marketingCampaignDeleted MarketingCampaign[] @relation("MarketingCampaignDeletedByUserId")
+
+  // Audit trail relations - MarketingContent
+  marketingContentCreated MarketingContent[] @relation("MarketingContentCreatedByUserId")
+  marketingContentUpdated MarketingContent[] @relation("MarketingContentUpdatedByUserId")
+  marketingContentDeleted MarketingContent[] @relation("MarketingContentDeletedByUserId")
+  // Audit trail relations - Hutang
+  hutangCreated           Hutang[]           @relation("HutangCreatedByUserId")
+  hutangUpdated           Hutang[]           @relation("HutangUpdatedByUserId")
+  hutangDeleted           Hutang[]           @relation("HutangDeletedByUserId")
+
+  // Audit trail relations - PembayaranHutang
+  pembayaranHutangCreated PembayaranHutang[] @relation("PembayaranHutangCreatedByUserId")
+  pembayaranHutangUpdated PembayaranHutang[] @relation("PembayaranHutangUpdatedByUserId")
+  pembayaranHutangDeleted PembayaranHutang[] @relation("PembayaranHutangDeletedByUserId")
+  // Audit trail relations - KreditSetting
+  kreditSettingCreated    KreditSetting[]    @relation("KreditSettingCreatedByUserId")
+  kreditSettingUpdated    KreditSetting[]    @relation("KreditSettingUpdatedByUserId")
+  kreditSettingDeleted    KreditSetting[]    @relation("KreditSettingDeletedByUserId")
+
+  // Audit trail relations - KreditTransaksi
+  kreditTransaksiCreated  KreditTransaksi[]  @relation("KreditTransaksiCreatedByUserId")
+  kreditTransaksiUpdated  KreditTransaksi[]  @relation("KreditTransaksiUpdatedByUserId")
+  kreditTransaksiDeleted  KreditTransaksi[]  @relation("KreditTransaksiDeletedByUserId")
+  // Audit trail relations - PembayaranKredit
+  pembayaranKreditCreated PembayaranKredit[] @relation("PembayaranKreditCreatedByUserId")
+  pembayaranKreditUpdated PembayaranKredit[] @relation("PembayaranKreditUpdatedByUserId")
+  pembayaranKreditDeleted PembayaranKredit[] @relation("PembayaranKreditDeletedByUserId")
+
+  // Audit trail relations - ProdukRequest
+  produkRequestCreated ProdukRequest[] @relation("ProdukRequestCreatedByUserId")
+  produkRequestUpdated ProdukRequest[] @relation("ProdukRequestUpdatedByUserId")
+  produkRequestDeleted ProdukRequest[] @relation("ProdukRequestDeletedByUserId")
+  StockTransfer        StockTransfer[]
+
+  approvedKreditRekomendasi KreditRekomendasi[] @relation("ApprovedKreditRekomendasi")
+  
+  // Add these audit trail relations
+  kreditRekomendasiCreated KreditRekomendasi[] @relation("KreditRekomendasiCreatedByUserId")
+  kreditRekomendasiUpdated KreditRekomendasi[] @relation("KreditRekomendasiUpdatedByUserId")
+  kreditRekomendasiDeleted KreditRekomendasi[] @relation("KreditRekomendasiDeletedByUserId")
+
+
+
+  @@map("user")
+  UserLokasiAbsensi UserLokasiAbsensi[]
+}
+
+model UserCabang {
+  id        String   @id @default(uuid()) @map("user_cabang_id")
+  userId    String   @map("user_id")
+  cabangId  String   @map("cabang_id")
+  isPrimary Boolean  @default(false) @map("is_primary")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  cabang    Cabang   @relation(fields: [cabangId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("user_cabang")
+}
+
+model Role {
+  id          String              @id @default(uuid()) @map("role_id")
+  namaRole    String              @unique @map("nama_role") @db.VarChar(50)
+  displayName String              @map("display_name") @db.VarChar(100) @default("")
+  deskripsi   String?
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+  deletedAt   DateTime?           @map("deleted_at")
+  status      String          @default("aktif")
+  is_system Boolean   @default(false) @map("is_system")
+  // Audit fields
+  created_by String? @map("created_by") @db.VarChar(36)
+  updated_by String? @map("updated_by") @db.VarChar(36)
+  deleted_by String? @map("deleted_by") @db.VarChar(36)
+  created_by_user_Id String? @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String? @map("updated_by_user_id") @db.VarChar(36)
+  deleted_by_user_Id String? @map("deleted_by_user_id") @db.VarChar(36)
+  userRoles   UserRole[]
+  permissions RolePermission[]
+  roleMenus   RoleMenu[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id             String           @id @default(uuid()) @map("permission_id")
+  name           String           @unique @db.VarChar(100)
+  description    String?          @db.Text
+  module         String           @db.VarChar(50)
+  status         String           @default("aktif")
+  action         PermissionAction
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  rolePermission RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String     @id @default(uuid()) @map("role_permission_id")
+  roleId       String     @map("role_id")
+  permissionId String     @map("permission_id")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+enum PermissionAction {
+  create
+  read
+  update
+  delete
+  manage
+}
+
+model UserRole {
+  id        String   @id @default(uuid()) @map("user_role_id")
+  userId    String   @map("user_id")
+  roleId    String   @map("role_id")
+  cabangId  String   @map("cabang_id")
+  assigned_by String? @map("assigned_by") @default("")
+  assigned_at DateTime @map("assigned_at") @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  cabang    Cabang   @relation(fields: [cabangId], references: [id])
+  role      Role     @relation(fields: [roleId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("user_roles")
+}
+
+model UserSession {
+  id           String    @id @default(uuid()) @map("session_id")
+  userId       String    @map("user_id")
+  token        String    @db.VarChar(255)
+  ipAddress    String?   @map("ip_address") @db.VarChar(45)
+  userAgent    String?   @map("user_agent")
+  lastActivity DateTime? @map("last_activity")
+  expiredAt    DateTime? @map("expired_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  user         User      @relation(fields: [userId], references: [id])
+
+  @@map("user_session")
+}
+
+model Kategori {
+  id           String         @id @default(uuid()) @map("kategori_id")
+  namaKategori String         @unique @map("nama_kategori") @db.VarChar(100)
+  deskripsi    String?
+  status       KategoriStatus @default(aktif)
+  deletedAt    DateTime?      @map("deleted_at")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  // Audit fields
+  created_by String? @map("created_by") @db.VarChar(36)
+  updated_by String? @map("updated_by") @db.VarChar(36)
+  deleted_by String? @map("deleted_by") @db.VarChar(36)
+
+  created_by_user_Id String? @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String? @map("updated_by_user_id") @db.VarChar(36)
+  deleted_by_user_Id String? @map("deleted_by_user_id") @db.VarChar(36)
+
+  // Relations
+  createdByUserId User? @relation("KategoriCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  updatedByUserId User? @relation("KategoriUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  deletedByUserId User? @relation("KategoriDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+
+  produkMaster      ProdukMaster[]
+  ProdukRequestItem ProdukRequestItem[]
+  promoDiskon       PromoDiskon[]
+
+  @@map("kategori")
+}
+
+model PromoDiskon {
+  id              String            @id @default(uuid()) @map("promo_id")
+  namaPromo       String            @map("nama_promo") @db.VarChar(100)
+  kodePromo       String            @unique @map("kode_promo") @db.VarChar(50)
+  tipeDiskon      TipeDiskon        @map("tipe_diskon")
+  nilaiDiskon     Decimal           @map("nilai_diskon") @db.Decimal(15, 2)
+  minPembelian    Decimal?          @map("min_pembelian") @db.Decimal(15, 2)
+  maxDiskon       Decimal?          @map("max_diskon") @db.Decimal(15, 2)
+  tanggalMulai    DateTime?         @map("tanggal_mulai") @db.Date
+  tanggalBerakhir DateTime?         @map("tanggal_berakhir") @db.Date
+  limitPenggunaan Int?              @map("limit_penggunaan")
+  kategoriId      String?           @map("kategori_id")
+  produkId        String?           @map("produk_id")
+  cabangId        String?           @map("cabang_id")
+  status          PromoDiskonStatus @default(aktif)
+  deletedAt       DateTime?         @map("deleted_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  cabang          Cabang?           @relation(fields: [cabangId], references: [id])
+  kategori        Kategori?         @relation(fields: [kategoriId], references: [id])
+  produkMaster    ProdukMaster?     @relation(fields: [produkId], references: [id])
+  transaksis      Transaksi[]
+  created_by      String?           @map("created_by") @db.VarChar(36)
+  updated_by      String?           @map("updated_by") @db.VarChar(36)
+  deleted_by      String?           @map("deleted_by") @db.VarChar(36)
+
+  created_by_user_Id String? @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String? @map("updated_by_user_id") @db.VarChar(36)
+  deleted_by_user_Id String? @map("deleted_by_user_id") @db.VarChar(36)
+
+  createdByUserId User? @relation("PromoDiskonCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  updatedByUserId User? @relation("PromoDiskonUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  deletedByUserId User? @relation("PromoDiskonDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+
+  @@map("promo_diskon")
+}
+
+model Shift {
+  id              String           @id @default(uuid()) @map("shift_id")
+  userId          String           @map("user_id")
+  cabangId        String           @map("cabang_id")
+  waktuMulai      DateTime         @map("waktu_mulai")
+  waktuSelesai    DateTime?        @map("waktu_selesai")
+  kasAwal         Decimal          @map("kas_awal") @db.Decimal(15, 2)
+  kasAkhir        Decimal?         @map("kas_akhir") @db.Decimal(15, 2)
+  totalTransaksi  Int?             @map("total_transaksi")
+  totalPendapatan Decimal?         @map("total_pendapatan") @db.Decimal(15, 2)
+  keterangan      String?
+  status          ShiftStatus
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  deletedAt       DateTime?        @map("deleted_at")
+  cabang          Cabang           @relation(fields: [cabangId], references: [id])
+  user            User             @relation(fields: [userId], references: [id])
+  transaksi       Transaksi[]
+  absensiPegawai  AbsensiPegawai[]
+
+  created_by String? @map("created_by") @db.VarChar(36)
+  updated_by String? @map("updated_by") @db.VarChar(36)
+  deleted_by String? @map("deleted_by") @db.VarChar(36)
+
+  deleted_by_user_Id String? @map("deleted_by_user_id") @db.VarChar(36)
+  created_by_user_Id String? @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String? @map("updated_by_user_id") @db.VarChar(36)
+
+  createdByUserId User? @relation("ShiftCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  updatedByUserId User? @relation("ShiftUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  deletedByUserId User? @relation("ShiftDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+
+  @@map("shift")
+}
+
+model Supplier {
+  id           String         @id @default(uuid()) @map("supplier_id")
+  namaSupplier String         @map("nama_supplier") @db.VarChar(100)
+  alamat       String?
+  telepon      String?        @db.VarChar(20)
+  email        String?        @db.VarChar(100)
+  npwp         String?        @db.VarChar(50)
+  picNama      String?        @map("pic_nama") @db.VarChar(100)
+  picKontak    String?        @map("pic_kontak") @db.VarChar(50)
+  status       SupplierStatus @default(aktif)
+  deletedAt    DateTime?      @map("deleted_at")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  cabang_id    String?        @db.VarChar(36)
+
+  // Audit fields
+  created_by String? @map("created_by") @db.VarChar(36)
+  updated_by String? @map("updated_by") @db.VarChar(36)
+  deleted_by String? @map("deleted_by") @db.VarChar(36)
+
+  deleted_by_user_Id String? @map("deleted_by_user_id") @db.VarChar(36)
+  created_by_user_Id String? @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String? @map("updated_by_user_id") @db.VarChar(36)
+
+  // Relations
+  cabang          Cabang? @relation(fields: [cabang_id], references: [id])
+  createdByUserId User?   @relation("SupplierCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  updatedByUserId User?   @relation("SupplierUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  deletedByUserId User?   @relation("SupplierDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+
+  priceHistory   ProdukPriceHistory[]
+  produkSupplier ProdukSupplier[]
+  transaksi      Transaksi[]
+  hutang         Hutang[]
+
+  @@map("supplier")
+}
+
+model Pelanggan {
+  id            String           @id @default(uuid()) @map("pelanggan_id")
+  namaPelanggan String           @map("nama_pelanggan") @db.VarChar(100)
+  alamat        String?
+  telepon       String?          @db.VarChar(20)
+  email         String?          @db.VarChar(100)
+  tanggalLahir  DateTime?        @map("tanggal_lahir") @db.Date
+  gender        Gender?
+  poin          Int?
+  segmen        SegmenPelanggan?
+  status        PelangganStatus  @default(aktif)
+  deletedAt     DateTime?        @map("deleted_at")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  cabang_id     String?          @db.VarChar(36)
+
+  // Audit fields
+  created_by String? @map("created_by") @db.VarChar(36)
+  updated_by String? @map("updated_by") @db.VarChar(36)
+  deleted_by String? @map("deleted_by") @db.VarChar(36)
+
+  deleted_by_user_Id String? @map("deleted_by_user_id") @db.VarChar(36)
+  created_by_user_Id String? @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String? @map("updated_by_user_id") @db.VarChar(36)
+
+  // Relations
+  cabang        Cabang? @relation(fields: [cabang_id], references: [id])
+  createdByUser User?   @relation("PelangganCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  updatedByUser User?   @relation("PelangganUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  deletedByUser User?   @relation("PelangganDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+
+  LoyaltyPointHistory         LoyaltyPointHistory[]
+  hutang                      Hutang[]
+  kreditSettings              KreditSetting[]
+  transaksi                   Transaksi[]
+  CustomerCampaignInteraction CustomerCampaignInteraction[]
+  BotSession                  BotSession[]
+
+  @@map("pelanggan")
+  KreditNotifikasi KreditNotifikasi[]
+  KreditRekomendasi KreditRekomendasi[]
+}
+
+model ProdukMaster {
+  id             String             @id @default(uuid()) @map("produk_master_id")
+  namaProduk     String             @map("nama_produk") @db.VarChar(100)
+  sku            String             @unique @map("sku") @db.VarChar(50)
+  barcode        String?            @db.VarChar(50)
+  deskripsi      String?
+  kategoriId     String?            @map("kategori_id")
+  brand          String?            @db.VarChar(100)
+  satuan         String?            @db.VarChar(50)
+  berat          Decimal?           @db.Decimal(10, 2)
+  isi            Int?
+  dimensiP       Decimal?           @map("dimensi_p") @db.Decimal(10, 2)
+  dimensiL       Decimal?           @map("dimensi_l") @db.Decimal(10, 2)
+  dimensiT       Decimal?           @map("dimensi_t") @db.Decimal(10, 2)
+  isManagedStock Boolean?           @map("is_managed_stock")
+  hasExpired     Boolean?           @map("has_expired")
+  status         ProdukMasterStatus @default(aktif)
+  deletedAt      DateTime?          @map("deleted_at")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  // Audit fields
+  created_by String? @map("created_by") @db.VarChar(36)
+  updated_by String? @map("updated_by") @db.VarChar(36)
+  deleted_by String? @map("deleted_by") @db.VarChar(36)
+
+  deleted_by_user_Id String? @map("deleted_by_user_id") @db.VarChar(36)
+  created_by_user_Id String? @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String? @map("updated_by_user_id") @db.VarChar(36)
+
+  // Relations
+  kategori      Kategori? @relation(fields: [kategoriId], references: [id])
+  createdByUser User?     @relation("ProdukMasterCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  updatedByUser User?     @relation("ProdukMasterUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  deletedByUser User?     @relation("ProdukMasterDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+
+  produk                   Produk[]
+  produkImage              ProdukImage[]
+  generatedFromRequestItem ProdukRequestItem[] @relation("generatedProduct")
+  requestItems             ProdukRequestItem[]
+  produkSupplier           ProdukSupplier[]
+  promoDiskon              PromoDiskon[]
+
+  @@map("produk_master")
+}
+
+model Produk {
+  id                 String       @id @default(uuid()) @map("produk_id")
+  produkMasterId     String       @map("produk_master_id")
+  cabangId           String       @map("cabang_id")
+  hargaBeli          Decimal      @map("harga_beli") @db.Decimal(15, 2)
+  hargaJual          Decimal      @map("harga_jual") @db.Decimal(15, 2)
+  hargaGrosir        Decimal?     @map("harga_grosir") @db.Decimal(15, 2)
+  stok               Int?
+  minStok            Int?         @map("min_stok")
+  maxStok            Int?         @map("max_stok")
+  tanggalKedaluwarsa DateTime?    @map("tanggal_kedaluwarsa")
+  status             ProdukStatus @default(tersedia)
+  deletedAt          DateTime?    @map("deleted_at")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  // Audit fields
+  created_by String? @map("created_by") @db.VarChar(36)
+  updated_by String? @map("updated_by") @db.VarChar(36)
+  deleted_by String? @map("deleted_by") @db.VarChar(36)
+
+  deleted_by_user_Id String? @map("deleted_by_user_id") @db.VarChar(36)
+  created_by_user_Id String? @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String? @map("updated_by_user_id") @db.VarChar(36)
+
+  // Relations
+  cabang        Cabang       @relation(fields: [cabangId], references: [id])
+  produkMaster  ProdukMaster @relation(fields: [produkMasterId], references: [id])
+  createdByUser User?        @relation("ProdukCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  updatedByUser User?        @relation("ProdukUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  deletedByUser User?        @relation("ProdukDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+
+  inventoryMovement   InventoryMovement[]
+  produkPriceHistory  ProdukPriceHistory[]
+  StockNotification   StockNotification[]
+  stockTransferDetail StockTransferDetail[]
+  transaksiDetail     TransaksiDetail[]
+
+  @@map("produk")
+}
+
+model ProdukSupplier {
+  id                 String         @id @default(uuid()) @map("produk_supplier_id")
+  produkMasterId     String         @map("produk_master_id")
+  supplierId         String         @map("supplier_id")
+  isPrimary          Boolean        @default(false) @map("is_primary")
+  hargaBeli          Decimal        @map("harga_beli") @db.Decimal(15, 2)
+  minPembelian       Int?           @map("min_pembelian")
+  leadTime           Int?           @map("lead_time")
+  kodeProdukSupplier String?        @map("kode_produk_supplier") @db.VarChar(100)
+  status             SupplierStatus @default(aktif)
+  cabangId           String?        @map("cabang_id")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+  produkMaster       ProdukMaster   @relation(fields: [produkMasterId], references: [id])
+  supplier           Supplier       @relation(fields: [supplierId], references: [id])
+  cabang             Cabang?        @relation(fields: [cabangId], references: [id])
+
+  deleted_by_user_Id String? @map("deleted_by_user_id") @db.VarChar(36)
+  created_by_user_Id String? @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String? @map("updated_by_user_id") @db.VarChar(36)
+
+  created_by String? @map("created_by") @db.VarChar(36)
+  updated_by String? @map("updated_by") @db.VarChar(36)
+  deleted_by String? @map("deleted_by") @db.VarChar(36)
+
+  createdByUser User? @relation("ProdukSupplierCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  updatedByUser User? @relation("ProdukSupplierUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  deletedByUser User? @relation("ProdukSupplierDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+
+  @@map("produk_supplier")
+}
+
+model ProdukPriceHistory {
+  id               String    @id @default(uuid()) @map("history_id")
+  produkId         String    @map("produk_id")
+  tipeHarga        TipeHarga @map("tipe_harga")
+  hargaLama        Decimal   @map("harga_lama") @db.Decimal(15, 2)
+  hargaBaru        Decimal   @map("harga_baru") @db.Decimal(15, 2)
+  tanggalPerubahan DateTime  @map("tanggal_perubahan")
+  alasanPerubahan  String?   @map("alasan_perubahan")
+  supplierId       String?   @map("supplier_id")
+  dokumenReferensi String?   @map("dokumen_referensi") @db.VarChar(100)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  cabangId  String    @map("cabang_id")
+  cabang    Cabang    @relation(fields: [cabangId], references: [id])
+  produk    Produk    @relation(fields: [produkId], references: [id])
+  supplier  Supplier? @relation(fields: [supplierId], references: [id])
+
+  created_by String? @map("created_by") @db.VarChar(36)
+  updated_by String? @map("updated_by") @db.VarChar(36)
+  deleted_by String? @map("deleted_by") @db.VarChar(36)
+
+  deleted_by_user_Id String? @map("deleted_by_user_id") @db.VarChar(36)
+  created_by_user_Id String? @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String? @map("updated_by_user_id") @db.VarChar(36)
+
+  createdByUser User? @relation("ProdukPriceHistoryCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  updatedByUser User? @relation("ProdukPriceHistoryUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  deletedByUser User? @relation("ProdukPriceHistoryDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+
+  @@map("produk_price_history")
+}
+
+model ProdukImage {
+  id             String       @id @default(uuid()) @map("image_id")
+  produkMasterId String       @map("produk_master_id")
+  fileName       String       @map("file_name") @db.VarChar(255)
+  filePath       String       @map("file_path") @db.VarChar(255)
+  isPrimary      Boolean      @default(false) @map("is_primary")
+  urutan         Int?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  produkMaster   ProdukMaster @relation(fields: [produkMasterId], references: [id])
+
+  @@map("produk_image")
+}
+
+model InventoryMovement {
+  id            String    @id @default(uuid()) @map("movement_id")
+  produkId      String    @map("produk_id")
+  referenceId   String    @map("reference_id")
+  referenceType String    @map("reference_type") @db.VarChar
+  quantity      Int
+  batchNumber   String?   @map("batch_number") @db.VarChar(100)
+  expiredDate   DateTime? @map("expired_date") @db.Date
+  keterangan    String?
+  userId        String    @map("user_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  cabangId      String    @map("cabang_id")
+  cabang        Cabang    @relation(fields: [cabangId], references: [id])
+  produk        Produk    @relation(fields: [produkId], references: [id])
+  user          User      @relation(fields: [userId], references: [id])
+
+  @@map("inventory_movement")
+}
+
+model StockTransfer {
+  id             String              @id @default(uuid()) @map("transfer_id")
+  nomorTransfer  String              @unique @map("nomor_transfer") @db.VarChar(50)
+  cabangAsalId   String              @map("cabang_asal_id")
+  cabangTujuanId String              @map("cabang_tujuan_id")
+  tanggalKirim   DateTime?           @map("tanggal_kirim")
+  tanggalTerima  DateTime?           @map("tanggal_terima")
+  status         StockTransferStatus @default(draft)
+  keterangan     String?
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+
+  // Approval fields
+  approvedById String?   @map("approved_by_id")
+  approvedAt   DateTime? @map("approved_at")
+  alasanReject String?   @map("alasan_reject")
+
+  cabangAsal   Cabang @relation("CabangAsal", fields: [cabangAsalId], references: [id])
+  cabangTujuan Cabang @relation("CabangTujuan", fields: [cabangTujuanId], references: [id])
+  approvedBy   User?  @relation("ApproverUser", fields: [approvedById], references: [id])
+
+  transferDetails StockTransferDetail[]
+
+  created_by String? @map("created_by") @db.VarChar(36)
+  updated_by String? @map("updated_by") @db.VarChar(36)
+  deleted_by String? @map("deleted_by") @db.VarChar(36)
+
+  deleted_by_user_Id String? @map("deleted_by_user_id") @db.VarChar(36)
+  created_by_user_Id String? @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String? @map("updated_by_user_id") @db.VarChar(36)
+
+  createdByUser User?   @relation("StockTransferCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  updatedByUser User?   @relation("StockTransferUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  deletedByUser User?   @relation("StockTransferDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+  User          User?   @relation(fields: [userId], references: [id])
+  userId        String?
+
+  @@map("stock_transfer")
+}
+
+model StockTransferDetail {
+  id            String        @id @default(uuid()) @map("transfer_detail_id")
+  transferId    String        @map("transfer_id")
+  produkId      String        @map("produk_id")
+  jumlahKirim   Int           @map("jumlah_kirim")
+  jumlahTerima  Int?          @map("jumlah_terima")
+  keterangan    String?
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  produk        Produk        @relation(fields: [produkId], references: [id])
+  stockTransfer StockTransfer @relation(fields: [transferId], references: [id])
+
+  @@map("stock_transfer_detail")
+}
+
+model Transaksi {
+  transaksi_id      String    @id @default(uuid()) @db.VarChar(36)
+  cabang_id         String?   @db.VarChar(36)
+  nomor_transaksi   String    @unique @db.VarChar(50)
+  jenis_transaksi   String    @db.VarChar
+  tanggal           DateTime
+  pelanggan_id      String?   @db.VarChar(36)
+  supplier_id       String?   @db.VarChar(36)
+  shift_id          String?   @db.VarChar(36)
+  promo_id          String?   @db.VarChar(36)
+  subtotal          Decimal   @db.Decimal(15, 2)
+  diskon            Decimal   @db.Decimal(15, 2)
+  pajak             Decimal   @db.Decimal(15, 2)
+  biaya_tambahan    Decimal   @db.Decimal(15, 2)
+  total             Decimal   @db.Decimal(15, 2)
+  status_pembayaran String    @db.VarChar(50)
+  keterangan        String?
+  deleted_at        DateTime? @db.Timestamp(6)
+  created_at        DateTime  @default(now()) @db.Timestamp(6)
+  updated_at        DateTime  @updatedAt @db.Timestamp(6)
+  tanggal_lunas     DateTime? @default(now()) @db.Timestamp(6)
+
+  // Audit fields
+  created_by String? @map("created_by") @db.VarChar(36)
+  updated_by String? @map("updated_by") @db.VarChar(36)
+  deleted_by String? @map("deleted_by") @db.VarChar(36)
+
+  deleted_by_user_Id String? @map("deleted_by_user_id") @db.VarChar(36)
+  created_by_user_Id String? @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String? @map("updated_by_user_id") @db.VarChar(36)
+
+  // Relations
+  cabang        Cabang?      @relation(fields: [cabang_id], references: [id])
+  pelanggan     Pelanggan?   @relation(fields: [pelanggan_id], references: [id])
+  promo         PromoDiskon? @relation(fields: [promo_id], references: [id])
+  shift         Shift?       @relation(fields: [shift_id], references: [id])
+  supplier      Supplier?    @relation(fields: [supplier_id], references: [id])
+  createdByUser User?        @relation("TransaksiCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  updatedByUser User?        @relation("TransaksiUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  deletedByUser User?        @relation("TransaksiDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+
+  LoyaltyPointHistory LoyaltyPointHistory[]
+  pembayaran          Pembayaran[]
+  hutang              Hutang[]              @relation("HutangTransaksi")
+  kreditTransaksi     KreditTransaksi[]     @relation("KreditTransaksi")
+  transaksi_detail    TransaksiDetail[]
+  campaignId          String?               @map("campaign_id")
+  campaign            MarketingCampaign?    @relation("CampaignTransaksi", fields: [campaignId], references: [id])
+  BotOrder            BotOrder[]
+
+  @@map("transaksi")
+}
+
+model Pembayaran {
+  pembayaran_id      String   @id @default(uuid()) @db.VarChar(36)
+  transaksi_id       String   @db.VarChar(36)
+  metode_pembayaran  String   @db.VarChar(50)
+  provider           String?  @db.VarChar(50)
+  nomor_referensi    String?  @db.VarChar(100)
+  jumlah_bayar       Decimal  @db.Decimal(15, 2)
+  jumlah_kembali     Decimal  @db.Decimal(15, 2)
+  tanggal_pembayaran DateTime
+  bukti_bayar_url    String?  @db.VarChar(255)
+
+  status             StatusPembayaranProvider
+  keterangan         String?
+  created_at         DateTime                 @default(now()) @db.Timestamp(6)
+  updated_at         DateTime                 @updatedAt @db.Timestamp(6)
+  deleted_by_user_Id String?                  @map("deleted_by_user_id") @db.VarChar(36)
+  created_by_user_Id String?                  @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String?                  @map("updated_by_user_id") @db.VarChar(36)
+
+  created_by String? @map("created_by") @db.VarChar(36)
+  updated_by String? @map("updated_by") @db.VarChar(36)
+  deleted_by String? @map("deleted_by") @db.VarChar(36)
+
+  createdByUser User? @relation("PembayaranCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  updatedByUser User? @relation("PembayaranUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  deletedByUser User? @relation("PembayaranDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+
+  transaksi Transaksi @relation(fields: [transaksi_id], references: [transaksi_id])
+
+  @@map("pembayaran")
+}
+
+model TransaksiDetail {
+  transaksi_detail_id String    @id @default(uuid()) @db.VarChar(36)
+  transaksi_id        String    @db.VarChar(36)
+  produk_id           String    @db.VarChar(36)
+  batch_number        String?   @db.VarChar(100)
+  expired_date        DateTime? @db.Date
+  jumlah              Int
+  harga_satuan        Decimal   @db.Decimal(15, 2)
+  diskon_persen       Decimal   @db.Decimal(5, 2)
+  diskon_nominal      Decimal   @db.Decimal(15, 2)
+  subtotal            Decimal   @db.Decimal(15, 2)
+  pajak_persen        Decimal   @db.Decimal(5, 2)
+  total               Decimal   @db.Decimal(15, 2)
+  created_at          DateTime  @default(now()) @db.Timestamp(6)
+  updated_at          DateTime  @updatedAt @db.Timestamp(6)
+  produk              Produk    @relation(fields: [produk_id], references: [id])
+  transaksi           Transaksi @relation(fields: [transaksi_id], references: [transaksi_id])
+
+  @@map("transaksi_detail")
+}
+
+model LoyaltyPointHistory {
+  id              String     @id @default(uuid()) @map("loyalty_point_history_id")
+  pelangganId     String     @map("pelanggan_id") @db.VarChar(36)
+  transaksiId     String?    @map("transaksi_id") @db.VarChar(36)
+  pointSebelumnya Int        @default(0) @map("point_sebelumnya")
+  pointDidapatkan Int        @default(0) @map("point_didapatkan")
+  pointAkhir      Int        @default(0) @map("point_akhir")
+  keterangan      String?
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamp(6)
+  pelanggan       Pelanggan  @relation(fields: [pelangganId], references: [id])
+  transaksi       Transaksi? @relation(fields: [transaksiId], references: [transaksi_id])
+
+  @@map("loyalty_point_history")
+}
+
+model AuditLog {
+  log_id     String   @id @default(uuid()) @db.VarChar(36)
+  user_id    String?  @db.VarChar(36)
+  created_by String?  @map("created_by") @db.VarChar(36)
+  ip_address String?  @db.VarChar(45)
+  action     String   @db.VarChar(100)
+  table_name String   @db.VarChar(100)
+  record_id  String?  @db.VarChar(36)
+  old_values String?
+  new_values String?
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  cabang_id  String?  @db.VarChar(36)
+  user       User?    @relation(fields: [user_id], references: [id])
+
+  @@map("audit_log")
+}
+
+model NotificationConfig {
+  id                      String              @id @default(uuid()) @map("config_id")
+  cabangId                String              @map("cabang_id")
+  lowStockThresholdDays   Int                 @default(7) @map("low_stock_threshold_days")
+  expiryThresholdDays     Int                 @default(30) @map("expiry_threshold_days")
+  enableEmailNotification Boolean             @default(true) @map("enable_email_notification")
+  enableAppNotification   Boolean             @default(true) @map("enable_app_notification")
+  emailRecipients         String?             @map("email_recipients")
+  createdAt               DateTime            @default(now()) @map("created_at")
+  updatedAt               DateTime            @updatedAt @map("updated_at")
+  cabang                  Cabang              @relation(fields: [cabangId], references: [id])
+  notifications           StockNotification[]
+
+  @@map("notification_config")
+}
+
+model StockNotification {
+  id        String             @id @default(uuid()) @map("notification_id")
+  configId  String             @map("config_id")
+  produkId  String             @map("produk_id")
+  cabangId  String             @map("cabang_id")
+  type      NotificationType
+  message   String
+  details   String?
+  isRead    Boolean            @default(false) @map("is_read")
+  createdAt DateTime           @default(now()) @map("created_at")
+  readAt    DateTime?          @map("read_at")
+  cabang    Cabang             @relation(fields: [cabangId], references: [id])
+  config    NotificationConfig @relation(fields: [configId], references: [id])
+  produk    Produk             @relation(fields: [produkId], references: [id])
+
+  @@map("stock_notification")
+}
+
+model ReceiptConfig {
+  id                 String   @id @default(uuid())
+  cabangId           String
+  headerText         String
+  footerText         String
+  showTaxDetails     Boolean  @default(true)
+  showCashierName    Boolean  @default(true)
+  printPaperWidth    Int      @default(80)
+  printAutomatically Boolean  @default(false)
+  thankYouMessage    String?
+  address            String?
+  phoneNumber        String?
+  showQrCode         Boolean  @default(true)
+  logoUrl            String?
+  customCss          String?
+  fontSize           Int?     @default(12)
+  language           String?  @default("id")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  cabang             Cabang   @relation(fields: [cabangId], references: [id])
+
+  @@map("receipt_config")
+}
+
+model TaxConfig {
+  id              String   @id @default(uuid()) @map("tax_config_id")
+  cabang_id       String   @unique
+  is_tax_enabled  Boolean  @default(false)
+  tax_percentage  Float    @default(0)
+  tax_name        String   @default("PPN")
+  tax_number      String   @default("")
+  is_tax_included Boolean  @default(false)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  cabang          Cabang   @relation(fields: [cabang_id], references: [id])
+
+  @@map("tax_config")
+}
+
+model ProdukRequest {
+  id          String        @id @default(uuid()) @map("produk_request_id")
+  requestType RequestType   @map("request_type")
+  status      RequestStatus @default(draft) @map("status")
+  cabangId    String        @map("cabang_id")
+
+  prioritas          RequestPriority           @default(normal) @map("prioritas")
+  alasan             String?                   @map("alasan")
+  catatan            String?                   @map("catatan")
+  approvedAt         DateTime?                 @map("approved_at")
+  approvedById       String?                   @map("approved_by_id")
+  createdAt          DateTime                  @default(now()) @map("created_at")
+  updatedAt          DateTime                  @updatedAt @map("updated_at")
+  updated_by         String?                   @map("updated_by") @db.VarChar(36)
+  approvedBy         User?                     @relation("requestApproved", fields: [approvedById], references: [id])
+  cabang             Cabang                    @relation(fields: [cabangId], references: [id])
+  attachments        ProdukRequestAttachment[]
+  items              ProdukRequestItem[]
+  deleted_by_user_Id String?                   @map("deleted_by_user_id") @db.VarChar(36)
+  created_by_user_Id String?                   @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String?                   @map("updated_by_user_id") @db.VarChar(36)
+
+  created_by String? @map("created_by") @db.VarChar(36)
+
+  deleted_by String? @map("deleted_by") @db.VarChar(36)
+
+  createdByUser User? @relation("ProdukRequestCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  updatedByUser User? @relation("ProdukRequestUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  deletedByUser User? @relation("ProdukRequestDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+
+  @@map("produk_request")
+}
+
+model ProdukRequestItem {
+  id                      String            @id @default(uuid()) @map("produk_request_item_id")
+  requestId               String            @map("produk_request_id")
+  produkMasterId          String?           @map("produk_master_id")
+  namaProduk              String?           @map("nama_produk") @db.VarChar(100)
+  sku                     String?           @map("sku") @db.VarChar(50)
+  barcode                 String?           @map("barcode") @db.VarChar(50)
+  deskripsi               String?           @map("deskripsi")
+  kategoriId              String?           @map("kategori_id")
+  brand                   String?           @map("brand") @db.VarChar(100)
+  satuan                  String?           @map("satuan") @db.VarChar(50)
+  berat                   Decimal?          @map("berat") @db.Decimal(10, 2)
+  dimensiP                Decimal?          @map("dimensi_p") @db.Decimal(10, 2)
+  dimensiL                Decimal?          @map("dimensi_l") @db.Decimal(10, 2)
+  dimensiT                Decimal?          @map("dimensi_t") @db.Decimal(10, 2)
+  isManagedStock          Boolean?          @map("is_managed_stock")
+  hasExpired              Boolean?          @map("has_expired")
+  hargaBeli               Decimal?          @map("harga_beli") @db.Decimal(15, 2)
+  hargaJual               Decimal?          @map("harga_jual") @db.Decimal(15, 2)
+  hargaGrosir             Decimal?          @map("harga_grosir") @db.Decimal(15, 2)
+  jumlahDiminta           Int               @map("jumlah_diminta")
+  statusItem              RequestItemStatus @default(pending) @map("status_item")
+  jumlahDisetujui         Int?              @map("jumlah_disetujui")
+  catatan                 String?           @map("catatan")
+  generatedProdukMasterId String?           @map("generated_produk_master_id")
+  createdAt               DateTime          @default(now()) @map("created_at")
+  updatedAt               DateTime          @updatedAt @map("updated_at")
+  generatedProdukMaster   ProdukMaster?     @relation("generatedProduct", fields: [generatedProdukMasterId], references: [id])
+  kategori                Kategori?         @relation(fields: [kategoriId], references: [id])
+  produkMaster            ProdukMaster?     @relation(fields: [produkMasterId], references: [id])
+  request                 ProdukRequest     @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@map("produk_request_item")
+}
+
+model ProdukRequestAttachment {
+  id           String        @id @default(uuid()) @map("produk_request_attachment_id")
+  requestId    String        @map("produk_request_id")
+  fileName     String        @map("file_name") @db.VarChar(255)
+  filePath     String        @map("file_path") @db.VarChar(255)
+  isReferensi  Boolean       @default(false) @map("is_referensi")
+  uploadedById String        @map("uploaded_by_id")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  request      ProdukRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  uploadedBy   User          @relation(fields: [uploadedById], references: [id])
+
+  @@map("produk_request_attachment")
+}
+
+enum RequestType {
+  new_product
+  restock
+}
+
+enum RequestStatus {
+  draft
+  submitted
+  approved
+  rejected
+  completed
+}
+
+enum RequestPriority {
+  normal
+  urgent
+  critical
+}
+
+enum RequestItemStatus {
+  pending
+  approved
+  rejected
+  completed
+}
+
+enum NotificationType {
+  LOW_STOCK
+  EXPIRING_STOCK
+  STOCK_OUT
+  OVERSTOCK
+}
+
+enum JenisTransaksi {
+  PENJUALAN
+  PEMBELIAN
+  RETUR_PENJUALAN
+  RETUR_PEMBELIAN
+}
+
+enum StatusPembayaran {
+  LUNAS
+  BELUM_LUNAS
+  DIBATALKAN
+}
+
+enum MetodePembayaran {
+  TUNAI
+  KARTU_DEBIT
+  KARTU_KREDIT
+  TRANSFER
+  QRIS
+  E_WALLET
+}
+
+enum StatusPembayaranProvider {
+  SUKSES
+  GAGAL
+  PENDING
+}
+
+enum CabangStatus {
+  aktif
+  nonaktif
+}
+
+enum UserStatus {
+  aktif
+  nonaktif
+}
+
+enum KategoriStatus {
+  aktif
+  nonaktif
+}
+
+enum PromoDiskonStatus {
+  aktif
+  nonaktif
+}
+
+enum TipeDiskon {
+  persentase
+  nominal
+  bogo
+  bundle
+}
+
+enum ShiftStatus {
+  dibuka
+  ditutup
+  disesuaikan
+}
+
+enum SupplierStatus {
+  aktif
+  nonaktif
+}
+
+enum PelangganStatus {
+  aktif
+  nonaktif
+}
+
+enum Gender {
+  pria
+  wanita
+  lainnya
+}
+
+enum SegmenPelanggan {
+  retail
+  grosir
+  vip
+}
+
+enum ProdukMasterStatus {
+  aktif
+  nonaktif
+}
+
+enum ProdukStatus {
+  tersedia
+  tidak_tersedia
+}
+
+enum TipeHarga {
+  beli
+  jual
+  grosir
+}
+
+enum ReferenceType {
+  penjualan
+  pembelian
+  retur
+  adjustment
+  transfer
+}
+
+enum StockTransferStatus {
+  draft
+  pending_approval
+  approved
+  rejected
+  dikirim
+  diterima
+  dibatalkan
+}
+
+// Marketing Campaign Model
+model MarketingCampaign {
+  id             String         @id @default(uuid()) @map("campaign_id")
+  nama           String         @map("nama_campaign") @db.VarChar(100)
+  deskripsi      String?
+  tanggalMulai   DateTime       @map("tanggal_mulai")
+  tanggalSelesai DateTime?      @map("tanggal_selesai")
+  budget         Decimal?       @db.Decimal(15, 2)
+  budgetTerpakai Decimal?       @map("budget_terpakai") @db.Decimal(15, 2)
+  targetAudience String?        @map("target_audience")
+  status         CampaignStatus @default(draft)
+  cabangId       String?        @map("cabang_id")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  created_by String? @map("created_by") @db.VarChar(36)
+  updated_by String? @map("updated_by") @db.VarChar(36)
+  deleted_by String? @map("deleted_by") @db.VarChar(36)
+
+  deleted_by_user_Id String? @map("deleted_by_user_id") @db.VarChar(36)
+  created_by_user_Id String? @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String? @map("updated_by_user_id") @db.VarChar(36)
+
+  createdByUser User? @relation("MarketingCampaignCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  updatedByUser User? @relation("MarketingCampaignUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  deletedByUser User? @relation("MarketingCampaignDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+
+  cabang       Cabang?                       @relation(fields: [cabangId], references: [id])
+  channels     MarketingChannel[]
+  contents     MarketingContent[]
+  analytics    CampaignAnalytics[]
+  interactions CustomerCampaignInteraction[]
+  transaksi    Transaksi[]                   @relation("CampaignTransaksi")
+
+  @@map("marketing_campaign")
+}
+
+// Marketing Channel Model
+model MarketingChannel {
+  id           String      @id @default(uuid()) @map("channel_id")
+  campaignId   String      @map("campaign_id")
+  tipeChannel  ChannelType
+  namaChannel  String      @map("nama_channel") @db.VarChar(100)
+  accountInfo  String?     @map("account_info")
+  accessToken  String?     @map("access_token")
+  refreshToken String?     @map("refresh_token")
+  tokenExpiry  DateTime?   @map("token_expiry")
+  metrics      Json?
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  campaign MarketingCampaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contents MarketingContent[]
+
+  @@map("marketing_channel")
+}
+
+// Marketing Content Model
+model MarketingContent {
+  id                String        @id @default(uuid()) @map("content_id")
+  campaignId        String        @map("campaign_id")
+  channelId         String        @map("channel_id")
+  judul             String?       @db.VarChar(200)
+  konten            String?
+  imageUrl          String?       @map("image_url")
+  videoUrl          String?       @map("video_url")
+  contentType       ContentType   @map("content_type")
+  jadwalPublish     DateTime?     @map("jadwal_publish")
+  isPublished       Boolean       @default(false) @map("is_published")
+  publishedAt       DateTime?     @map("published_at")
+  externalContentId String?       @map("external_content_id")
+  status            ContentStatus @default(draft)
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+  created_by        String?       @map("created_by") @db.VarChar(36)
+  updated_by        String?       @map("updated_by") @db.VarChar(36)
+  deleted_by        String?       @map("deleted_by") @db.VarChar(36)
+
+  deleted_by_user_Id String? @map("deleted_by_user_id") @db.VarChar(36)
+  created_by_user_Id String? @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String? @map("updated_by_user_id") @db.VarChar(36)
+
+  createdByUser User? @relation("MarketingContentCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  updatedByUser User? @relation("MarketingContentUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  deletedByUser User? @relation("MarketingContentDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+
+  campaign  MarketingCampaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  channel   MarketingChannel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  analytics ContentAnalytics[]
+
+  @@map("marketing_content")
+}
+
+// Campaign Analytics Model
+model CampaignAnalytics {
+  id          String   @id @default(uuid()) @map("analytics_id")
+  campaignId  String   @map("campaign_id")
+  impressions Int?
+  clicks      Int?
+  conversions Int?
+  revenue     Decimal? @db.Decimal(15, 2)
+  cost        Decimal? @db.Decimal(15, 2)
+  roi         Decimal? @db.Decimal(10, 2)
+  periodStart DateTime @map("period_start")
+  periodEnd   DateTime @map("period_end")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  campaign MarketingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@map("campaign_analytics")
+}
+
+// Content Analytics Model
+model ContentAnalytics {
+  id             String   @id @default(uuid()) @map("content_analytics_id")
+  contentId      String   @map("content_id")
+  impressions    Int?
+  clicks         Int?
+  shares         Int?
+  comments       Int?
+  reactions      Int?
+  conversionRate Decimal? @map("conversion_rate") @db.Decimal(5, 2)
+  recordDate     DateTime @map("record_date")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  content MarketingContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@map("content_analytics")
+}
+
+// Customer Interaction with Campaigns
+model CustomerCampaignInteraction {
+  id              String          @id @default(uuid()) @map("interaction_id")
+  pelangganId     String          @map("pelanggan_id")
+  campaignId      String          @map("campaign_id")
+  interactionType InteractionType @map("interaction_type")
+  interactionData Json?           @map("interaction_data")
+  interactionDate DateTime        @default(now()) @map("interaction_date")
+  leadToSale      Boolean?        @map("lead_to_sale")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  pelanggan Pelanggan         @relation(fields: [pelangganId], references: [id])
+  campaign  MarketingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@map("customer_campaign_interaction")
+}
+
+// Enums for marketing features
+enum CampaignStatus {
+  draft
+  active
+  paused
+  completed
+  cancelled
+}
+
+enum ChannelType {
+  whatsapp
+  instagram
+  facebook
+  email
+  sms
+  other
+}
+
+enum ContentType {
+  post
+  story
+  message
+  advertisement
+  video
+  carousel
+}
+
+enum ContentStatus {
+  draft
+  approved
+  scheduled
+  published
+  rejected
+}
+
+enum InteractionType {
+  view
+  click
+  share
+  comment
+  message
+  conversion
+}
+
+// Hutang (Debt) Management Models
+model Hutang {
+  id             String       @id @default(uuid()) @map("hutang_id")
+  transaksiId    String?      @map("transaksi_id")
+  nomorReferensi String       @map("nomor_referensi") @db.VarChar(50)
+  tanggalHutang  DateTime     @map("tanggal_hutang")
+  jatuhTempo     DateTime     @map("jatuh_tempo")
+  jumlahTotal    Decimal      @map("jumlah_total") @db.Decimal(15, 2)
+  jumlahBayar    Decimal      @map("jumlah_bayar") @db.Decimal(15, 2)
+  sisaHutang     Decimal      @map("sisa_hutang") @db.Decimal(15, 2)
+  jenisHutang    JenisHutang
+  statusHutang   StatusHutang @default(aktif)
+  keterangan     String?
+  cabangId       String       @map("cabang_id")
+  supplierId     String?      @map("supplier_id")
+  pelangganId    String?      @map("pelanggan_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  created_by     String?      @map("created_by") @db.VarChar(36)
+  updated_by     String?      @map("updated_by") @db.VarChar(36)
+  deleted_by     String?      @map("deleted_by") @db.VarChar(36)
+
+  deleted_by_user_Id String? @map("deleted_by_user_id") @db.VarChar(36)
+  created_by_user_Id String? @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String? @map("updated_by_user_id") @db.VarChar(36)
+
+  createdByUser User? @relation("HutangCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  updatedByUser User? @relation("HutangUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  deletedByUser User? @relation("HutangDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+
+  cabang           Cabang             @relation(fields: [cabangId], references: [id])
+  pelanggan        Pelanggan?         @relation(fields: [pelangganId], references: [id])
+  supplier         Supplier?          @relation(fields: [supplierId], references: [id])
+  transaksi        Transaksi?         @relation("HutangTransaksi", fields: [transaksiId], references: [transaksi_id])
+  pembayaranHutang PembayaranHutang[]
+
+  @@map("hutang")
+}
+
+model PembayaranHutang {
+  id               String           @id @default(uuid()) @map("pembayaran_hutang_id")
+  hutangId         String           @map("hutang_id")
+  tanggalBayar     DateTime         @map("tanggal_bayar")
+  jumlahBayar      Decimal          @map("jumlah_bayar") @db.Decimal(15, 2)
+  metodePembayaran MetodePembayaran
+  nomorReferensi   String?          @map("nomor_referensi") @db.VarChar(50)
+  buktiUrl         String?          @map("bukti_url")
+  keterangan       String?
+  userId           String           @map("user_id")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  created_by       String?          @map("created_by") @db.VarChar(36)
+  updated_by       String?          @map("updated_by") @db.VarChar(36)
+  deleted_by       String?          @map("deleted_by") @db.VarChar(36)
+
+  deleted_by_user_Id String? @map("deleted_by_user_id") @db.VarChar(36)
+  created_by_user_Id String? @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String? @map("updated_by_user_id") @db.VarChar(36)
+
+  createdByUser User? @relation("PembayaranHutangCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  updatedByUser User? @relation("PembayaranHutangUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  deletedByUser User? @relation("PembayaranHutangDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+
+  hutang Hutang @relation(fields: [hutangId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@map("pembayaran_hutang")
+}
+
+// Kredit (Credit) Management Models
+model KreditSetting {
+  id               String       @id @default(uuid()) @map("kredit_setting_id")
+  pelangganId      String       @map("pelanggan_id")
+  limitKredit      Decimal      @map("limit_kredit") @db.Decimal(15, 2)
+  tenorMaksimal    Int          @map("tenor_maksimal")
+  bungaPerBulan    Decimal?     @map("bunga_per_bulan") @db.Decimal(5, 2)
+  biayaAdmin       Decimal?     @map("biaya_admin") @db.Decimal(15, 2)
+  statusKredit     StatusKredit @default(aktif)
+  disetujuiOleh    String?      @map("disetujui_oleh")
+  tanggalDisetujui DateTime?    @map("tanggal_disetujui")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+  created_by       String?      @map("created_by") @db.VarChar(36)
+  updated_by       String?      @map("updated_by") @db.VarChar(36)
+  deleted_by       String?      @map("deleted_by") @db.VarChar(36)
+
+  deleted_by_user_Id String? @map("deleted_by_user_id") @db.VarChar(36)
+  created_by_user_Id String? @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String? @map("updated_by_user_id") @db.VarChar(36)
+
+  createdByUser User? @relation("KreditSettingCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  updatedByUser User? @relation("KreditSettingUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  deletedByUser User? @relation("KreditSettingDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+
+  pelanggan       Pelanggan         @relation(fields: [pelangganId], references: [id])
+  approvedBy      User?             @relation("ApprovedCredit", fields: [disetujuiOleh], references: [id])
+  kreditTransaksi KreditTransaksi[]
+
+  @@map("kredit_setting")
+}
+
+model KreditTransaksi {
+  id                String                @id @default(uuid()) @map("kredit_transaksi_id")
+  transaksiId       String                @map("transaksi_id")
+  kreditSettingId   String                @map("kredit_setting_id")
+  jumlahKredit      Decimal               @map("jumlah_kredit") @db.Decimal(15, 2)
+  tenor             Int
+  bunga             Decimal?              @db.Decimal(15, 2)
+  biayaAdmin        Decimal?              @map("biaya_admin") @db.Decimal(15, 2)
+  totalBayar        Decimal               @map("total_bayar") @db.Decimal(15, 2)
+  angsuranPerBulan  Decimal               @map("angsuran_per_bulan") @db.Decimal(15, 2)
+  tanggalMulai      DateTime              @map("tanggal_mulai")
+  tanggalJatuhTempo DateTime              @map("tanggal_jatuh_tempo")
+  statusKredit      StatusKreditTransaksi @default(aktif)
+  keterangan        String?
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+  created_by        String?               @map("created_by") @db.VarChar(36)
+  updated_by        String?               @map("updated_by") @db.VarChar(36)
+  deleted_by        String?               @map("deleted_by") @db.VarChar(36)
+
+  deleted_by_user_Id String? @map("deleted_by_user_id") @db.VarChar(36)
+  created_by_user_Id String? @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String? @map("updated_by_user_id") @db.VarChar(36)
+
+  createdByUser User? @relation("KreditTransaksiCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  updatedByUser User? @relation("KreditTransaksiUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  deletedByUser User? @relation("KreditTransaksiDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+
+  kreditSetting    KreditSetting      @relation(fields: [kreditSettingId], references: [id])
+  transaksi        Transaksi          @relation("KreditTransaksi", fields: [transaksiId], references: [transaksi_id])
+  pembayaranKredit PembayaranKredit[]
+
+  @@map("kredit_transaksi")
+  KreditNotifikasi KreditNotifikasi[]
+}
+
+model PembayaranKredit {
+  id                 String           @id @default(uuid()) @map("pembayaran_kredit_id")
+  kreditTransaksiId  String           @map("kredit_transaksi_id")
+  angsuranKe         Int              @map("angsuran_ke")
+  jumlahBayar        Decimal          @map("jumlah_bayar") @db.Decimal(15, 2)
+  tanggalBayar       DateTime         @map("tanggal_bayar")
+  metodePembayaran   MetodePembayaran
+  nomorReferensi     String?          @map("nomor_referensi") @db.VarChar(50)
+  buktiUrl           String?          @map("bukti_url")
+  denda              Decimal?         @db.Decimal(15, 2)
+  keterangan         String?
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+  created_by         String?          @map("created_by") @db.VarChar(36)
+  updated_by         String?          @map("updated_by") @db.VarChar(36)
+  deleted_by         String?          @map("deleted_by") @db.VarChar(36)
+  deleted_by_user_Id String?          @map("deleted_by_user_id") @db.VarChar(36)
+  created_by_user_Id String?          @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String?          @map("updated_by_user_id") @db.VarChar(36)
+
+  createdByUser User? @relation("PembayaranKreditCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  updatedByUser User? @relation("PembayaranKreditUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  deletedByUser User? @relation("PembayaranKreditDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+
+  kreditTransaksi KreditTransaksi @relation(fields: [kreditTransaksiId], references: [id], onDelete: Cascade)
+
+  @@map("pembayaran_kredit")
+}
+
+// Model untuk notifikasi kredit dan pengingat pembayaran
+model KreditNotifikasi {
+  id                String               @id @default(uuid()) @map("kredit_notifikasi_id")
+  kreditTransaksiId String               @map("kredit_transaksi_id")
+  pelangganId       String               @map("pelanggan_id")
+  angsuranKe        Int                  @map("angsuran_ke")
+  jumlahTagihan     Decimal              @map("jumlah_tagihan") @db.Decimal(15, 2)
+  tanggalJatuhTempo DateTime             @map("tanggal_jatuh_tempo")
+  jenisNotifikasi   JenisNotifikasiKredit
+  statusNotifikasi  StatusNotifikasi     @default(belum_dikirim)
+  tanggalKirim      DateTime?            @map("tanggal_kirim")
+  metodePengiriman  MetodePengiriman[]
+  pesanNotifikasi   String?              @map("pesan_notifikasi") @db.Text
+  isRead            Boolean              @default(false) @map("is_read")
+  readAt            DateTime?            @map("read_at")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+  
+  kreditTransaksi   KreditTransaksi      @relation(fields: [kreditTransaksiId], references: [id], onDelete: Cascade)
+  pelanggan         Pelanggan            @relation(fields: [pelangganId], references: [id])
+  
+  @@map("kredit_notifikasi")
+}
+
+// Enums for Hutang & Kredit features
+enum JenisHutang {
+  supplier
+  pelanggan
+  lainnya
+}
+
+enum StatusHutang {
+  aktif
+  lunas
+  hapus
+}
+
+enum StatusKredit {
+  aktif
+  nonaktif
+  diblokir
+}
+
+enum StatusKreditTransaksi {
+  aktif
+  lunas
+  terlambat
+  macet
+}
+
+enum JenisNotifikasiKredit {
+  jatuh_tempo
+  pengingat
+  keterlambatan
+  pelunasan
+}
+
+enum StatusNotifikasi {
+  belum_dikirim
+  terkirim
+  gagal
+  dibaca
+}
+
+enum MetodePengiriman {
+  sms
+  email
+  whatsapp
+  push_notification
+}
+
+model OperationalHours {
+  id        String   @id @default(uuid())
+  cabangId  String   @map("cabang_id")
+  dayOfWeek Int      @map("day_of_week") // 0 = Minggu, 1 = Senin, dst
+  isOpen    Boolean  @default(true) @map("is_open")
+  openTime  String   @map("open_time") // Format: "HH:mm"
+  closeTime String   @map("close_time") // Format: "HH:mm"
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  cabang    Cabang   @relation(fields: [cabangId], references: [id])
+
+  @@map("operational_hours")
+}
+
+// Penambahan pada model BotOrder
+model BotOrder {
+  id          String      @id @default(uuid()) @map("bot_order_id")
+  sessionId   String      @map("session_id")
+  botConfigId String      @map("bot_config_id")
+  transaksiId String?     @map("transaksi_id")
+  orderStatus OrderStatus @default(pending) @map("order_status")
+  orderData   Json        @map("order_data")
+
+  // Opsi pengiriman
+  deliveryMethod   DeliveryMethod @default(pickup) @map("delivery_method")
+  deliveryAddress  String?        @map("delivery_address") @db.Text
+  deliveryNotes    String?        @map("delivery_notes") @db.Text
+  deliveryFee      Decimal?       @map("delivery_fee") @db.Decimal(10, 2)
+  deliveryDistance Decimal?       @map("delivery_distance") @db.Decimal(10, 2)
+
+  // Jadwal pengambilan/pengiriman
+  scheduledTime    DateTime? @map("scheduled_time")
+  estimatedArrival DateTime? @map("estimated_arrival")
+
+  // Informasi kurir (jika diantar)
+  courierName  String? @map("courier_name") @db.VarChar(100)
+  courierPhone String? @map("courier_phone") @db.VarChar(20)
+  courierNotes String? @map("courier_notes") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  session   BotSession @relation(fields: [sessionId], references: [id])
+  botConfig BotConfig  @relation(fields: [botConfigId], references: [id])
+  transaksi Transaksi? @relation(fields: [transaksiId], references: [transaksi_id])
+
+  @@map("bot_order")
+}
+
+// Tambahkan enum untuk metode pengiriman
+enum DeliveryMethod {
+  pickup // Diambil di toko
+  delivery // Diantar ke alamat pelanggan
+}
+
+// Bot Configuration Model
+model BotConfig {
+  id              String       @id @default(uuid()) @map("bot_config_id")
+  cabangId        String       @map("cabang_id")
+  platformType    PlatformType @map("platform_type")
+  isActive        Boolean      @default(true) @map("is_active")
+  apiKey          String?      @map("api_key") @db.VarChar(255)
+  apiSecret       String?      @map("api_secret") @db.VarChar(255)
+  phoneNumber     String?      @map("phone_number") @db.VarChar(20)
+  webhookUrl      String?      @map("webhook_url") @db.VarChar(255)
+  welcomeMessage  String?      @map("welcome_message") @db.Text
+  catalogMessage  String?      @map("catalog_message") @db.Text
+  orderMessage    String?      @map("order_message") @db.Text
+  thankYouMessage String?      @map("thank_you_message") @db.Text
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  cabang       Cabang        @relation(fields: [cabangId], references: [id])
+  botSessions  BotSession[]
+  botTemplates BotTemplate[]
+  botOrders    BotOrder[]
+
+  @@map("bot_config")
+}
+
+// Bot Message Templates
+model BotTemplate {
+  id              String       @id @default(uuid()) @map("template_id")
+  botConfigId     String       @map("bot_config_id")
+  templateName    String       @map("template_name") @db.VarChar(100)
+  templateContent String       @map("template_content") @db.Text
+  templateType    TemplateType @map("template_type")
+  isActive        Boolean      @default(true) @map("is_active")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  botConfig BotConfig @relation(fields: [botConfigId], references: [id], onDelete: Cascade)
+
+  @@map("bot_template")
+}
+
+// Bot Customer Session
+model BotSession {
+  id              String        @id @default(uuid()) @map("session_id")
+  botConfigId     String        @map("bot_config_id")
+  pelangganId     String?       @map("pelanggan_id")
+  platformUserId  String        @map("platform_user_id") @db.VarChar(100)
+  sessionData     Json?         @map("session_data")
+  cartData        Json?         @map("cart_data")
+  lastInteraction DateTime      @map("last_interaction")
+  sessionStatus   SessionStatus @default(active) @map("session_status")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  botConfig   BotConfig    @relation(fields: [botConfigId], references: [id], onDelete: Cascade)
+  pelanggan   Pelanggan?   @relation(fields: [pelangganId], references: [id])
+  botMessages BotMessage[]
+  botOrders   BotOrder[]
+
+  @@map("bot_session")
+}
+
+// Bot Message History
+model BotMessage {
+  id             String      @id @default(uuid()) @map("message_id")
+  sessionId      String      @map("session_id")
+  messageType    MessageType @map("message_type")
+  messageContent String      @map("message_content") @db.Text
+  mediaUrl       String?     @map("media_url") @db.VarChar(255)
+  isFromBot      Boolean     @default(true) @map("is_from_bot")
+  timestamp      DateTime    @default(now())
+
+  session BotSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("bot_message")
+}
+
+// Enums for Bot Features
+enum PlatformType {
+  whatsapp
+  telegram
+  messenger
+}
+
+enum TemplateType {
+  welcome
+  catalog
+  product
+  cart
+  checkout
+  order_confirmation
+  payment
+  delivery
+  custom
+}
+
+enum MessageType {
+  text
+  image
+  document
+  location
+  contact
+  interactive
+  template
+  button
+}
+
+enum SessionStatus {
+  active
+  idle
+  completed
+  abandoned
+}
+
+enum OrderStatus {
+  pending
+  confirmed
+  processing
+  completed
+  cancelled
+  failed
+}
+
+model LoyaltyConfig {
+  id                 String   @id @default(uuid()) @map("loyalty_config_id")
+  cabangId           String?  @map("cabang_id") @db.VarChar(36)
+  pointRate          Int      @default(10000) @map("point_rate")
+  minimumTransaction Decimal? @map("minimum_transaction") @db.Decimal(15, 2)
+  expiryDays         Int?     @map("expiry_days")
+  isActive           Boolean  @default(true) @map("is_active")
+  redeemRules        Json?    @map("redeem_rules")
+  tierRules          Json?    @map("tier_rules")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  cabang Cabang? @relation(fields: [cabangId], references: [id])
+
+  @@map("loyalty_config")
+}
+
+
+model KreditRekomendasi {
+  id                String                @id @default(uuid()) @map("kredit_rekomendasi_id")
+  pelangganId       String                @map("pelanggan_id")
+  skorKredit        Int                   @map("skor_kredit") // 0-100 scale
+  limitKredit       Decimal               @map("limit_kredit") @db.Decimal(15, 2)
+  tenorMaksimal     Int                   @map("tenor_maksimal")
+  bungaPerBulan     Decimal?              @map("bunga_per_bulan") @db.Decimal(5, 2)
+  biayaAdmin        Decimal?              @map("biaya_admin") @db.Decimal(15, 2)
+  statusPersetujuan StatusPersetujuan     @default(pending) @map("status_persetujuan")
+  disetujuiOleh     String?               @map("disetujui_oleh")
+  tanggalDisetujui  DateTime?             @map("tanggal_disetujui")
+  keterangan        String?
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+  created_by        String?               @map("created_by") @db.VarChar(36)
+  updated_by        String?               @map("updated_by") @db.VarChar(36)
+  deleted_by        String?               @map("deleted_by") @db.VarChar(36)
+  
+  deleted_by_user_Id String? @map("deleted_by_user_id") @db.VarChar(36)
+  created_by_user_Id String? @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String? @map("updated_by_user_id") @db.VarChar(36)
+  
+  createdByUser User? @relation("KreditRekomendasiCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  updatedByUser User? @relation("KreditRekomendasiUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  deletedByUser User? @relation("KreditRekomendasiDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+  
+  pelanggan        Pelanggan                @relation(fields: [pelangganId], references: [id])
+  approvedBy       User?                    @relation("ApprovedKreditRekomendasi", fields: [disetujuiOleh], references: [id])
+  opsiPembayaran   OpsiPembayaranKredit[]
+  
+  @@map("kredit_rekomendasi")
+}
+
+model OpsiPembayaranKredit {
+  id                  String            @id @default(uuid()) @map("opsi_pembayaran_id")
+  rekomendasiId       String            @map("rekomendasi_id")
+  jangkaWaktu         Int               @map("jangka_waktu") // in days
+  jumlahCicilan       Int?              @map("jumlah_cicilan")
+  minimumBayar        Decimal?          @map("minimum_bayar") @db.Decimal(15, 2)
+  bungaPerBulan       Decimal?          @map("bunga_per_bulan") @db.Decimal(5, 2)
+  biayaAdmin          Decimal?          @map("biaya_admin") @db.Decimal(15, 2)
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+  
+  rekomendasi         KreditRekomendasi @relation(fields: [rekomendasiId], references: [id], onDelete: Cascade)
+  
+  @@map("opsi_pembayaran_kredit")
+}
+
+enum StatusPersetujuan {
+  pending
+  disetujui
+  ditolak
+}
+
+// Model untuk absensi pegawai
+model AbsensiPegawai {
+  id                String            @id @default(uuid()) @map("absensi_id")
+  userId            String            @map("user_id")
+  cabangId          String            @map("cabang_id")
+  lokasiAbsensiId   String?           @map("lokasi_absensi_id") // ID lokasi absensi fleksibel
+  tanggalAbsensi    DateTime          @map("tanggal_absensi") @db.Date
+  waktuMasuk        DateTime          @map("waktu_masuk")
+  waktuKeluar       DateTime?         @map("waktu_keluar")
+  statusKehadiran   StatusKehadiran   @default(hadir)
+  keterangan        String?           @db.Text
+  lokasiMasuk       String?           @map("lokasi_masuk")
+  lokasiKeluar      String?           @map("lokasi_keluar")
+  latitudeMasuk     Decimal?          @map("latitude_masuk") @db.Decimal(10, 8)
+  longitudeMasuk    Decimal?          @map("longitude_masuk") @db.Decimal(11, 8)
+  latitudeKeluar    Decimal?          @map("latitude_keluar") @db.Decimal(10, 8)
+  longitudeKeluar   Decimal?          @map("longitude_keluar") @db.Decimal(11, 8)
+  fotoMasuk         String?           @map("foto_masuk") // URL foto untuk absensi masuk
+  fotoKeluar        String?           @map("foto_keluar") // URL foto untuk absensi keluar
+  faceRecognitionMasuk Boolean         @default(false) @map("face_recognition_masuk") // Flag jika absensi masuk menggunakan face recognition
+  faceRecognitionKeluar Boolean        @default(false) @map("face_recognition_keluar") // Flag jika absensi keluar menggunakan face recognition
+  faceMatchScoreMasuk Decimal?        @map("face_match_score_masuk") @db.Decimal(5, 2) // Skor kecocokan wajah saat masuk (0-100)
+  faceMatchScoreKeluar Decimal?       @map("face_match_score_keluar") @db.Decimal(5, 2) // Skor kecocokan wajah saat keluar (0-100)
+  shiftId           String?           @map("shift_id")
+  jamKerja          Decimal?          @map("jam_kerja") @db.Decimal(5, 2)
+  isLembur          Boolean           @default(false) @map("is_lembur")
+  jamLembur         Decimal?          @map("jam_lembur") @db.Decimal(5, 2)
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  
+  // Relations
+  user              User              @relation(fields: [userId], references: [id])
+  cabang            Cabang            @relation(fields: [cabangId], references: [id])
+  lokasiAbsensi     LokasiAbsensi?    @relation(fields: [lokasiAbsensiId], references: [id])
+  shift             Shift?            @relation(fields: [shiftId], references: [id])
+  
+  @@map("absensi_pegawai")
+}
+
+// Model untuk jadwal kerja pegawai
+model JadwalKerja {
+  id                String            @id @default(uuid()) @map("jadwal_id")
+  userId            String            @map("user_id")
+  cabangId          String            @map("cabang_id")
+  tanggalMulai      DateTime          @map("tanggal_mulai") @db.Date
+  tanggalSelesai    DateTime          @map("tanggal_selesai") @db.Date
+  jamMasuk          String            @map("jam_masuk") // Format: "HH:mm"
+  jamKeluar         String            @map("jam_keluar") // Format: "HH:mm"
+  hariKerja         String[]          @map("hari_kerja") // Array of days: ["Senin", "Selasa", ...]
+  keterangan        String?           @db.Text
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  created_by        String?           @map("created_by") @db.VarChar(36)
+  updated_by        String?           @map("updated_by") @db.VarChar(36)
+  
+  // Relations
+  user              User              @relation(fields: [userId], references: [id])
+  cabang            Cabang            @relation(fields: [cabangId], references: [id])
+  
+  @@map("jadwal_kerja")
+}
+
+// Enum untuk status kehadiran
+enum StatusKehadiran {
+  hadir
+  terlambat
+  izin
+  sakit
+  cuti
+  tanpa_keterangan
+  lembur
+}
+
+// Model untuk lokasi absensi yang fleksibel
+model LokasiAbsensi {
+  id                String            @id @default(uuid()) @map("lokasi_id")
+  nama              String            @map("nama_lokasi") @db.VarChar(100)
+  alamat            String?           @db.Text
+  latitude          Decimal           @db.Decimal(10, 8)
+  longitude         Decimal           @db.Decimal(11, 8)
+  radius            Int               @default(100) @map("radius") // dalam meter
+  isActive          Boolean           @default(true) @map("is_active")
+  // Face Recognition Settings
+  requireFaceRecognition Boolean      @default(false) @map("require_face_recognition") // Apakah wajib face recognition di lokasi ini
+  minFaceMatchScore Decimal?         @map("min_face_match_score") @db.Decimal(5, 2) // Skor minimum kecocokan wajah (0-100)
+  cabangId          String?           @map("cabang_id") // Opsional, bisa tidak terkait dengan cabang
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  created_by        String?           @map("created_by") @db.VarChar(36)
+  updated_by        String?           @map("updated_by") @db.VarChar(36)
+  
+  // Relations
+  cabang            Cabang?           @relation(fields: [cabangId], references: [id])
+  userLokasiAbsensi UserLokasiAbsensi[]
+  absensiPegawai    AbsensiPegawai[]
+  
+  @@map("lokasi_absensi")
+}
+
+// Model untuk menghubungkan user dengan lokasi absensi yang diizinkan
+model UserLokasiAbsensi {
+  id                String            @id @default(uuid()) @map("user_lokasi_id")
+  userId            String            @map("user_id")
+  lokasiId          String            @map("lokasi_id")
+  isDefault         Boolean           @default(false) @map("is_default")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  
+  // Relations
+  user              User              @relation(fields: [userId], references: [id])
+  lokasi            LokasiAbsensi     @relation(fields: [lokasiId], references: [id])
+  
+  @@unique([userId, lokasiId])
+  @@map("user_lokasi_absensi")
+  Cabang Cabang[]
+}
+
+// Model untuk menu aplikasi
+model Menu {
+  id          String      @id @default(uuid()) @map("menu_id")
+  name        String      @map("menu_name") @db.VarChar(100)
+  path        String?     @db.VarChar(255)
+  icon        String?     @db.VarChar(100)
+  parentId    String?     @map("parent_id")
+  orderIndex  Int         @default(0) @map("order_index")
+  isActive    Boolean     @default(true) @map("is_active")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  createdBy   String?     @map("created_by")
+  updatedBy   String?     @map("updated_by")
+  
+  // Relations
+  parent      Menu?       @relation("MenuHierarchy", fields: [parentId], references: [id])
+  children    Menu[]      @relation("MenuHierarchy")
+  roleMenus   RoleMenu[]
+  
+  @@map("menu")
+}
+
+// Model untuk menghubungkan role dengan menu dan izin akses
+model RoleMenu {
+  id        String    @id @default(uuid()) @map("role_menu_id")
+  roleId    String    @map("role_id")
+  menuId    String    @map("menu_id")
+  canView   Boolean   @default(true) @map("can_view")
+  canCreate Boolean   @default(false) @map("can_create")
+  canEdit   Boolean   @default(false) @map("can_edit")
+  canDelete Boolean   @default(false) @map("can_delete")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
+  
+  // Relations
+  role      Role      @relation(fields: [roleId], references: [id])
+  menu      Menu      @relation(fields: [menuId], references: [id])
+  
+  @@unique([roleId, menuId])
+  @@map("role_menu")
+}
