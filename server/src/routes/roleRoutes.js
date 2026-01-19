@@ -21,6 +21,15 @@ router.post(
   hasPermission(["role:create"]),
   roleController.createRole
 );
+
+// Clone role with permissions
+router.post(
+  "/:roleId/clone",
+  authenticate,
+  hasPermission(["role:create"]),
+  roleController.cloneRole
+);
+
 router.put(
   "/:roleId",
   authenticate,
@@ -35,3 +44,4 @@ router.delete(
 );
 
 module.exports = router;
+

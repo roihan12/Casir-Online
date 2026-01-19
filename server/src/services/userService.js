@@ -37,7 +37,7 @@ const CACHE_TTL = {
 /**
  * Get all users with optional filtering
  * @param {Object} filters - Filter parameters
- * @returns {Promise<Object>} - Users with pagination data
+ * @returns {Promise<Object>} - Users with pagination data and stats
  */
 const getAllUsers = async (filters = {}) => {
   const { search, roleId, cabangId, status, page = 1, limit = 10 } = filters;
@@ -77,7 +77,8 @@ const getAllUsers = async (filters = {}) => {
 
       const skip = (page - 1) * limit;
 
-      const [data, total] = await Promise.all([
+      // Fetch data, total count, and status counts in parallel
+      const [data, total, activeCount, inactiveCount] = await Promise.all([
         prisma.user.findMany({
           where,
           include: {
@@ -97,6 +98,20 @@ const getAllUsers = async (filters = {}) => {
           take: Number(limit),
         }),
         prisma.user.count({ where }),
+        // Count active users (global, tidak terpengaruh filter search)
+        prisma.user.count({ 
+          where: { 
+            deletedAt: null, 
+            status: "aktif" 
+          } 
+        }),
+        // Count inactive users (global)
+        prisma.user.count({ 
+          where: { 
+            deletedAt: null, 
+            status: "nonaktif" 
+          } 
+        }),
       ]);
 
       // Transform data to hide password
@@ -113,6 +128,11 @@ const getAllUsers = async (filters = {}) => {
           itemsPerPage: parseInt(limit),
           hasNextPage: page < totalPages,
           hasPrevPage: page > 1,
+        },
+        stats: {
+          totalUsers: activeCount + inactiveCount,
+          activeUsers: activeCount,
+          inactiveUsers: inactiveCount,
         },
       };
     },

@@ -48,13 +48,13 @@ class PermissionService {
     // Create audit log
     await prisma.auditLog.create({
       data: {
-        userId: auditInfo.userId,
+        user_id: auditInfo.userId,
         action: "CREATE",
-        resource: "Permission",
-        resourceId: newPermission.id,
-        oldValues: null,
-        newValues: JSON.stringify(newPermission),
-        ipAddress: auditInfo.ipAddress,
+        table_name: "permissions",
+        record_id: newPermission.id,
+        old_values: null,
+        new_values: JSON.stringify(newPermission),
+        ip_address: auditInfo.ipAddress,
       },
     });
 
@@ -112,13 +112,13 @@ class PermissionService {
         // Create audit log for each permission
         await prisma.auditLog.create({
           data: {
-            userId: auditInfo.userId,
+            user_id: auditInfo.userId,
             action: "CREATE",
-            resource: "Permission",
-            resourceId: newPermission.id,
-            oldValues: null,
-            newValues: JSON.stringify(newPermission),
-            ipAddress: auditInfo.ipAddress,
+            table_name: "permissions",
+            record_id: newPermission.id,
+            old_values: null,
+            new_values: JSON.stringify(newPermission),
+            ip_address: auditInfo.ipAddress,
           },
         });
       }
@@ -176,13 +176,13 @@ class PermissionService {
     // Create audit log
     await prisma.auditLog.create({
       data: {
-        userId: auditInfo.userId,
+        user_id: auditInfo.userId,
         action: "UPDATE",
-        resource: "Permission",
-        resourceId: permissionId,
-        oldValues: JSON.stringify(oldValues),
-        newValues: JSON.stringify(updatedPermission),
-        ipAddress: auditInfo.ipAddress,
+        table_name: "permissions",
+        record_id: permissionId,
+        old_values: JSON.stringify(oldValues),
+        new_values: JSON.stringify(updatedPermission),
+        ip_address: auditInfo.ipAddress,
       },
     });
 
@@ -222,13 +222,13 @@ class PermissionService {
     // Create audit log
     await prisma.auditLog.create({
       data: {
-        userId: auditInfo.userId,
+        user_id: auditInfo.userId,
         action: "DELETE",
-        resource: "Permission",
-        resourceId: permissionId,
-        oldValues: JSON.stringify(existingPermission),
-        newValues: null,
-        ipAddress: auditInfo.ipAddress,
+        table_name: "permissions",
+        record_id: permissionId,
+        old_values: JSON.stringify(existingPermission),
+        new_values: null,
+        ip_address: auditInfo.ipAddress,
       },
     });
 
@@ -390,18 +390,18 @@ class PermissionService {
     // Create audit log
     await prisma.auditLog.create({
       data: {
-        userId: auditInfo.userId,
+        user_id: auditInfo.userId,
         action: "CREATE",
-        resource: "RolePermission",
-        resourceId: rolePermission.id,
-        oldValues: null,
-        newValues: JSON.stringify({
+        table_name: "role_permissions",
+        record_id: rolePermission.id,
+        old_values: null,
+        new_values: JSON.stringify({
           roleId: validData.roleId,
           permissionId: validData.permissionId,
           roleName: role.namaRole,
           permissionName: permission.name,
         }),
-        ipAddress: auditInfo.ipAddress,
+        ip_address: auditInfo.ipAddress,
       },
     });
 
@@ -446,13 +446,13 @@ class PermissionService {
     // Create audit log
     await prisma.auditLog.create({
       data: {
-        userId: auditInfo.userId,
+        user_id: auditInfo.userId,
         action: "DELETE",
-        resource: "RolePermission",
-        resourceId: rolePermissionId,
-        oldValues: JSON.stringify(rolePermissionData),
-        newValues: null,
-        ipAddress: auditInfo.ipAddress,
+        table_name: "role_permissions",
+        record_id: rolePermissionId,
+        old_values: JSON.stringify(rolePermissionData),
+        new_values: null,
+        ip_address: auditInfo.ipAddress,
       },
     });
 
@@ -467,6 +467,9 @@ class PermissionService {
    * Bulk assign permissions to a role
    */
   async bulkAssignPermissionsToRole(roleId, permissionIds, auditInfo) {
+
+    console.log(roleId, permissionIds, auditInfo);
+
     // Check if role exists
     const role = await prisma.role.findUnique({
       where: { id: roleId },
@@ -518,18 +521,18 @@ class PermissionService {
         // Create audit log for each assignment
         await prisma.auditLog.create({
           data: {
-            userId: auditInfo.userId,
+            user_id: auditInfo.userId,
             action: "CREATE",
-            resource: "RolePermission",
-            resourceId: rolePermission.id,
-            oldValues: null,
-            newValues: JSON.stringify({
+            table_name: "role_permissions",
+            record_id: rolePermission.id,
+            old_values: null,
+            new_values: JSON.stringify({
               roleId,
               permissionId,
               roleName: role.namaRole,
               permissionName: rolePermission.permission.name,
             }),
-            ipAddress: auditInfo.ipAddress,
+            ip_address: auditInfo.ipAddress,
           },
         });
       }
@@ -541,7 +544,8 @@ class PermissionService {
       };
     });
 
-    // Clear all permission caches
+    // Clear all permission caches (including user-specific caches)
+    await cacheDeletePattern("role_permissions:*");
     await cacheDeletePattern("permissions:*");
 
     return {

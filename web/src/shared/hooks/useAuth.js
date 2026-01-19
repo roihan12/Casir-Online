@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import useAuthStore from '@entities/user/model/useAuthStore';
 import useBranchStore from '@entities/branch/model/useBranchStore';
 
@@ -7,6 +8,8 @@ import useBranchStore from '@entities/branch/model/useBranchStore';
  * Provides convenient access to auth state and actions
  */
 export const useAuth = () => {
+  const queryClient = useQueryClient();
+  
   const {
     user,
     isAuthenticated,
@@ -31,10 +34,12 @@ export const useAuth = () => {
     }
   }, [user, syncWithUser]);
 
-  // Enhanced logout that also clears branch
+  // Enhanced logout that also clears branch and React Query cache
   const handleLogout = async () => {
     await logout();
     clearBranch();
+    // Clear all React Query cache including sidebar menu
+    queryClient.clear();
   };
 
   return {

@@ -27,8 +27,12 @@ class DashboardService {
       cacheKey,
       async () => {
         // Determine user permissions and branch context
-        const isSuperAdmin = user.userRoles.some(
-          (ur) => ur.role.namaRole === "super_admin"
+        // Note: user object is already formatted by authMiddleware, so use 'roles' and 'cabang'
+        const roles = user.roles || user.userRoles || [];
+        const cabangList = user.cabang || user.userCabang || [];
+
+        const isSuperAdmin = roles.some(
+          (r) => r.namaRole === "super_admin" || r.role?.namaRole === "super_admin"
         );
 
         // Fix branch context determination
@@ -41,7 +45,7 @@ class DashboardService {
           branchId = String(selectedBranchId);
         } else {
           // Fallback to primary branch
-          const primaryBranch = user.userCabang.find((uc) => uc.isPrimary);
+          const primaryBranch = cabangList.find((uc) => uc.isPrimary);
           branchId = primaryBranch ? String(primaryBranch.cabangId) : null;
         }
 
@@ -122,9 +126,9 @@ class DashboardService {
           revenueTimeSeries,
           userContext: {
             isSuperAdmin,
-            accessibleBranches: user.userCabang.map((uc) => ({
-              id: String(uc.cabangId), // Convert to String to avoid BigInt issues
-              name: uc.cabang.namaCabang,
+            accessibleBranches: cabangList.map((uc) => ({
+              id: String(uc.cabangId),
+              name: uc.namaCabang || uc.cabang?.namaCabang,
             })),
           },
         });
@@ -160,11 +164,19 @@ class DashboardService {
 
   // Improved determineBranchContext method
   static determineBranchContext(user, selectedBranchId) {
+    // Handle both formatted (roles/cabang) and raw (userRoles/userCabang) user objects
+    const roles = user.roles || user.userRoles || [];
+    const cabangList = user.cabang || user.userCabang || [];
+    
+    console.log("Roles:", roles);
+    console.log("Cabang List:", cabangList);
+
     // Super admin can see all branches if no specific branch is selected
-    if (
-      user.userRoles.some((ur) => ur.role.namaRole === "super_admin") &&
-      (!selectedBranchId || selectedBranchId === "all")
-    ) {
+    const isSuperAdmin = roles.some(
+      (r) => r.namaRole === "super_admin" || r.role?.namaRole === "super_admin"
+    );
+    
+    if (isSuperAdmin && (!selectedBranchId || selectedBranchId === "all")) {
       return "all";
     }
 
@@ -174,7 +186,7 @@ class DashboardService {
     }
 
     // Default to primary branch
-    const primaryBranch = user.userCabang.find((uc) => uc.isPrimary);
+    const primaryBranch = cabangList.find((uc) => uc.isPrimary);
     return primaryBranch ? String(primaryBranch.cabangId) : null;
   }
 

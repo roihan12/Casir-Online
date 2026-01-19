@@ -1,239 +1,320 @@
-import { useState } from 'react';
 import { 
-  LayoutDashboard, ShoppingCart, Package, BarChart2, Users, Settings, 
-  LogOut, Bell, Search, ChevronRight, TrendingUp, Menu, X
+  TrendingUp, AlertTriangle, DollarSign, Clock, RefreshCw, ShoppingCart, Package
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell
+} from 'recharts';
 import { Card, Button } from '@shared/ui';
-import { useAuth, useBranch, usePermission } from '@shared/hooks';
-import { Can } from '@features/auth';
-import { BranchSelector } from '@widgets/branch-selector';
+import { useBranch } from '@shared/hooks';
+import { StatsCard } from '@widgets/stats-card';
+import MainLayout from '@widgets/layout/MainLayout';
+import { useDashboard, useActiveShift } from '@entities/dashboard';
+import { formatRupiah, formatNumber, formatPercent, formatTime } from '@shared/lib';
 
 const DashboardPage = () => {
-  const { user, logout } = useAuth();
-  const { activeBranchName } = useBranch();
-  const { can } = usePermission();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeMenu, setActiveMenu] = useState('dashboard');
+  const { activeBranchId, activeBranchName } = useBranch();
 
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: null },
-    { id: 'transaksi', label: 'Transaksi', icon: ShoppingCart, permission: 'transaksi:read' },
-    { id: 'produk', label: 'Produk', icon: Package, permission: 'produk:read' },
-    { id: 'laporan', label: 'Laporan', icon: BarChart2, permission: 'laporan:read' },
-    { id: 'pelanggan', label: 'Pelanggan', icon: Users, permission: 'pelanggan:read' },
-  ];
+  // Fetch dashboard data
+  const { 
+    data: dashboardData, 
+    isLoading: dashboardLoading, 
+    error: dashboardError,
+    refetch: refetchDashboard 
+  } = useDashboard();
 
-  // Filter menu based on permissions
-  const visibleMenuItems = menuItems.filter(item => 
-    !item.permission || can(item.permission)
-  );
+  // Fetch active shift
+  const { data: shiftData } = useActiveShift(activeBranchId);
 
-  const stats = [
-    { label: 'Penjualan Hari Ini', value: 'Rp 2.450.000', icon: ShoppingCart, color: 'text-emerald-500', progress: 75 },
-    { label: 'Produk Terjual', value: '156', icon: Package, color: 'text-blue-500', progress: 60 },
-    { label: 'Pelanggan Baru', value: '23', icon: Users, color: 'text-purple-500', progress: 45 },
-    { label: 'Pertumbuhan', value: '+12.5%', icon: TrendingUp, color: 'text-pink-500', progress: 85 },
-  ];
+  // Extract data from API response
+  const salesSummary = dashboardData?.data?.salesSummary || {};
+  const transactionCounts = dashboardData?.data?.transactionCounts || {};
+  const criticalAlerts = dashboardData?.data?.criticalAlerts || {};
+  const revenueTimeSeries = dashboardData?.data?.revenueTimeSeries || [];
+  const topProducts = dashboardData?.data?.productPerformance || [];
+  const categoryDistribution = dashboardData?.data?.categoryDistribution || [];
+  const shift = shiftData?.data;
 
-  const handleLogout = async () => {
-    await logout();
-  };
+  // Pie chart colors
+  const COLORS = ['#818cf8', '#f472b6', '#34d399', '#fbbf24', '#60a5fa', '#a78bfa'];
 
   return (
-    <div className="min-h-screen bg-gradient-main">
-      {/* Decorative Blobs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-pink-300/30 rounded-full blur-3xl animate-float" />
-        <div className="absolute top-1/2 -left-40 w-96 h-96 bg-purple-400/30 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
-        <div className="absolute -bottom-40 right-1/3 w-96 h-96 bg-blue-300/30 rounded-full blur-3xl animate-float" style={{ animationDelay: '4s' }} />
-      </div>
-
-      {/* Main Layout */}
-      <div className="relative z-10 flex min-h-screen p-4 gap-4">
-        
-        {/* Mobile Menu Button */}
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="lg:hidden fixed top-6 left-6 z-50 glass-surface p-2 rounded-lg"
+    <MainLayout 
+      title={`Halo, ${activeBranchName || 'User'}`}
+      subtitle="Selamat datang kembali!"
+    >
+      {/* Refresh Button */}
+      <div className="flex justify-end mb-4">
+        <Button 
+          variant="ghost" 
+          size="sm"
+          onClick={() => refetchDashboard()}
+          leftIcon={<RefreshCw className={`w-4 h-4 ${dashboardLoading ? 'animate-spin' : ''}`} />}
+          className="text-gray-600"
         >
-          {sidebarOpen ? <X className="w-6 h-6 text-gray-600" /> : <Menu className="w-6 h-6 text-gray-600" />}
-        </button>
-
-        {/* Sidebar */}
-        <AnimatePresence>
-          {sidebarOpen && (
-            <motion.aside
-              initial={{ x: -300, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -300, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="fixed lg:relative w-64 glass-sidebar p-6 flex flex-col h-[calc(100vh-2rem)] z-40"
-            >
-              {/* Logo */}
-              <h1 className="text-xl font-bold mb-8">
-                <span className="text-gradient">Casir</span>
-                <span className="text-gray-700">Online.</span>
-              </h1>
-
-              {/* User Profile */}
-              <div className="glass-surface p-3 rounded-xl flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold">
-                  {user?.namaLengkap?.charAt(0) || 'U'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-800 text-sm truncate">{user?.namaLengkap || 'User'}</p>
-                  <p className="text-xs text-gray-500 truncate">{user?.roles?.[0]?.namaRole || 'Role'}</p>
-                </div>
-              </div>
-
-              {/* Menu */}
-              <nav className="flex-1 space-y-2">
-                {visibleMenuItems.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setActiveMenu(item.id)}
-                    className={`menu-item w-full ${activeMenu === item.id ? 'active' : ''}`}
-                  >
-                    <item.icon className="w-5 h-5" />
-                    <span className="font-medium">{item.label}</span>
-                  </button>
-                ))}
-              </nav>
-
-              {/* Upgrade Card */}
-              <Can permission="admin:access">
-                <div className="upgrade-card mt-6">
-                  <div className="relative z-10">
-                    <h3 className="font-semibold mb-1">Upgrade Pro</h3>
-                    <p className="text-sm text-white/80 mb-4">Unlock semua fitur premium</p>
-                    <button className="bg-white text-purple-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/90 transition-colors">
-                      Upgrade
-                    </button>
-                  </div>
-                </div>
-              </Can>
-
-              {/* Settings & Logout */}
-              <div className="mt-4 space-y-2">
-                <button className="menu-item w-full">
-                  <Settings className="w-5 h-5" />
-                  <span className="font-medium">Pengaturan</span>
-                </button>
-                <button 
-                  onClick={handleLogout}
-                  className="menu-item w-full text-red-500 hover:bg-red-50"
-                >
-                  <LogOut className="w-5 h-5" />
-                  <span className="font-medium">Keluar</span>
-                </button>
-              </div>
-            </motion.aside>
-          )}
-        </AnimatePresence>
-
-        {/* Main Content */}
-        <main className="flex-1 space-y-6 lg:ml-0 ml-0">
-          {/* Header */}
-          <div className="glass p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="ml-12 lg:ml-0">
-              <h2 className="text-2xl font-bold text-gray-800">Halo, {user?.namaLengkap?.split(' ')[0] || 'User'}</h2>
-              <p className="text-gray-500">Selamat datang kembali!</p>
-            </div>
-            
-            <div className="flex items-center gap-4 flex-wrap">
-              {/* Branch Selector */}
-              <BranchSelector />
-              
-              {/* Search */}
-              <div className="glass-surface hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl">
-                <Search className="w-5 h-5 text-gray-400" />
-                <input 
-                  type="text" 
-                  placeholder="Cari..." 
-                  className="bg-transparent border-none outline-none text-gray-700 placeholder-gray-400 w-36"
-                />
-              </div>
-              
-              {/* Notification */}
-              <button className="glass-surface p-3 rounded-xl text-gray-500 hover:text-pink-500 transition-colors relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-pink-500 rounded-full" />
-              </button>
-            </div>
-          </div>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {stats.map((stat, index) => (
-              <Card key={index} hover className="bg-white/70">
-                <div className="flex items-start justify-between mb-4">
-                  <div className={`p-3 rounded-xl glass-surface ${stat.color}`}>
-                    <stat.icon className="w-6 h-6" />
-                  </div>
-                  <button className="text-gray-400 hover:text-gray-600">
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
-                </div>
-                <h3 className="text-2xl font-bold text-gray-800 mb-1">{stat.value}</h3>
-                <p className="text-sm text-gray-500 mb-3">{stat.label}</p>
-                <div className="progress-bar">
-                  <div 
-                    className="progress-bar-fill" 
-                    style={{ width: `${stat.progress}%` }}
-                  />
-                </div>
-              </Card>
-            ))}
-          </div>
-
-          {/* Info Cards */}
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* Branch Info */}
-            <Card>
-              <Card.Header>
-                <Card.Title className="text-gray-800">Informasi Cabang</Card.Title>
-              </Card.Header>
-              <Card.Content>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Cabang Aktif</span>
-                    <span className="font-medium text-gray-800">{activeBranchName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Status</span>
-                    <span className="badge badge-success">Aktif</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Shift</span>
-                    <span className="font-medium text-gray-800">Pagi (07:00 - 15:00)</span>
-                  </div>
-                </div>
-              </Card.Content>
-            </Card>
-
-            {/* User Permissions */}
-            <Card>
-              <Card.Header>
-                <Card.Title className="text-gray-800">Hak Akses</Card.Title>
-              </Card.Header>
-              <Card.Content>
-                <div className="flex flex-wrap gap-2">
-                  {user?.permissions?.slice(0, 8).map((perm, i) => (
-                    <span key={i} className="badge badge-info">{perm}</span>
-                  ))}
-                  {user?.permissions?.length > 8 && (
-                    <span className="badge bg-gray-100 text-gray-600">
-                      +{user.permissions.length - 8} lainnya
-                    </span>
-                  )}
-                </div>
-              </Card.Content>
-            </Card>
-          </div>
-        </main>
+          Refresh
+        </Button>
       </div>
-    </div>
+
+      {/* Error State */}
+      {dashboardError && (
+        <Card className="bg-red-50 border-red-200 mb-4">
+          <div className="flex items-center gap-3 text-red-600">
+            <AlertTriangle className="w-5 h-5" />
+            <p>Gagal memuat data dashboard. Silakan coba lagi.</p>
+          </div>
+        </Card>
+      )}
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <StatsCard
+          title="Penjualan Hari Ini"
+          value={salesSummary.daily?._sum?.total || 0}
+          icon={DollarSign}
+          change={salesSummary.daily?.percentageChange}
+          format="currency"
+          loading={dashboardLoading}
+          color="text-emerald-500"
+        />
+        <StatsCard
+          title="Transaksi"
+          value={transactionCounts.today || 0}
+          icon={ShoppingCart}
+          change={transactionCounts.percentageChange}
+          format="number"
+          loading={dashboardLoading}
+          color="text-blue-500"
+        />
+        <StatsCard
+          title="Rata-rata Transaksi"
+          value={dashboardData?.data?.averageTransactionValue?.average || 0}
+          icon={TrendingUp}
+          format="currency"
+          loading={dashboardLoading}
+          color="text-purple-500"
+        />
+        <StatsCard
+          title="Item Terjual"
+          value={transactionCounts.itemsSold || salesSummary.daily?._count?.transaksi_id || 0}
+          icon={Package}
+          format="number"
+          loading={dashboardLoading}
+          color="text-pink-500"
+        />
+      </div>
+
+      {/* Shift Info */}
+      {shift && (
+        <Card className="mb-6 bg-indigo-50/50">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-lg bg-indigo-100 text-indigo-600">
+              <Clock className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="font-medium text-gray-800">Shift Aktif</p>
+              <p className="text-sm text-gray-500">Mulai: {formatTime(shift.startTime)} • Kasir: {shift.user?.namaLengkap}</p>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Charts Row */}
+      <div className="grid lg:grid-cols-3 gap-6 mb-6">
+        {/* Revenue Chart */}
+        <Card className="lg:col-span-2">
+          <Card.Header>
+            <Card.Title className="text-gray-800">Tren Penjualan (7 Hari)</Card.Title>
+          </Card.Header>
+          <Card.Content>
+            <div className="h-64">
+              {dashboardLoading ? (
+                <div className="h-full flex items-center justify-center">
+                  <div className="animate-spin w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
+                </div>
+              ) : revenueTimeSeries.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={revenueTimeSeries}>
+                    <defs>
+                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#818cf8" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#818cf8" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fill: '#6b7280', fontSize: 12 }}
+                      tickFormatter={(value) => new Date(value).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                    />
+                    <YAxis 
+                      tick={{ fill: '#6b7280', fontSize: 12 }}
+                      tickFormatter={(value) => `${(value / 1000000).toFixed(1)}jt`}
+                    />
+                    <Tooltip 
+                      formatter={(value) => [formatRupiah(value), 'Penjualan']}
+                      labelFormatter={(label) => new Date(label).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="total" 
+                      stroke="#818cf8" 
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorRevenue)" 
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-gray-400">Tidak ada data</div>
+              )}
+            </div>
+          </Card.Content>
+        </Card>
+
+        {/* Category Distribution */}
+        <Card>
+          <Card.Header>
+            <Card.Title className="text-gray-800">Kategori Penjualan</Card.Title>
+          </Card.Header>
+          <Card.Content>
+            <div className="h-48">
+              {dashboardLoading ? (
+                <div className="h-full flex items-center justify-center">
+                  <div className="animate-spin w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
+                </div>
+              ) : categoryDistribution.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={categoryDistribution}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={70}
+                      paddingAngle={2}
+                      dataKey="value"
+                      nameKey="category"
+                    >
+                      {categoryDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value) => formatNumber(value)}
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-gray-400">Tidak ada data</div>
+              )}
+            </div>
+            {/* Legend */}
+            <div className="mt-4 space-y-2">
+              {categoryDistribution.slice(0, 4).map((cat, i) => (
+                <div key={i} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i] }} />
+                    <span className="text-gray-600 truncate">{cat.category}</span>
+                  </div>
+                  <span className="text-gray-800 font-medium">{formatPercent(cat.percentage, false)}</span>
+                </div>
+              ))}
+            </div>
+          </Card.Content>
+        </Card>
+      </div>
+
+      {/* Bottom Row */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Top Products */}
+        <Card>
+          <Card.Header>
+            <Card.Title className="text-gray-800">Produk Terlaris</Card.Title>
+          </Card.Header>
+          <Card.Content>
+            <div className="space-y-4">
+              {dashboardLoading ? (
+                [...Array(5)].map((_, i) => (
+                  <div key={i} className="animate-pulse flex items-center gap-4">
+                    <div className="w-10 h-10 bg-gray-200 rounded-lg" />
+                    <div className="flex-1">
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                      <div className="h-3 bg-gray-200 rounded w-1/2" />
+                    </div>
+                  </div>
+                ))
+              ) : topProducts.length > 0 ? (
+                topProducts.slice(0, 5).map((product, index) => (
+                  <div key={index} className="flex items-center gap-4 glass-surface p-3 rounded-xl">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold">
+                      {index + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-800 truncate">{product.name}</p>
+                      <p className="text-sm text-gray-500">{formatNumber(product.quantitySold)} terjual</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-800">{formatRupiah(product.revenue)}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-400 text-center py-4">Belum ada data produk</p>
+              )}
+            </div>
+          </Card.Content>
+        </Card>
+
+        {/* Critical Alerts */}
+        <Card>
+          <Card.Header>
+            <Card.Title className="text-gray-800 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              Peringatan
+            </Card.Title>
+          </Card.Header>
+          <Card.Content>
+            <div className="space-y-3">
+              {criticalAlerts?.lowStockProducts?.count > 0 && (
+                <div className="glass-surface p-3 rounded-xl border-l-4 border-amber-400">
+                  <p className="text-sm font-medium text-gray-800">Stok Rendah</p>
+                  <p className="text-xs text-gray-500">
+                    {criticalAlerts.lowStockProducts.count} produk perlu restock
+                  </p>
+                </div>
+              )}
+              {criticalAlerts?.expiringStock?.count > 0 && (
+                <div className="glass-surface p-3 rounded-xl border-l-4 border-red-400">
+                  <p className="text-sm font-medium text-gray-800">Hampir Kadaluarsa</p>
+                  <p className="text-xs text-gray-500">
+                    {criticalAlerts.expiringStock.count} produk segera kadaluarsa
+                  </p>
+                </div>
+              )}
+              {criticalAlerts?.pendingApprovals > 0 && (
+                <div className="glass-surface p-3 rounded-xl border-l-4 border-blue-400">
+                  <p className="text-sm font-medium text-gray-800">Persetujuan Pending</p>
+                  <p className="text-xs text-gray-500">
+                    {criticalAlerts.pendingApprovals} permintaan menunggu
+                  </p>
+                </div>
+              )}
+              {!criticalAlerts?.lowStockProducts?.count && !criticalAlerts?.expiringStock?.count && !criticalAlerts?.pendingApprovals && (
+                <div className="text-center py-4">
+                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <TrendingUp className="w-6 h-6 text-green-500" />
+                  </div>
+                  <p className="text-gray-500 text-sm">Semua berjalan baik!</p>
+                </div>
+              )}
+            </div>
+          </Card.Content>
+        </Card>
+      </div>
+    </MainLayout>
   );
 };
 

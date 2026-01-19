@@ -1,17 +1,35 @@
-import { useEffect } from 'react';
-import { useAuth } from '@shared/hooks';
+import { useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import useAuthStore from '@entities/user/model/useAuthStore';
 
 /**
- * AuthProvider - Checks auth status on app load
+ * AuthProvider - Checks auth status on app load (one-time only)
  */
 const AuthProvider = ({ children }) => {
-  const { checkAuth, isAuthenticated } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const hasChecked = useRef(false);
+  
+  const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+  const checkAuth = useAuthStore(state => state.checkAuth);
+  const isLoading = useAuthStore(state => state.isLoading);
 
   useEffect(() => {
-    // Check if user is still authenticated on app load
-    // This validates the session with the backend
-    if (!isAuthenticated) {
-      checkAuth();
+    // Only check auth once on initial load, not on every render
+    // Skip if already checked or if on login page
+    if (hasChecked.current || location.pathname === '/login') {
+      return;
+    }
+    
+    hasChecked.current = true;
+    
+    // If we have stored auth state, validate with server
+    if (isAuthenticated) {
+      checkAuth().then((isValid) => {
+        if (!isValid && location.pathname !== '/login') {
+          navigate('/login', { replace: true });
+        }
+      });
     }
   }, []);
 

@@ -208,15 +208,40 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-// Fungsi untuk update lastActivity (dijalankan asynchronous)
+// Throttled lastActivity update - only runs every 5 minutes per session
+const ACTIVITY_UPDATE_INTERVAL = 5 * 60 * 1000; // 5 minutes in ms
+const lastActivityCache = new Map(); // In-memory cache for throttling
+
 const updateLastActivity = async (sessionId) => {
   try {
-    await prisma.userSession.updateMany({
+    const now = Date.now();
+    const lastUpdate = lastActivityCache.get(sessionId) || 0;
+    
+    // Only update if more than 5 minutes since last update
+    if (now - lastUpdate < ACTIVITY_UPDATE_INTERVAL) {
+      return; // Skip this update
+    }
+    
+    // Update cache first (optimistic)
+    lastActivityCache.set(sessionId, now);
+    
+    // Update database in background (fire and forget)
+    prisma.userSession.updateMany({
       where: { id: sessionId },
       data: { lastActivity: new Date() },
+    }).catch(err => {
+      console.error("Error updating last activity:", err.message);
     });
+    
+    // Clean up old entries from cache periodically
+    if (lastActivityCache.size > 1000) {
+      const cutoff = now - ACTIVITY_UPDATE_INTERVAL * 2;
+      for (const [key, value] of lastActivityCache.entries()) {
+        if (value < cutoff) lastActivityCache.delete(key);
+      }
+    }
   } catch (error) {
-    console.error("Error updating last activity:", error);
+    // Silent fail - don't block the request
   }
 };
 

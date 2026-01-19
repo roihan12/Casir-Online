@@ -44,7 +44,11 @@ const getRoleById = async (req, res) => {
 const createRole = async (req, res) => {
   try {
     const roleData = req.body;
-    const newRole = await roleService.createRole(roleData);
+    const auditInfo = {
+      userId: req.user.id,
+      ipAddress: req.ip || req.connection?.remoteAddress,
+    };
+    const newRole = await roleService.createRole(roleData, auditInfo);
 
     return res.status(201).json({
       success: true,
@@ -52,7 +56,8 @@ const createRole = async (req, res) => {
       data: newRole,
     });
   } catch (error) {
-    return res.status(500).json({
+    const statusCode = error.status || 500;
+    return res.status(statusCode).json({
       success: false,
       message: error.message || "Failed to create role",
     });
@@ -63,8 +68,12 @@ const updateRole = async (req, res) => {
   try {
     const { roleId } = req.params;
     const roleData = req.body;
+    const auditInfo = {
+      userId: req.user.id,
+      ipAddress: req.ip || req.connection?.remoteAddress,
+    };
 
-    const updatedRole = await roleService.updateRole(roleId, roleData);
+    const updatedRole = await roleService.updateRole(roleId, roleData, auditInfo);
 
     return res.status(200).json({
       success: true,
@@ -72,7 +81,8 @@ const updateRole = async (req, res) => {
       data: updatedRole,
     });
   } catch (error) {
-    return res.status(500).json({
+    const statusCode = error.status || 500;
+    return res.status(statusCode).json({
       success: false,
       message: error.message || "Failed to update role",
     });
@@ -82,17 +92,47 @@ const updateRole = async (req, res) => {
 const deleteRole = async (req, res) => {
   try {
     const { roleId } = req.params;
+    const auditInfo = {
+      userId: req.user.id,
+      ipAddress: req.ip || req.connection?.remoteAddress,
+    };
 
-    await roleService.deleteRole(roleId);
+    await roleService.deleteRole(roleId, auditInfo);
 
     return res.status(200).json({
       success: true,
       message: "Role deleted successfully",
     });
   } catch (error) {
-    return res.status(500).json({
+    const statusCode = error.status || 500;
+    return res.status(statusCode).json({
       success: false,
       message: error.message || "Failed to delete role",
+    });
+  }
+};
+
+const cloneRole = async (req, res) => {
+  try {
+    const { roleId } = req.params;
+    const { newRoleName } = req.body;
+    const auditInfo = {
+      userId: req.user.id,
+      ipAddress: req.ip || req.connection?.remoteAddress,
+    };
+
+    const clonedRole = await roleService.cloneRole(roleId, newRoleName, auditInfo);
+
+    return res.status(201).json({
+      success: true,
+      message: "Role cloned successfully",
+      data: clonedRole,
+    });
+  } catch (error) {
+    const statusCode = error.status || 500;
+    return res.status(statusCode).json({
+      success: false,
+      message: error.message || "Failed to clone role",
     });
   }
 };
@@ -103,4 +143,6 @@ module.exports = {
   createRole,
   updateRole,
   deleteRole,
+  cloneRole,
 };
+

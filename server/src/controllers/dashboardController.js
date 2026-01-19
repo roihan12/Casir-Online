@@ -1,4 +1,5 @@
 const DashboardService = require("../services/dashboardService");
+const { logger } = require("../utils/logger");
 
 const dashboardController = {
   // Get user's profile and accessible dashboard
@@ -12,12 +13,21 @@ const dashboardController = {
         selectedBranchId
       );
 
+      console.log(result);
+
       res.status(200).json({
         status: true,
         message: "Dashboard Data",
         data: result,
       });
     } catch (error) {
+      // Log the actual error for debugging with full context
+      logger.error("Dashboard Error", {
+        message: error.message,
+        stack: error.stack,
+        userId: req.user?.id,
+        selectedBranchId: req.query.cabangId,
+      });
       next(error);
     }
   },
