@@ -152,7 +152,7 @@ const MainLayout = ({ children, title, subtitle }) => {
 
         {/* Main Content - Area yang bisa di-scroll */}
         <main className="flex-1 space-y-6 overflow-y-auto">
-          <div className="glass p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="glass p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-50">
             <div className="ml-12 lg:ml-0">
               <h2 className="text-2xl font-bold text-gray-800">{title || 'Dashboard'}</h2>
               <p className="text-gray-500">{subtitle || activeBranchName}</p>

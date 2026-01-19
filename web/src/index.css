@@ -373,6 +373,15 @@ body {
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95) translateY(2px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.15s ease-out forwards;
+}
+
 /* ========================================
    SCROLLBAR STYLING
    ======================================== */

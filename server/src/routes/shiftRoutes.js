@@ -11,21 +11,21 @@ router.use(authenticate);
 // POST - Membuka shift baru
 router.post(
   "/open",
-  hasPermission(["shift:manage"]),
+  hasPermission(["shift:create"]),
   shiftController.openShift
 );
 
 // POST - Menutup shift
 router.post(
   "/close",
-  hasPermission(["shift:manage"]),
+  hasPermission(["shift:update"]),
   shiftController.closeShift
 );
 
 // POST - Menyesuaikan shift
 router.post(
   "/adjust",
-  hasPermission(["shift:manage"]),
+  hasPermission(["shift:update"]),
   shiftController.adjustShift
 );
 

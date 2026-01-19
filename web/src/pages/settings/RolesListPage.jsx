@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Plus, Edit, Trash2, Check, Users, Lock, Copy, Search, X } from 'lucide-react';
-import { Card, Button, DataTable, Modal, Input } from '@shared/ui';
+import { Card, Button, DataTable, Modal, Input, Tooltip } from '@shared/ui';
 import { useRoles, useDeleteRole, usePermissions, useCloneRole } from '@entities/role';
 import { formatNumber } from '@shared/lib';
 import { Can } from '@features/auth';
@@ -121,39 +121,42 @@ const RolesListPage = () => {
         return (
           <div className="flex items-center gap-1">
             <Can permission="role:create">
-              <button
-                onClick={(e) => { e.stopPropagation(); openCloneModal(row); }}
-                className="p-2 hover:bg-indigo-50 rounded-lg transition-colors"
-                title="Clone Role"
-              >
-                <Copy className="w-4 h-4 text-indigo-500" />
-              </button>
+              <Tooltip content="Clone Role" position="top">
+                <button
+                  onClick={(e) => { e.stopPropagation(); openCloneModal(row); }}
+                  className="p-2 hover:bg-indigo-50 rounded-lg transition-colors"
+                >
+                  <Copy className="w-4 h-4 text-indigo-500" />
+                </button>
+              </Tooltip>
             </Can>
             <Can permission="role:update">
-              <button
-                onClick={(e) => { e.stopPropagation(); navigate(`/settings/role/${row.id}/edit`); }}
-                className={`p-2 rounded-lg transition-colors ${isSystem ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
-                title={isSystem ? 'System role tidak bisa diedit' : 'Edit Role'}
-                disabled={isSystem}
-              >
-                <Edit className="w-4 h-4 text-gray-500" />
-              </button>
+              <Tooltip content={isSystem ? 'System role tidak bisa diedit' : 'Edit Role'} position="top">
+                <button
+                  onClick={(e) => { e.stopPropagation(); navigate(`/settings/role/${row.id}/edit`); }}
+                  className={`p-2 rounded-lg transition-colors ${isSystem ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+                  disabled={isSystem}
+                >
+                  <Edit className="w-4 h-4 text-gray-500" />
+                </button>
+              </Tooltip>
             </Can>
             <Can permission="role:delete">
-              <button
-                onClick={(e) => { 
-                  e.stopPropagation(); 
-                  if (!isSystem) {
-                    setSelectedRole(row); 
-                    setShowDeleteModal(true); 
-                  }
-                }}
-                className={`p-2 rounded-lg transition-colors ${isSystem ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-50'}`}
-                title={isSystem ? 'System role tidak bisa dihapus' : 'Hapus Role'}
-                disabled={isSystem}
-              >
-                <Trash2 className={`w-4 h-4 ${isSystem ? 'text-gray-400' : 'text-red-500'}`} />
-              </button>
+              <Tooltip content={isSystem ? 'System role tidak bisa dihapus' : 'Hapus Role'} position="top">
+                <button
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    if (!isSystem) {
+                      setSelectedRole(row); 
+                      setShowDeleteModal(true); 
+                    }
+                  }}
+                  className={`p-2 rounded-lg transition-colors ${isSystem ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-50'}`}
+                  disabled={isSystem}
+                >
+                  <Trash2 className={`w-4 h-4 ${isSystem ? 'text-gray-400' : 'text-red-500'}`} />
+                </button>
+              </Tooltip>
             </Can>
           </div>
         );

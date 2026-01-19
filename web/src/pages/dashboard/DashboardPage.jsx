@@ -1,19 +1,62 @@
+import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
-  TrendingUp, AlertTriangle, DollarSign, Clock, RefreshCw, ShoppingCart, Package
+  TrendingUp, AlertTriangle, DollarSign, Clock, RefreshCw, ShoppingCart, Package,
+  ChevronRight, X, AlertCircle, Building2, BarChart3
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell
+  PieChart, Pie, Cell, BarChart, Bar, Legend
 } from 'recharts';
-import { Card, Button } from '@shared/ui';
+import { Card, Button, Modal } from '@shared/ui';
 import { useBranch } from '@shared/hooks';
 import { StatsCard } from '@widgets/stats-card';
 import MainLayout from '@widgets/layout/MainLayout';
 import { useDashboard, useActiveShift } from '@entities/dashboard';
 import { formatRupiah, formatNumber, formatPercent, formatTime } from '@shared/lib';
 
+// Period options for stats
+const PERIODS = [
+  { key: 'daily', label: 'Hari Ini' },
+  { key: 'weekly', label: 'Minggu Ini' },
+  { key: 'monthly', label: 'Bulan Ini' },
+  { key: 'yearly', label: 'Tahun Ini' },
+];
+
+// Severity color mapping
+const SEVERITY_CONFIG = {
+  critical: { 
+    bg: 'bg-red-50', 
+    border: 'border-red-400', 
+    text: 'text-red-700',
+    badge: 'bg-red-100 text-red-700',
+    icon: 'text-red-500'
+  },
+  high: { 
+    bg: 'bg-orange-50', 
+    border: 'border-orange-400', 
+    text: 'text-orange-700',
+    badge: 'bg-orange-100 text-orange-700',
+    icon: 'text-orange-500'
+  },
+  medium: { 
+    bg: 'bg-yellow-50', 
+    border: 'border-yellow-400', 
+    text: 'text-yellow-700',
+    badge: 'bg-yellow-100 text-yellow-700',
+    icon: 'text-yellow-500'
+  },
+};
+
 const DashboardPage = () => {
-  const { activeBranchId, activeBranchName } = useBranch();
+  const navigate = useNavigate();
+  const { activeBranchId, activeBranchName, hasMultipleBranches, isViewingAllBranches, isSuperAdmin } = useBranch();
+  
+  // State
+  const [selectedPeriod, setSelectedPeriod] = useState('daily');
+  const [showLowStockModal, setShowLowStockModal] = useState(false);
+  const [showExpiringModal, setShowExpiringModal] = useState(false);
+  const [alertFilter, setAlertFilter] = useState('all'); // all, critical, high, medium
 
   // Fetch dashboard data
   const { 
@@ -33,18 +76,61 @@ const DashboardPage = () => {
   const revenueTimeSeries = dashboardData?.data?.revenueTimeSeries || [];
   const topProducts = dashboardData?.data?.productPerformance || [];
   const categoryDistribution = dashboardData?.data?.categoryDistribution || [];
+  const branchPerformance = dashboardData?.data?.branchPerformance || {};
   const shift = shiftData?.data;
+
+  // Get current period sales data
+  const currentPeriodData = salesSummary[selectedPeriod] || {};
+  
+  // Process low stock products by severity
+  const lowStockProducts = criticalAlerts?.lowStockProducts?.details || [];
+  
+  const { severityCounts, filteredProducts } = useMemo(() => {
+    const counts = { critical: 0, high: 0, medium: 0 };
+    lowStockProducts.forEach(p => {
+      if (counts[p.severity] !== undefined) counts[p.severity]++;
+    });
+    
+    const filtered = alertFilter === 'all' 
+      ? lowStockProducts 
+      : lowStockProducts.filter(p => p.severity === alertFilter);
+    
+    return { severityCounts: counts, filteredProducts: filtered };
+  }, [lowStockProducts, alertFilter]);
 
   // Pie chart colors
   const COLORS = ['#818cf8', '#f472b6', '#34d399', '#fbbf24', '#60a5fa', '#a78bfa'];
+  
+  // Branch comparison chart data
+  const branchChartData = branchPerformance?.topBranches?.map(b => ({
+    name: b.name?.substring(0, 15) || 'Unknown',
+    revenue: b.revenue || 0,
+  })) || [];
 
   return (
     <MainLayout 
       title={`Halo, ${activeBranchName || 'User'}`}
       subtitle="Selamat datang kembali!"
     >
-      {/* Refresh Button */}
-      <div className="flex justify-end mb-4">
+      {/* Header Actions */}
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+        {/* Period Toggle */}
+        <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
+          {PERIODS.map(period => (
+            <button
+              key={period.key}
+              onClick={() => setSelectedPeriod(period.key)}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                selectedPeriod === period.key
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              {period.label}
+            </button>
+          ))}
+        </div>
+        
         <Button 
           variant="ghost" 
           size="sm"
@@ -66,20 +152,20 @@ const DashboardPage = () => {
         </Card>
       )}
 
-      {/* Stats Grid */}
+      {/* Stats Grid - Dynamic based on period */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatsCard
-          title="Penjualan Hari Ini"
-          value={salesSummary.daily?._sum?.total || 0}
+          title={`Penjualan ${PERIODS.find(p => p.key === selectedPeriod)?.label}`}
+          value={currentPeriodData._sum?.total || 0}
           icon={DollarSign}
-          change={salesSummary.daily?.percentageChange}
+          change={currentPeriodData.percentageChange}
           format="currency"
           loading={dashboardLoading}
           color="text-emerald-500"
         />
         <StatsCard
           title="Transaksi"
-          value={transactionCounts.today || 0}
+          value={selectedPeriod === 'daily' ? transactionCounts.today : currentPeriodData._count?.transaksi_id || 0}
           icon={ShoppingCart}
           change={transactionCounts.percentageChange}
           format="number"
@@ -96,13 +182,60 @@ const DashboardPage = () => {
         />
         <StatsCard
           title="Item Terjual"
-          value={transactionCounts.itemsSold || salesSummary.daily?._count?.transaksi_id || 0}
+          value={transactionCounts.itemsSold || currentPeriodData._count?.transaksi_id || 0}
           icon={Package}
           format="number"
           loading={dashboardLoading}
           color="text-pink-500"
         />
       </div>
+
+      {/* Alert Summary with Severity Colors */}
+      {(criticalAlerts?.lowStockProducts?.count > 0 || criticalAlerts?.expiringStock?.count > 0) && (
+        <div className="grid sm:grid-cols-3 gap-4 mb-6">
+          {/* Critical Count */}
+          <button
+            onClick={() => { setAlertFilter('critical'); setShowLowStockModal(true); }}
+            className="glass-surface p-4 rounded-xl border-l-4 border-red-500 hover:bg-red-50/50 transition-colors text-left"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold text-red-600">{severityCounts.critical}</p>
+                <p className="text-sm text-gray-600">Stok Kritis</p>
+              </div>
+              <AlertCircle className="w-8 h-8 text-red-400" />
+            </div>
+          </button>
+          
+          {/* High Count */}
+          <button
+            onClick={() => { setAlertFilter('high'); setShowLowStockModal(true); }}
+            className="glass-surface p-4 rounded-xl border-l-4 border-orange-500 hover:bg-orange-50/50 transition-colors text-left"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold text-orange-600">{severityCounts.high}</p>
+                <p className="text-sm text-gray-600">Stok Rendah</p>
+              </div>
+              <AlertTriangle className="w-8 h-8 text-orange-400" />
+            </div>
+          </button>
+          
+          {/* Medium Count */}
+          <button
+            onClick={() => { setAlertFilter('medium'); setShowLowStockModal(true); }}
+            className="glass-surface p-4 rounded-xl border-l-4 border-yellow-500 hover:bg-yellow-50/50 transition-colors text-left"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold text-yellow-600">{severityCounts.medium}</p>
+                <p className="text-sm text-gray-600">Perlu Perhatian</p>
+              </div>
+              <AlertTriangle className="w-8 h-8 text-yellow-400" />
+            </div>
+          </button>
+        </div>
+      )}
 
       {/* Shift Info */}
       {shift && (
@@ -227,6 +360,43 @@ const DashboardPage = () => {
         </Card>
       </div>
 
+      {/* Branch Comparison Chart (Super Admin only) */}
+      {branchChartData.length > 1 && (
+        <Card className="mb-6">
+          <Card.Header>
+            <Card.Title className="text-gray-800 flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-indigo-500" />
+              Perbandingan Cabang (30 Hari Terakhir)
+            </Card.Title>
+          </Card.Header>
+          <Card.Content>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={branchChartData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis 
+                    type="number" 
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    tickFormatter={(value) => `${(value / 1000000).toFixed(0)}jt`}
+                  />
+                  <YAxis 
+                    type="category" 
+                    dataKey="name" 
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    width={100}
+                  />
+                  <Tooltip 
+                    formatter={(value) => [formatRupiah(value), 'Revenue']}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                  />
+                  <Bar dataKey="revenue" fill="#818cf8" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card.Content>
+        </Card>
+      )}
+
       {/* Bottom Row */}
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Top Products */}
@@ -268,39 +438,75 @@ const DashboardPage = () => {
           </Card.Content>
         </Card>
 
-        {/* Critical Alerts */}
+        {/* Critical Alerts with Quick Actions */}
         <Card>
           <Card.Header>
-            <Card.Title className="text-gray-800 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-500" />
-              Peringatan
-            </Card.Title>
+            <div className="flex items-center justify-between">
+              <Card.Title className="text-gray-800 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
+                Peringatan
+              </Card.Title>
+              {criticalAlerts?.lowStockProducts?.count > 0 && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => { setAlertFilter('all'); setShowLowStockModal(true); }}
+                  className="text-indigo-600"
+                >
+                  Lihat Semua
+                </Button>
+              )}
+            </div>
           </Card.Header>
           <Card.Content>
             <div className="space-y-3">
               {criticalAlerts?.lowStockProducts?.count > 0 && (
-                <div className="glass-surface p-3 rounded-xl border-l-4 border-amber-400">
-                  <p className="text-sm font-medium text-gray-800">Stok Rendah</p>
-                  <p className="text-xs text-gray-500">
-                    {criticalAlerts.lowStockProducts.count} produk perlu restock
-                  </p>
-                </div>
+                <button
+                  onClick={() => { setAlertFilter('all'); setShowLowStockModal(true); }}
+                  className="w-full glass-surface p-3 rounded-xl border-l-4 border-amber-400 hover:bg-amber-50/50 transition-colors text-left group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">Stok Rendah</p>
+                      <p className="text-xs text-gray-500">
+                        {criticalAlerts.lowStockProducts.count} produk perlu restock
+                      </p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-500 transition-colors" />
+                  </div>
+                </button>
               )}
               {criticalAlerts?.expiringStock?.count > 0 && (
-                <div className="glass-surface p-3 rounded-xl border-l-4 border-red-400">
-                  <p className="text-sm font-medium text-gray-800">Hampir Kadaluarsa</p>
-                  <p className="text-xs text-gray-500">
-                    {criticalAlerts.expiringStock.count} produk segera kadaluarsa
-                  </p>
-                </div>
+                <button
+                  onClick={() => setShowExpiringModal(true)}
+                  className="w-full glass-surface p-3 rounded-xl border-l-4 border-red-400 hover:bg-red-50/50 transition-colors text-left group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">Hampir Kadaluarsa</p>
+                      <p className="text-xs text-gray-500">
+                        {criticalAlerts.expiringStock.count} produk segera kadaluarsa
+                      </p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-500 transition-colors" />
+                  </div>
+                </button>
               )}
               {criticalAlerts?.pendingApprovals > 0 && (
-                <div className="glass-surface p-3 rounded-xl border-l-4 border-blue-400">
-                  <p className="text-sm font-medium text-gray-800">Persetujuan Pending</p>
-                  <p className="text-xs text-gray-500">
-                    {criticalAlerts.pendingApprovals} permintaan menunggu
-                  </p>
-                </div>
+                <button
+                  onClick={() => navigate('/inventory/requests')}
+                  className="w-full glass-surface p-3 rounded-xl border-l-4 border-blue-400 hover:bg-blue-50/50 transition-colors text-left group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">Persetujuan Pending</p>
+                      <p className="text-xs text-gray-500">
+                        {criticalAlerts.pendingApprovals} permintaan menunggu
+                      </p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-500 transition-colors" />
+                  </div>
+                </button>
               )}
               {!criticalAlerts?.lowStockProducts?.count && !criticalAlerts?.expiringStock?.count && !criticalAlerts?.pendingApprovals && (
                 <div className="text-center py-4">
@@ -314,6 +520,154 @@ const DashboardPage = () => {
           </Card.Content>
         </Card>
       </div>
+
+      {/* Low Stock Modal */}
+      <Modal
+        isOpen={showLowStockModal}
+        onClose={() => setShowLowStockModal(false)}
+        title="Produk Stok Rendah"
+        size="lg"
+      >
+        <div className="space-y-4">
+          {/* Filter Tabs */}
+          <div className="flex gap-2 border-b pb-3">
+            <button
+              onClick={() => setAlertFilter('all')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                alertFilter === 'all' ? 'bg-gray-800 text-white' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              Semua ({lowStockProducts.length})
+            </button>
+            <button
+              onClick={() => setAlertFilter('critical')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                alertFilter === 'critical' ? 'bg-red-500 text-white' : 'text-red-600 hover:bg-red-50'
+              }`}
+            >
+              Kritis ({severityCounts.critical})
+            </button>
+            <button
+              onClick={() => setAlertFilter('high')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                alertFilter === 'high' ? 'bg-orange-500 text-white' : 'text-orange-600 hover:bg-orange-50'
+              }`}
+            >
+              Tinggi ({severityCounts.high})
+            </button>
+            <button
+              onClick={() => setAlertFilter('medium')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                alertFilter === 'medium' ? 'bg-yellow-500 text-white' : 'text-yellow-600 hover:bg-yellow-50'
+              }`}
+            >
+              Sedang ({severityCounts.medium})
+            </button>
+          </div>
+
+          {/* Product List */}
+          <div className="max-h-96 overflow-y-auto space-y-2">
+            {filteredProducts.length > 0 ? (
+              filteredProducts.slice(0, 50).map((product, idx) => {
+                const config = SEVERITY_CONFIG[product.severity] || SEVERITY_CONFIG.medium;
+                return (
+                  <div
+                    key={idx}
+                    className={`p-3 rounded-lg border-l-4 ${config.border} ${config.bg}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-800 truncate">
+                          {product.produkMaster?.namaProduk || 'Unknown'}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {product.cabang?.namaCabang || 'Unknown Branch'}
+                        </p>
+                      </div>
+                      <div className="text-right ml-4">
+                        <p className={`text-sm font-semibold ${config.text}`}>
+                          {product.stok} / {product.minStok}
+                        </p>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${config.badge}`}>
+                          {product.severity === 'critical' ? 'Kritis' : product.severity === 'high' ? 'Tinggi' : 'Sedang'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-center text-gray-400 py-8">Tidak ada produk dalam kategori ini</p>
+            )}
+            {filteredProducts.length > 50 && (
+              <p className="text-center text-gray-500 text-sm py-2">
+                Menampilkan 50 dari {filteredProducts.length} produk
+              </p>
+            )}
+          </div>
+
+          {/* Quick Actions */}
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={() => setShowLowStockModal(false)}>
+              Tutup
+            </Button>
+            <Button onClick={() => { setShowLowStockModal(false); navigate('/inventory/products'); }}>
+              Kelola Stok
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Expiring Stock Modal */}
+      <Modal
+        isOpen={showExpiringModal}
+        onClose={() => setShowExpiringModal(false)}
+        title="Produk Hampir Kadaluarsa"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="max-h-96 overflow-y-auto space-y-2">
+            {criticalAlerts?.expiringStock?.details?.length > 0 ? (
+              criticalAlerts.expiringStock.details.slice(0, 50).map((item, idx) => (
+                <div
+                  key={idx}
+                  className="p-3 rounded-lg border-l-4 border-red-400 bg-red-50"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-800 truncate">
+                        {item.produk?.produkMaster?.namaProduk || 'Unknown'}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Batch: {item.batchNumber} • Qty: {formatNumber(item.quantity)}
+                      </p>
+                    </div>
+                    <div className="text-right ml-4">
+                      <p className="text-sm font-semibold text-red-600">
+                        {new Date(item.expiredDate).toLocaleDateString('id-ID')}
+                      </p>
+                      <span className="text-xs text-gray-500">
+                        {Math.ceil((new Date(item.expiredDate) - new Date()) / (1000 * 60 * 60 * 24))} hari lagi
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-gray-400 py-8">Tidak ada produk hampir kadaluarsa</p>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={() => setShowExpiringModal(false)}>
+              Tutup
+            </Button>
+            <Button onClick={() => { setShowExpiringModal(false); navigate('/inventory/batches'); }}>
+              Kelola Batch
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </MainLayout>
   );
 };

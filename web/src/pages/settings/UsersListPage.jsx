@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, Plus, Edit, Trash2, Shield, ToggleLeft, ToggleRight, Key, UserCheck, UserX } from 'lucide-react';
-import { Card, Button, Input, DataTable, Modal } from '@shared/ui';
+import { Card, Button, Input, DataTable, Modal, Tooltip } from '@shared/ui';
 import { useUsers, useDeleteUser, useChangeUserStatus, useResetUserPassword, useCabang } from '@entities/user';
 import { useRoles } from '@entities/role';
 import { formatDateTime } from '@shared/lib';
@@ -129,38 +129,44 @@ const UsersListPage = () => {
       render: (_, row) => (
         <div className="flex items-center gap-1">
           <Can permission="user:update">
-            <button
-              onClick={(e) => { e.stopPropagation(); handleToggleStatus(row); }}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              title={row.status === 'aktif' ? 'Nonaktifkan' : 'Aktifkan'}
-            >
-              {row.status === 'aktif' ? (
-                <ToggleRight className="w-4 h-4 text-emerald-500" />
-              ) : (
-                <ToggleLeft className="w-4 h-4 text-gray-400" />
-              )}
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); setSelectedUser(row); setShowResetModal(true); }}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Reset Password"
-            >
-              <Key className="w-4 h-4 text-amber-500" />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); navigate(`/settings/pengguna/${row.id}/edit`); }}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <Edit className="w-4 h-4 text-gray-500" />
-            </button>
+            <Tooltip content={row.status === 'aktif' ? 'Nonaktifkan' : 'Aktifkan'} position="top">
+              <button
+                onClick={(e) => { e.stopPropagation(); handleToggleStatus(row); }}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                {row.status === 'aktif' ? (
+                  <ToggleRight className="w-4 h-4 text-emerald-500" />
+                ) : (
+                  <ToggleLeft className="w-4 h-4 text-gray-400" />
+                )}
+              </button>
+            </Tooltip>
+            <Tooltip content="Reset Password" position="top">
+              <button
+                onClick={(e) => { e.stopPropagation(); setSelectedUser(row); setShowResetModal(true); }}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <Key className="w-4 h-4 text-amber-500" />
+              </button>
+            </Tooltip>
+            <Tooltip content="Edit User" position="top">
+              <button
+                onClick={(e) => { e.stopPropagation(); navigate(`/settings/pengguna/${row.id}/edit`); }}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <Edit className="w-4 h-4 text-gray-500" />
+              </button>
+            </Tooltip>
           </Can>
           <Can permission="user:delete">
-            <button
-              onClick={(e) => { e.stopPropagation(); setSelectedUser(row); setShowDeleteModal(true); }}
-              className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-            >
-              <Trash2 className="w-4 h-4 text-red-500" />
-            </button>
+            <Tooltip content="Hapus User" position="top">
+              <button
+                onClick={(e) => { e.stopPropagation(); setSelectedUser(row); setShowDeleteModal(true); }}
+                className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <Trash2 className="w-4 h-4 text-red-500" />
+              </button>
+            </Tooltip>
           </Can>
         </div>
       ),

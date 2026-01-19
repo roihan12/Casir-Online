@@ -1,8 +1,10 @@
 import useBranchStore from '@entities/branch/model/useBranchStore';
+import useAuthStore from '@entities/user/model/useAuthStore';
 
 /**
  * useBranch Hook
  * Provides convenient access to branch state and actions
+ * Super admin can view all branches data
  */
 export const useBranch = () => {
   const {
@@ -13,17 +15,40 @@ export const useBranch = () => {
     canAccessBranch,
   } = useBranchStore();
 
+  const user = useAuthStore(state => state.user);
+  
+  // Check if user is super admin
+  const isSuperAdmin = user?.roles?.some(r => r.namaRole === 'super_admin') || false;
+
+  // Handle "all" branch selection for super admin
+  const handleSwitchBranch = (cabangId) => {
+    if (cabangId === 'all') {
+      // Set a special "all branches" state
+      setActiveBranch({ cabangId: 'all', namaCabang: 'Semua Cabang', isAll: true });
+      return true;
+    }
+    return switchBranch(cabangId);
+  };
+
+  // Determine if viewing all branches
+  const isViewingAllBranches = activeBranch?.cabangId === 'all' || activeBranch?.isAll;
+
   return {
     activeBranch,
     availableBranches,
     setActiveBranch,
-    switchBranch,
+    switchBranch: handleSwitchBranch,
     canAccessBranch,
     
     // Computed
-    hasMultipleBranches: availableBranches.length > 1,
-    activeBranchId: activeBranch?.cabangId || null,
+    isSuperAdmin,
+    hasMultipleBranches: availableBranches.length > 1 || isSuperAdmin,
+    activeBranchId: isViewingAllBranches ? null : (activeBranch?.cabangId || null),
     activeBranchName: activeBranch?.namaCabang || 'Pilih Cabang',
+    isViewingAllBranches,
+    
+    // Super admin can select "all"
+    canViewAllBranches: isSuperAdmin,
   };
 };
 

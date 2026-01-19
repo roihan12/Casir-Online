@@ -1,11 +1,12 @@
 import { Fragment } from 'react';
 import { Menu, Transition } from '@headlessui/react';
-import { Building2, ChevronDown, Check } from 'lucide-react';
+import { Building2, ChevronDown, Check, Globe } from 'lucide-react';
 import { useBranch } from '@shared/hooks';
 
 /**
  * BranchSelector Widget
  * Dropdown to select active branch for multi-cabang
+ * Super admin gets additional "Semua Cabang" option
  */
 const BranchSelector = ({ className = '' }) => {
   const { 
@@ -14,10 +15,14 @@ const BranchSelector = ({ className = '' }) => {
     switchBranch,
     hasMultipleBranches,
     activeBranchName,
+    isSuperAdmin,
+    isViewingAllBranches,
+    canViewAllBranches,
   } = useBranch();
+  
 
-  // Don't show if user has only one branch
-  if (!hasMultipleBranches) {
+  // Don't show dropdown if user has only one branch and is not super admin
+  if (!hasMultipleBranches && !isSuperAdmin) {
     return (
       <div className={`flex items-center gap-2 px-3 py-2 glass-surface rounded-xl text-gray-600 ${className}`}>
         <Building2 className="w-4 h-4" />
@@ -28,8 +33,8 @@ const BranchSelector = ({ className = '' }) => {
 
   return (
     <Menu as="div" className={`relative ${className}`}>
-      <Menu.Button className="flex items-center gap-2 px-3 py-2 glass-surface rounded-xl text-gray-600 hover:bg-white/60 transition-colors">
-        <Building2 className="w-4 h-4" />
+      <Menu.Button className={`flex items-center gap-2 px-3 py-2 glass-surface rounded-xl hover:bg-white/60 transition-colors ${isViewingAllBranches ? 'text-indigo-600' : 'text-gray-600'}`}>
+        {isViewingAllBranches ? <Globe className="w-4 h-4" /> : <Building2 className="w-4 h-4" />}
         <span className="text-sm font-medium">{activeBranchName}</span>
         <ChevronDown className="w-4 h-4" />
       </Menu.Button>
@@ -43,11 +48,45 @@ const BranchSelector = ({ className = '' }) => {
         leaveFrom="transform opacity-100 scale-100"
         leaveTo="transform opacity-0 scale-95"
       >
-        <Menu.Items className="absolute right-0 mt-2 w-56 origin-top-right glass rounded-xl shadow-lg overflow-hidden z-50">
+        <Menu.Items className="absolute right-0 mt-2 w-56 origin-top-right glass rounded-xl shadow-lg overflow-hidden z-100">
           <div className="p-2">
             <p className="px-3 py-2 text-xs font-medium text-gray-400 uppercase">
               Pilih Cabang
             </p>
+            
+            {/* "Semua Cabang" option for super admin */}
+            {canViewAllBranches && (
+              <Menu.Item>
+                {({ active }) => (
+                  <button
+                    onClick={() => switchBranch('all')}
+                    className={`
+                      w-full flex items-center justify-between px-3 py-2 rounded-lg text-left mb-1
+                      ${active ? 'bg-indigo-50' : ''}
+                      ${isViewingAllBranches ? 'text-indigo-600 bg-indigo-50/50' : 'text-gray-700'}
+                    `}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Globe className="w-4 h-4" />
+                      <span className="text-sm font-medium">Semua Cabang</span>
+                      <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-600 rounded">
+                        Admin
+                      </span>
+                    </div>
+                    {isViewingAllBranches && (
+                      <Check className="w-4 h-4 text-indigo-600" />
+                    )}
+                  </button>
+                )}
+              </Menu.Item>
+            )}
+            
+            {/* Divider for super admin */}
+            {canViewAllBranches && availableBranches.length > 0 && (
+              <div className="border-t border-gray-200 my-1" />
+            )}
+            
+            {/* Individual branches */}
             {availableBranches.map((branch) => (
               <Menu.Item key={branch.cabangId}>
                 {({ active }) => (
@@ -56,7 +95,7 @@ const BranchSelector = ({ className = '' }) => {
                     className={`
                       w-full flex items-center justify-between px-3 py-2 rounded-lg text-left
                       ${active ? 'bg-indigo-50' : ''}
-                      ${activeBranch?.cabangId === branch.cabangId ? 'text-indigo-600' : 'text-gray-700'}
+                      ${!isViewingAllBranches && activeBranch?.cabangId === branch.cabangId ? 'text-indigo-600' : 'text-gray-700'}
                     `}
                   >
                     <div className="flex items-center gap-2">
@@ -68,7 +107,7 @@ const BranchSelector = ({ className = '' }) => {
                         </span>
                       )}
                     </div>
-                    {activeBranch?.cabangId === branch.cabangId && (
+                    {!isViewingAllBranches && activeBranch?.cabangId === branch.cabangId && (
                       <Check className="w-4 h-4 text-indigo-600" />
                     )}
                   </button>

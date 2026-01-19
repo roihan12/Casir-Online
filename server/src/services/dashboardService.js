@@ -1182,49 +1182,56 @@ class DashboardService {
     };
   }
 
-  // Revenue Time Series for Trend Analysis with branch breakdown
+  // Revenue Time Series for Trend Analysis (Last 7 days)
   static async fetchRevenueTimeSeries(whereClause) {
-    // Get daily data for past 90 days
-    const dailyData = await prisma.transaksi.groupBy({
-      by: ["tanggal", "cabang_id"],
-      where: {
-        ...whereClause,
-        jenis_transaksi: "PENJUALAN",
-        status_pembayaran: "LUNAS",
-        tanggal: {
-          gte: new Date(new Date().setDate(new Date().getDate() - 90)),
-        },
-      },
-      _sum: { total: true },
-      orderBy: { tanggal: "asc" },
-    });
+    // Get daily data for past 7 days
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
 
-    // Get branch details for mapping
-    const branchIds = [...new Set(dailyData.map((item) => item.cabang_id))];
-    const branches = await prisma.cabang.findMany({
-      where: {
-        id: { in: branchIds },
-      },
-      select: {
-        id: true,
-        namaCabang: true,
-      },
-    });
+    // Build branch condition for raw query
+    const branchCondition = whereClause.cabang_id 
+      ? Prisma.sql`AND cabang_id = ${whereClause.cabang_id}`
+      : Prisma.empty;
 
-    const branchMap = {};
-    branches.forEach((branch) => {
-      branchMap[branch.id] = branch.namaCabang;
-    });
+    // Use raw query to get daily aggregated totals
+    const dailyData = await prisma.$queryRaw`
+      SELECT 
+        DATE(tanggal) as date,
+        SUM(total) as total
+      FROM transaksi
+      WHERE jenis_transaksi = 'PENJUALAN'
+        AND status_pembayaran = 'LUNAS'
+        AND tanggal >= ${sevenDaysAgo}
+        ${branchCondition}
+      GROUP BY DATE(tanggal)
+      ORDER BY date ASC
+    `;
 
     // Format data for frontend charts, handling BigInt
     const formattedData = dailyData.map((item) => ({
-      date: item.tanggal.toISOString().split("T")[0],
-      branchId: String(item.cabang_id), // Convert to String
-      branchName: branchMap[item.cabang_id] || "Unknown Branch",
-      revenue: Number(item._sum.total), // Convert BigInt to Number
+      date: new Date(item.date).toISOString().split("T")[0],
+      total: Number(item.total) || 0,
     }));
 
-    return formattedData;
+    // Fill in missing dates with 0 values
+    const result = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split("T")[0];
+      
+      const existing = formattedData.find(d => d.date === dateStr);
+      result.push({
+        date: dateStr,
+        total: existing?.total || 0,
+      });
+    }
+
+    return result;
   }
 
   // Get active shift for kasir

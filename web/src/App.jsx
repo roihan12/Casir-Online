@@ -8,6 +8,7 @@ import LoginPage from '@pages/login/LoginPage';
 import DashboardPage from '@pages/dashboard/DashboardPage';
 import ProductsListPage from '@pages/products/ProductsListPage';
 import TransactionsListPage from '@pages/transactions/TransactionsListPage';
+import { KasirPosPage } from '@pages/kasir';
 import { RolesListPage, RoleFormPage, UsersListPage, UserFormPage } from '@pages/settings';
 
 function App() {
@@ -21,6 +22,11 @@ function App() {
             
             {/* Dashboard */}
             <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+            
+            {/* Kasir / POS */}
+            <Route path="/kasir/pos" element={
+              <ProtectedRoute permissions={['transaksi:create']}><KasirPosPage /></ProtectedRoute>
+            } />
             
             {/* Products */}
             <Route path="/produk" element={
