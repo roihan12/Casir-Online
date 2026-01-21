@@ -7,6 +7,9 @@ import { ProtectedRoute } from '@features/auth';
 import LoginPage from '@pages/login/LoginPage';
 import DashboardPage from '@pages/dashboard/DashboardPage';
 import ProductsListPage from '@pages/products/ProductsListPage';
+import ProductFormPage from '@pages/products/ProductFormPage';
+import ProductDetailPage from '@pages/products/ProductDetailPage';
+import { InventoryPage } from '@pages/inventory';
 import TransactionsListPage from '@pages/transactions/TransactionsListPage';
 import { KasirPosPage } from '@pages/kasir';
 import { RolesListPage, RoleFormPage, UsersListPage, UserFormPage } from '@pages/settings';
@@ -31,6 +34,25 @@ function App() {
             {/* Products */}
             <Route path="/produk" element={
               <ProtectedRoute permissions={['produk:read']}><ProductsListPage /></ProtectedRoute>
+            } />
+            <Route path="/produk/tambah" element={
+              <ProtectedRoute permissions={['produk:create']}><ProductFormPage /></ProtectedRoute>
+            } />
+            <Route path="/produk/:id" element={
+              <ProtectedRoute permissions={['produk:read']}><ProductDetailPage /></ProtectedRoute>
+            } />
+            <Route path="/produk/:id/edit" element={
+              <ProtectedRoute permissions={['produk:update']}><ProductFormPage /></ProtectedRoute>
+            } />
+
+            {/* Inventory */}
+            <Route path="/inventory" element={
+              <ProtectedRoute permissions={['inventory:read']}><InventoryPage /></ProtectedRoute>
+            } />
+
+            {/* Inventory */}
+            <Route path="/inventory" element={
+              <ProtectedRoute permissions={['inventory:read']}><InventoryPage /></ProtectedRoute>
             } />
             
             {/* Transactions */}
