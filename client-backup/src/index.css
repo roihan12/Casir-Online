@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.datatable-top {
+  @apply flex py-2 gap-x-5 flex-row-reverse justify-end items-center;
+}
+
+.datatable-search .datatable-input {
+  @apply p-2 border-2 border-gray-300 rounded-md;
+}
+
+.datatable-dropdown > label > select {
+  @apply border-2 border-gray-300 rounded-md;
+}
+
+.datatable-container {
+  @apply my-3;
+}
+
+.datatable-bottom {
+  @apply flex justify-between items-center;
+}
+
+.datatable-pagination-list {
+  @apply flex gap-x-2;
+}
+
+#search-table thead {
+  @apply bg-yellow-200;
+}
+
+/* BUTTON  */
+.btn-edit {
+  @apply bg-yellow-500 hover:bg-yellow-700 text-white  py-1 px-4 rounded;
+}
+
+.btn-delete {
+  @apply bg-red-500 hover:bg-red-700 text-white  py-1 px-4 rounded;
+}
