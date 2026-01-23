@@ -28,7 +28,7 @@ export const getUserMenus = async (cabangId) => {
  * Get all menus (untuk admin)
  */
 export const getAllMenus = async () => {
-    const response = await api.get('/menu-view/menus');
+    const response = await api.get('/menus');
     return response.data?.data || [];
 };
 
@@ -45,6 +45,43 @@ export const getRoleMenus = async (roleId) => {
  */
 export const getMenuHierarchy = async () => {
     const response = await api.get('/menu-view/hierarchy');
+    return response.data.data;
+};
+
+// CRUD Methods
+export const createMenu = async (data) => {
+    const response = await api.post('/menus', data);
+    return response.data;
+};
+
+export const updateMenu = async (id, data) => {
+    const response = await api.put(`/menus/${id}`, data);
+    return response.data;
+};
+
+export const updateMenuStatus = async (id, isActive) => {
+    const response = await api.put(`/menus/${id}/status`, { isActive });
+    return response.data;
+};
+
+export const deleteMenu = async (id) => {
+    const response = await api.delete(`/menus/${id}`);
+    return response.data;
+};
+
+// Role Assignment Methods
+export const assignMenuToRole = async (data) => {
+    const response = await api.post('/menus/assign', data);
+    return response.data;
+};
+
+export const removeMenuFromRole = async (roleMenuId) => {
+    const response = await api.delete(`/menus/assign/${roleMenuId}`);
+    return response.data;
+};
+
+export const bulkAssignMenusToRole = async (roleId, menuIds) => {
+    const response = await api.post('/menus/bulk-assign', { roleId, menuIds });
     return response.data;
 };
 
@@ -54,5 +91,12 @@ export default {
     getUserMenus,
     getAllMenus,
     getRoleMenus,
-    getMenuHierarchy
+    getMenuHierarchy,
+    createMenu,
+    updateMenu,
+    updateMenuStatus,
+    deleteMenu,
+    assignMenuToRole,
+    removeMenuFromRole,
+    bulkAssignMenusToRole
 };

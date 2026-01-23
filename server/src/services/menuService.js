@@ -3,6 +3,7 @@ const prisma = new PrismaClient();
 const { ResponseError } = require("../error/responseError");
 const { validate } = require("../validation/validation");
 const { CreateMenuValidation, UpdateMenuValidation } = require("../validation/menuValidation");
+const { createAuditLog } = require("../utils/auditLog");
 const {
   cacheGet,
   cacheSet,
@@ -35,16 +36,16 @@ class MenuService {
     });
 
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        userId: auditInfo.userId,
-        action: "CREATE",
-        resource: "Menu",
-        resourceId: newMenu.id,
-        oldValues: null,
-        newValues: JSON.stringify(newMenu),
-        ipAddress: auditInfo.ipAddress,
-      },
+    await createAuditLog(prisma, {
+      userId: auditInfo.userId,
+      userName: auditInfo.userName, 
+      ipAddress: auditInfo.ipAddress,
+      cabangId: auditInfo.cabangId,
+      action: "CREATE",
+      tableName: "Menu",
+      recordId: newMenu.id,
+      oldValues: null,
+      newValues: newMenu, // Util handles stringify
     });
 
     // Clear menu cache
@@ -90,16 +91,53 @@ class MenuService {
     });
 
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        userId: auditInfo.userId,
-        action: "UPDATE",
-        resource: "Menu",
-        resourceId: menuId,
-        oldValues: JSON.stringify(oldValues),
-        newValues: JSON.stringify(updatedMenu),
-        ipAddress: auditInfo.ipAddress,
-      },
+    await createAuditLog(prisma, {
+      userId: auditInfo.userId,
+      userName: auditInfo.userName,
+      ipAddress: auditInfo.ipAddress,
+      cabangId: auditInfo.cabangId,
+      action: "UPDATE",
+      tableName: "Menu",
+      recordId: menuId,
+      oldValues: oldValues,
+      newValues: updatedMenu,
+    });
+
+    // Clear menu cache
+    await cacheDeletePattern("menus:*");
+
+    return updatedMenu;
+  }
+
+  /**
+   * Update menu active status
+   */
+  async updateMenuStatus(menuId, isActive, auditInfo) {
+    // Check if menu exists
+    const existingMenu = await prisma.menu.findUnique({
+      where: { id: menuId },
+    });
+
+    if (!existingMenu) {
+      throw new ResponseError(404, "Menu not found");
+    }
+
+    const updatedMenu = await prisma.menu.update({
+      where: { id: menuId },
+      data: { isActive: Boolean(isActive) },
+    });
+
+    // Create audit log
+    await createAuditLog(prisma, {
+      userId: auditInfo.userId,
+      userName: auditInfo.userName,
+      ipAddress: auditInfo.ipAddress,
+      cabangId: auditInfo.cabangId,
+      action: "UPDATE_STATUS",
+      tableName: "Menu",
+      recordId: menuId,
+      oldValues: { isActive: existingMenu.isActive },
+      newValues: { isActive: updatedMenu.isActive },
     });
 
     // Clear menu cache
@@ -135,16 +173,16 @@ class MenuService {
     });
 
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        userId: auditInfo.userId,
-        action: "DELETE",
-        resource: "Menu",
-        resourceId: menuId,
-        oldValues: JSON.stringify(existingMenu),
-        newValues: null,
-        ipAddress: auditInfo.ipAddress,
-      },
+    await createAuditLog(prisma, {
+      userId: auditInfo.userId,
+      userName: auditInfo.userName,
+      ipAddress: auditInfo.ipAddress,
+      cabangId: auditInfo.cabangId,
+      action: "DELETE",
+      tableName: "Menu",
+      recordId: menuId,
+      oldValues: existingMenu,
+      newValues: null,
     });
 
     // Clear menu cache
@@ -343,20 +381,20 @@ class MenuService {
     });
 
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        userId: auditInfo.userId,
-        action: "CREATE",
-        resource: "RoleMenu",
-        resourceId: roleMenu.id,
-        oldValues: null,
-        newValues: JSON.stringify({
-          roleId,
-          menuId,
-          roleName: role.namaRole,
-          menuName: menu.name,
-        }),
-        ipAddress: auditInfo.ipAddress,
+    await createAuditLog(prisma, {
+      userId: auditInfo.userId,
+      userName: auditInfo.userName,
+      ipAddress: auditInfo.ipAddress,
+      cabangId: auditInfo.cabangId,
+      action: "CREATE",
+      tableName: "RoleMenu",
+      recordId: roleMenu.id,
+      oldValues: null,
+      newValues: {
+        roleId,
+        menuId,
+        roleName: role.namaRole,
+        menuName: menu.name,
       },
     });
 
@@ -398,16 +436,16 @@ class MenuService {
     });
 
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        userId: auditInfo.userId,
-        action: "DELETE",
-        resource: "RoleMenu",
-        resourceId: roleMenuId,
-        oldValues: JSON.stringify(roleMenuData),
-        newValues: null,
-        ipAddress: auditInfo.ipAddress,
-      },
+    await createAuditLog(prisma, {
+      userId: auditInfo.userId,
+      userName: auditInfo.userName,
+      ipAddress: auditInfo.ipAddress,
+      cabangId: auditInfo.cabangId,
+      action: "DELETE",
+      tableName: "RoleMenu",
+      recordId: roleMenuId,
+      oldValues: roleMenuData,
+      newValues: null,
     });
 
     // Clear menu cache
@@ -469,20 +507,20 @@ class MenuService {
         createdRoleMenus.push(roleMenu);
 
         // Create audit log for each assignment
-        await prisma.auditLog.create({
-          data: {
-            userId: auditInfo.userId,
-            action: "CREATE",
-            resource: "RoleMenu",
-            resourceId: roleMenu.id,
-            oldValues: null,
-            newValues: JSON.stringify({
-              roleId,
-              menuId,
-              roleName: role.namaRole,
-              menuName: roleMenu.menu.name,
-            }),
-            ipAddress: auditInfo.ipAddress,
+        await createAuditLog(prisma, {
+          userId: auditInfo.userId,
+          userName: auditInfo.userName,
+          ipAddress: auditInfo.ipAddress,
+          cabangId: auditInfo.cabangId,
+          action: "CREATE",
+          tableName: "RoleMenu",
+          recordId: roleMenu.id,
+          oldValues: null,
+          newValues: {
+            roleId,
+            menuId,
+            roleName: role.namaRole,
+            menuName: roleMenu.menu.name,
           },
         });
       }

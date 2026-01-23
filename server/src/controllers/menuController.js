@@ -42,6 +42,7 @@ async function createMenu(req, res, next) {
     const menuData = req.body;
     const auditInfo = {
       userId: req.user.id,
+      userName: req.user.username,
       ipAddress: req.ip,
     };
 
@@ -65,6 +66,7 @@ async function updateMenu(req, res, next) {
     const menuData = req.body;
     const auditInfo = {
       userId: req.user.id,
+      userName: req.user.username,
       ipAddress: req.ip,
     };
 
@@ -80,6 +82,30 @@ async function updateMenu(req, res, next) {
 }
 
 /**
+ * Update menu status (active/inactive)
+ */
+async function updateMenuStatus(req, res, next) {
+  try {
+    const menuId = req.params.menuId;
+    const { isActive } = req.body;
+    const auditInfo = {
+      userId: req.user.id,
+      userName: req.user.username,
+      ipAddress: req.ip,
+    };
+
+    const updatedMenu = await menuService.updateMenuStatus(menuId, isActive, auditInfo);
+    res.status(200).json({
+      status: true,
+      message: "Update menu status success",
+      data: updatedMenu,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
  * Delete a menu
  */
 async function deleteMenu(req, res, next) {
@@ -87,6 +113,7 @@ async function deleteMenu(req, res, next) {
     const menuId = req.params.menuId;
     const auditInfo = {
       userId: req.user.id,
+      userName: req.user.username,
       ipAddress: req.ip,
     };
 
@@ -145,6 +172,7 @@ async function assignMenuToRole(req, res, next) {
     const { roleId, menuId } = req.body;
     const auditInfo = {
       userId: req.user.id,
+      userName: req.user.username,
       ipAddress: req.ip,
     };
 
@@ -167,6 +195,7 @@ async function removeMenuFromRole(req, res, next) {
     const roleMenuId = req.params.roleMenuId;
     const auditInfo = {
       userId: req.user.id,
+      userName: req.user.username,
       ipAddress: req.ip,
     };
 
@@ -189,6 +218,7 @@ async function bulkAssignMenusToRole(req, res, next) {
     const { roleId, menuIds } = req.body;
     const auditInfo = {
       userId: req.user.id,
+      userName: req.user.username,
       ipAddress: req.ip,
     };
 
@@ -208,6 +238,7 @@ module.exports = {
   getMenuById,
   createMenu,
   updateMenu,
+  updateMenuStatus,
   deleteMenu,
   getRoleMenus,
   getUserMenus,

@@ -47,6 +47,7 @@ import DiscountForm from "./features/discounts/components/DiscountForm";
 import TaxSettings from "./features/settings/pages/TaxSettingsPage";
 import ReceiptSettings from "./features/settings/pages/ReceiptSettingsPage";
 import NotificationSettings from "./features/settings/pages/NotificationSettingsPage";
+import MenuManagementPage from "./features/settings/pages/MenuManagementPage";
 import AuditLog from "./features/audit/pages/AuditLogPage";
 import CustomerManagement from "./features/customers/pages/CustomerManagementPage";
 import CustomerDetail from "./features/customers/pages/CustomerDetail";
@@ -99,9 +100,12 @@ import PriceManagement from "./features/products/pages/PriceManagementPage";
 import PurchaseCreate from "./features/purchases/pages/PurchaseCreatePage";
 import PurchaseDetail from "./features/purchases/pages/PurchaseDetailPage";
 
+import { ToastProvider } from "./app/providers/ToastContext";
+
 function App() {
   return (
       <CabangProvider>
+        <ToastProvider>
         <Toaster
           position="top-right"
           toastOptions={{
@@ -221,6 +225,7 @@ function App() {
             <Route path="tax" element={<TaxSettings />} />
             <Route path="receipt" element={<ReceiptSettings />} />
             <Route path="notifications" element={<NotificationSettings />} />
+            <Route path="menus" element={<MenuManagementPage />} />
             <Route path="audit" element={<AuditLog />} />
             <Route index element={<Navigate to="/settings/account" replace />} />
           </Route>
@@ -467,6 +472,7 @@ function App() {
           {/* 404 Not Found */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
+        </ToastProvider>
       </CabangProvider>
   );
 }

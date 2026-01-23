@@ -22,6 +22,9 @@ router.post("/", authenticate, hasPermission(["menu:manage"]), menuController.cr
 // Update an existing menu 
 router.put("/:menuId", authenticate, hasPermission(["menu:manage"]), menuController.updateMenu);
 
+// Update menu status
+router.put("/:menuId/status", authenticate, hasPermission(["menu:manage"]), menuController.updateMenuStatus);
+
 // Delete a menu 
 router.delete("/:menuId", authenticate, hasPermission(["menu:manage"]), menuController.deleteMenu);
 
