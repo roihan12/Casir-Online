@@ -35,11 +35,10 @@ import {
 } from "lucide-react";
 import Spinner from "../../../features/common/Spinner.jsx";
 import { useCabangList } from "../../../features/cabang/hooks/useCabangQueries";
-import useInventoryQueries from "../../../hooks/useInventoryQueries";
+import useInventoryQueries from "../hooks/useInventoryQueries";
 import { useAuth } from "../../auth/hooks/useAuth.js";
 
-import mockInventoryDashboardQueries from "../../../mocks/mockInventoryDashboardHook";
-import { MovementTrends, TopProducts } from "../../../components/inventory/StockMovementVisualizations";
+import { MovementTrends, TopProducts } from "../components/StockMovementVisualizations";
 
 // Toggle between mock and real data
 const USE_MOCK_DATA = false;
@@ -505,7 +504,7 @@ const InventoryDashboard = () => {
     useInventoryHealthScore,
     useHighStockMovementsTrends,
     useInventoryValueByCategory
-  } = USE_MOCK_DATA ? mockInventoryDashboardQueries() : useInventoryQueries();
+  } = useInventoryQueries();  
 
   // Get dashboard data
   const {

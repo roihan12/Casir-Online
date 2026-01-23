@@ -20,7 +20,7 @@ import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
 import { useCabang } from "../../../features/cabang/hooks/useCabang";
 import toast from "react-hot-toast";
-import { useInvoiceList } from "../../../hooks/useInvoices";
+import { useInvoiceList } from "../hooks/useInvoices";
 
 // Formatter untuk uang
 const formatCurrency = (amount) => {

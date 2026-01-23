@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { stockAdjustmentFormSchema } from "../../../schemas/inventorySchemas";
-import { useInventoryAdjustment } from "../../../hooks/useInventoryAdjustment";
+import { useInventoryAdjustment } from "@common/hooks/useInventoryAdjustment";
 import { useCabangList } from "../../../features/cabang/hooks/useCabangQueries";
 import {
   Database,
@@ -16,7 +16,7 @@ import {
   ArrowLeftRight,
   BarChart2,
 } from "lucide-react";
-import Spinner from "../../../components/common/Spinner";
+import Spinner from "../../common/Spinner";
 import { toast } from "react-hot-toast";
 
 const StockAdjustment = () => {

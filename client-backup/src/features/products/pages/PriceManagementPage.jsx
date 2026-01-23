@@ -19,9 +19,9 @@ import {
 import Spinner from "../../../features/common/Spinner";
 import Pagination from "../../../features/common/Pagination";
 import { useCabangList } from "../../../features/cabang/hooks/useCabangQueries";
-import { usePriceManagement } from "../../../hooks/usePriceManagement";
+import { usePriceManagementQueries } from "../hooks/usePriceManagementQueries";
 import { toast } from "react-hot-toast";
-import api from "../../../services/api";
+import api from "@common/utils/api";
 
 // Price update schema validation
 const priceUpdateSchema = z.object({

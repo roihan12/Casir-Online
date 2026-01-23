@@ -1,4 +1,4 @@
-import api from "../../../services/api";
+import api from "@common/utils/api";
 import { GLOBAL_CABANG_ID } from "../context/CabangContext";
 
 // API endpoint base

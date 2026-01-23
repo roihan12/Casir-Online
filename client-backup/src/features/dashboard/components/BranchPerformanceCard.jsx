@@ -1,6 +1,6 @@
 import React from 'react';
 import { MapPin, TrendingUp, TrendingDown } from 'lucide-react';
-import formatCurrency from '../../../utils/formatCurrency';
+import formatCurrency from '@common/utils/formatCurrency';
 
 /**
  * BranchPerformanceCard - Displays top performing branches by revenue.

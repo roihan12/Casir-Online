@@ -15,11 +15,11 @@ import {
   XCircle,
   Eye,
 } from "lucide-react";
-import { useHutang } from "../../../hooks/useHutang";
+import { useHutang } from "../hooks/useHutang";
 import Spinner from "../../common/Spinner";
 import Pagination from "../../common/Pagination";
 import EmptyState from "../../common/EmptyState";
-import { formatCurrency, formatDate } from "../../../utils/format";
+import { formatCurrency, formatDate } from "../../../common/utils/format";
 import { useCabang } from "../../cabang/hooks/useCabang";
 
 const SupplierDebt = () => {

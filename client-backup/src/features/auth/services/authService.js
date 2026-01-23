@@ -9,7 +9,7 @@ export const login = async (username, password) => {
       const response = await api.post("/auth/login", { username, password });
 
       // Kembalikan data user
-      return response.data.data.user;
+      return response.data;
     } catch (error) {
       // Improve error handling by checking for different error structures
       if (error.response && error.response.data) {
@@ -136,7 +136,7 @@ export const updateProfileWithAvatar = async (formData) => {
 export const checkAuth = async () => {
   try {
     const response = await api.get('/auth/profile');
-    return response.data.data.user;
+    return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Authentication check failed');
   }

@@ -23,11 +23,11 @@ import {
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
-import produkMasterService from "../../../services/produkMasterService";
-import Spinner from "../../../features/common/Spinner";
-import Pagination from "../../../features/common/Pagination";
-import Alert from "../../../features/common/Alert";
-import Table from "../../../features/common/Table";
+import produkMasterService from "@services/produkMasterService";
+import Spinner from "@features/common/Spinner";
+import Pagination from "@features/common/Pagination";
+import Alert from "@features/common/Alert";
+import Table from "@features/common/Table";
 
 const ProductMasterList = () => {
   const navigate = useNavigate();

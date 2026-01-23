@@ -8,7 +8,7 @@
 import { lazy } from 'react';
 
 // -- Stats Widgets --
-const GlobalStatsCard = lazy(() => import('../../../components/superadmin/GlobalStatsCard'));
+const GlobalStatsCard = lazy(() => import('../../common/components/GlobalStatsCard'));
 // -- Chart Widgets --
 const SalesTrendChart = lazy(() => import('../../common/SalesTrendChart'));
 const PaymentMethodChart = lazy(() => import('../../common/PaymentMethodChart'));

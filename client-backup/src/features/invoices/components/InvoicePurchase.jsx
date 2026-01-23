@@ -12,12 +12,12 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useCabang } from "../../../features/cabang/hooks/useCabang";
-import InvoiceScanner from "../../../components/common/InvoiceScanner";
-import InvoiceOcrReview from "../../../components/common/InvoiceOcrReview";
+import InvoiceScanner from "../../common/InvoiceScanner";
+import InvoiceOcrReview from "../../common/InvoiceOcrReview";
 import {
   useExtractInvoiceData,
   useSubmitInvoicePurchase,
-} from "../../../hooks/useInvoiceOcr";
+} from "@common/hooks/useInvoiceOcr";
 import { useQuery } from "@tanstack/react-query";
 import supplierService from "../../../services/supplierService";
 import productService from "../../../services/productService";

@@ -24,11 +24,11 @@ import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
-import { useCabang } from "../../../features/cabang/hooks/useCabang";
+import { useCabang } from "@features/cabang/hooks/useCabang";
 import toast from "react-hot-toast";
-import { useTransactionsList, useTransactionDashboard } from "../../../hooks/useTransactions";
+import { useTransactionsList, useTransactionDashboard } from "../hooks/useTransactions";
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import formatCurrency from "../../../utils/formatCurrency";
+import formatCurrency from "@common/utils/formatCurrency";
 
 
 

@@ -28,8 +28,8 @@ import { useCabangList } from "../../../features/cabang/hooks/useCabangQueries";
 import {
   useInventoryMovements,
   useExportMovements,
-} from "../../../hooks/useInventoryMovements";
-import { useGenerateMovementReport } from "../../../hooks/useInventoryReports";
+} from "../hooks/useInventoryMovements";
+import { useGenerateMovementReport } from "../hooks/useInventoryReports";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 

@@ -21,9 +21,9 @@ import {
 import {
   useSupplierById,
   useSupplierList,
-} from "../../../hooks/useSupplierQueries";
-import { useSupplierProducts } from "../../../hooks/useSupplierProducts";
-import { useCreateTransaksi } from "../../../hooks/useTransaksiQueries";
+} from "../../suppliers/hooks/useSupplierQueries";
+import { useSupplierProducts } from "../../suppliers/hooks/useSupplierProducts";
+import { useCreateTransaksi } from "../../transactions/hooks/useTransaksiQueries";
 import { useCabang } from "../../../features/cabang/hooks/useCabang";
 import Spinner from "../../../features/common/Spinner";
 import { toast } from "react-hot-toast";

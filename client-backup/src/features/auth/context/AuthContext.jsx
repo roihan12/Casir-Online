@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import useAuthStore from '../../../store/useAuthStore';
+import useAuthStore from '@app/store/useAuthStore';
 
 /**
  * AuthProvider - Checks auth status on app load (one-time only)

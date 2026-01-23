@@ -1,6 +1,6 @@
 // userService.js - Service untuk mengelola operasi terkait user
 
-import api from "../../../services/api";
+import api from "@common/utils/api";
 
 const userService = {
   // Get all users with optional filters

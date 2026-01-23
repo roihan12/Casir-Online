@@ -24,9 +24,9 @@ import {
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import toast from "react-hot-toast";
-import { useTransactionDetail } from "../../../hooks/useTransactions";
-import KreditPaymentModal from "../../../components/transaksi/KreditPaymentModal";
-import formatDate from "../../../utils/formatDate";
+import { useTransactionDetail } from "../hooks/useTransactions";
+import KreditPaymentModal from "../../credit/components/KreditPaymentModal";
+import formatDate from "@common/utils/formatDate";
 
 // Formatter untuk uang
 const formatCurrency = (amount) => {

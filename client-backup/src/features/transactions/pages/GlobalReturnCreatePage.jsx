@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Search, Plus, Trash, RefreshCcw } from "lucide-react";
-import { useCabang } from "../../../features/cabang/hooks/useCabang";
+import { useCabang } from "@features/cabang/hooks/useCabang";
 import toast from "react-hot-toast";
 
 const GlobalReturnCreate = () => {

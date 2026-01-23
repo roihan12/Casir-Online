@@ -31,9 +31,9 @@ import Pagination from "../../../features/common/Pagination";
 import ConfirmationDialog from "../../../features/common/ConfirmationDialog";
 import Modal from "../../../features/common/Modal";
 import { toast } from "react-hot-toast";
-import { useStockTransferQueries } from "../../../hooks/useStockTransferQueries";
+import { useStockTransferQueries } from "../../stock-transfers/hooks/useStockTransferQueries"
 import { useCabangList } from "../../../features/cabang/hooks/useCabangQueries";
-import { stockTransferSchema } from "../../../features/stock-transfers/validation/stockTransferValidation";
+import { stockTransferSchema } from "../../stock-transfers/validation/StockTransferValidation";
 
 
 const InventoryTransfer = () => {

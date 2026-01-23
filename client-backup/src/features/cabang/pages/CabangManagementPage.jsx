@@ -24,8 +24,8 @@ import {
   useUpdateCabang,
   useDeleteCabang,
 } from "../hooks/useCabangQueries";
-import { useQueryErrorHandler } from "../../../hooks/useQueryErrorHandler"; // Should check if this exists or if generic
-import { useMutationHandler } from "../../../hooks/useMutationHandler"; // Should check if this exists or if generic
+import { useQueryErrorHandler } from "@common/hooks/useQueryErrorHandler";
+import { useMutationHandler } from "@common/hooks/useMutationHandler";
 import { toast } from "react-hot-toast";
 
 const CabangManagementPage = () => {

@@ -8,8 +8,9 @@ import {
   useCreateProdukMaster,
   useUpdateProdukMaster,
   useCategories,
-} from "../../../hooks/useProdukMasterQueries";
-import ProductMasterForm from "../../../components/superadmin/ProductMasterForm";
+} from "../hooks/useProdukMasterQueries";
+// FIXME: Component doesn't exist - needs to be created
+// import ProductMasterForm from "../../../components/superadmin/ProductMasterForm";
 import Spinner from "../../../features/common/Spinner";
 import Alert from "../../../features/common/Alert";
 

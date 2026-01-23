@@ -21,13 +21,13 @@ import {
   Search,
 } from "lucide-react";
 
-import GlobalStatsCard from "../../../components/superadmin/GlobalStatsCard";
+import GlobalStatsCard from "../../common/components/GlobalStatsCard";
 import Spinner from "../../../features/common/Spinner";
 import Pagination from "../../../features/common/Pagination";
 import ConfirmationDialog from "../../../features/common/ConfirmationDialog";
 import withCabangData from "../../../features/cabang/hoc/withCabangData";
 import { useCabang } from "../../../features/cabang/hooks/useCabang";
-import { useInventoryNotifications } from "../../../hooks/useInventoryNotifications";
+import { useInventoryNotifications } from "../hooks/useInventoryNotifications";
 import { toast } from "react-hot-toast";
 
 const InventoryNotifications = () => {

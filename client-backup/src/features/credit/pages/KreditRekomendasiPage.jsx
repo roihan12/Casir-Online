@@ -3,15 +3,15 @@ import { Helmet } from "react-helmet-async";
 import { 
   useKreditRekomendasiList, 
   useApproveKreditRekomendasi 
-} from "../../../hooks/useKreditRekomendasiQueries";
-import { formatRupiah, formatDate } from "../../../utils/formatter";
+} from "@common/hooks/useKreditRekomendasiQueries";
+import { formatRupiah, formatDate } from "@common/utils/formatter";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "../../../components/ui/card";
+} from "@common/components/ui/card";
 import {
   Table,
   TableBody,
@@ -19,17 +19,17 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../../../components/ui/table";
-import { Button } from "../../../components/ui/button";
-import { Badge } from "../../../components/ui/badge";
-import { Input } from "../../../components/ui/input";
+} from "@common/components/ui/table";
+import { Button } from "@common/components/ui/button";
+import { Badge } from "@common/components/ui/badge";
+import { Input } from "@common/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../../components/ui/select";
+} from "@common/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -37,8 +37,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../../../components/ui/dialog";
-import { Textarea } from "../../../components/ui/textarea";
+} from "@common/components/ui/dialog";
+import { Textarea } from "@common/components/ui/textarea";
 import { Loader2, CheckCircle, XCircle, Search, FileText } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { 
@@ -48,7 +48,7 @@ import {
   PaginationLink, 
   PaginationNext, 
   PaginationPrevious 
-} from "../../../components/ui/pagination";
+} from "@common/components/ui/pagination";
 
 const KreditRekomendasiManagement = () => {
   const [filters, setFilters] = useState({

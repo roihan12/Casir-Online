@@ -22,7 +22,7 @@ import {
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import toast from "react-hot-toast";
-import { useInvoiceDetail, useGenerateInvoicePdf, useSendInvoice } from "../../../hooks/useInvoices";
+import { useInvoiceDetail, useGenerateInvoicePdf, useSendInvoice } from "../hooks/useInvoices";
 
 // Formatter untuk uang
 const formatCurrency = (amount) => {

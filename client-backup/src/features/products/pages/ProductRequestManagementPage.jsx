@@ -21,9 +21,10 @@ import {
   Clipboard,
 } from "lucide-react";
 // import productRequestService from "../../../services/productRequestService";
-import Modal from "../../../features/common/Modal";
-import Table from "../../../features/common/Table";
-import ProductRequestForm from "../../../components/superadmin/ProductRequestForm";
+import Modal from "@features/common/Modal";
+import Table from "@features/common/Table";
+// FIXME: Component doesn't exist - needs to be created
+// import ProductRequestForm from "../../../components/superadmin/ProductRequestForm";
 // import ProductRequestDetails from "../../../components/superadmin/ProductRequestDetails";
 
 const ProductRequestManagement = () => {

@@ -1,5 +1,5 @@
 import { ChevronDown, CreditCardIcon, DollarSignIcon, Smartphone, TrendingDown, TrendingUp, Wallet } from "lucide-react";
-import formatCurrency from "../../utils/formatCurrency";
+import formatCurrency from "@common/utils/formatCurrency";
 
 const PaymentMethodChart = ({ isGlobalView, cabang, paymentMethods }) => {
   // Use the payment methods data from API response

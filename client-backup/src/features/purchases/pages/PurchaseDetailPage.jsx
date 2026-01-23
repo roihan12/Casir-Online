@@ -16,11 +16,11 @@ import {
   Plus,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { formatCurrency, formatDate } from "../../../utils/format";
+import { formatCurrency, formatDate } from "../../../common/utils/format";
 import transaksiService from "../../../services/transaksiService";
 import Spinner from "../../../features/common/Spinner";
-import PaymentForm from "../../../components/transactions/PaymentForm";
-import CancelTransactionModal from "../../../components/transactions/CancelTransactionModal";
+import PaymentForm from "../../transactions/components/PaymentForm";
+import CancelTransactionModal from "../../transactions/components/CancelTransactionModal";
 
 const PurchaseDetail = () => {
   const { id } = useParams();

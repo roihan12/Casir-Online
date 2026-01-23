@@ -1,2 +1,3 @@
 // Re-export from main hooks directory
-export { useAuth, default } from '../../../hooks/useAuth';
+// Re-export useAuth from common hooks
+export { useAuth, default } from '@common/hooks/useAuth';

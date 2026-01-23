@@ -28,11 +28,8 @@ import Spinner from "../../common/Spinner";
 import {
   useDeleteSupplier,
   useChangeSupplierStatus,
-} from "../../../hooks/useSupplierQueries";
-import { useSupplierPurchase } from "../../../hooks/useSupplierPurchase";
-import { useSupplierProducts } from "../../../hooks/useSupplierProducts";
-import { useSupplierPurchaseHistory } from "../../../hooks/useTransaksiQueries";
-import supplierService from "../services/supplierService";
+} from "../hooks/useSupplierQueries";
+import { useSupplierPurchase } from "../hooks/useSupplierPurchase";
 
 const SupplierDetail = () => {
   const { id } = useParams();

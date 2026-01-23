@@ -21,7 +21,7 @@ import {
   Store,
 } from "lucide-react";
 
-import GlobalStatsCard from "../../../components/superadmin/GlobalStatsCard";
+import GlobalStatsCard from "../../common/components/GlobalStatsCard";
 import Table from "../../common/Table";
 import ConfirmationDialog from "../../common/ConfirmationDialog";
 import withCabangData from "../../cabang/hoc/withCabangData";
@@ -30,7 +30,7 @@ import {
   useSupplierStats,
   useDeleteSupplier,
   useChangeSupplierStatus,
-} from "../../../hooks/useSupplierQueries";
+} from "../hooks/useSupplierQueries";
 import { useCabang } from "../../cabang/hooks/useCabang";
 
 const SupplierManagementPage = () => {

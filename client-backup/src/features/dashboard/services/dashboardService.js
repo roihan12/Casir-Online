@@ -1,4 +1,4 @@
-import api from "../../../services/api";
+import api from "@common/utils/api";
 
 /**
  * Dashboard Service - Handles all dashboard-related API calls.

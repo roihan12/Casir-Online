@@ -17,9 +17,9 @@ import {
   CheckCircle,
   XCircle,
 } from "lucide-react";
-import userService from "../../../services/userService";
-import Modal from "../../../features/common/Modal";
-import UserForm from "../../../components/superadmin/UserForm";
+import userService from "@services/userService";
+import Modal from "@features/common/Modal";
+import UserForm from "../components/UserForm";
 
 const UserDetail = () => {
   const { id } = useParams();

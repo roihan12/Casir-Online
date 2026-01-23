@@ -16,15 +16,14 @@ import {
   ArrowUpDown,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { useStockTransferQueries } from "../../hooks/useStockTransferQueries";
-import cabangService from "../../features/cabang/services/cabangService";
-import Spinner from "../../features/common/Spinner";
-import Pagination from "../../features/common/Pagination";
-import ConfirmationDialog from "../../features/common/ConfirmationDialog";
+import { useStockTransferQueries } from "../hooks/useStockTransferQueries";
+import Spinner from "../../common/Spinner";
+import Pagination from "../../common/Pagination";
+import ConfirmationDialog from "../../common/ConfirmationDialog";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { format } from "date-fns";
-import { useCabangList } from "../../features/cabang/hooks/useCabangQueries";
+import { useCabangList } from "../../cabang/hooks/useCabangQueries";
 
 const StockTransferApprovalList = () => {
   const navigate = useNavigate();

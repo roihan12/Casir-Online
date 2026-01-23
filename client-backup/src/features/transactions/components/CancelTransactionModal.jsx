@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { AlertTriangle, X } from "lucide-react";
-import Spinner from "../../features/common/Spinner";
+import Spinner from "../../common/Spinner";
 
 const CancelTransactionModal = ({ isOpen, onClose, onConfirm, isLoading }) => {
   const [reason, setReason] = useState("");

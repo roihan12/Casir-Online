@@ -1,5 +1,5 @@
 import { ChevronDown } from "lucide-react";
-import formatCurrency from "../../utils/formatCurrency";
+import formatCurrency from "@common/utils/formatCurrency";
 
 const ChartCategoryDistribution = ({ isGlobalView, cabang, categoryData }) => {
   // Make sure we have data to display

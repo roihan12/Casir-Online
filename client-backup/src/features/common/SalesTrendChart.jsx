@@ -8,7 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import formatCurrency from "../../utils/formatCurrency";
+import formatCurrency from "@common/utils/formatCurrency";
 
 const SalesTrendChart = ({ isGlobalView, cabang, revenueTimeSeries }) => {
   const salesData = revenueTimeSeries || [];

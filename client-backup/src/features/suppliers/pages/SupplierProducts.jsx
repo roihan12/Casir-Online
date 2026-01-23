@@ -21,7 +21,7 @@ import {
 import {
   useSupplierProducts,
   useAvailableProductsForSupplier,
-} from "../../../hooks/useSupplierProducts";
+} from "../hooks/useSupplierProducts";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -29,7 +29,7 @@ import ConfirmationDialog from "../../common/ConfirmationDialog";
 import Spinner from "../../common/Spinner";
 import Pagination from "../../common/Pagination";
 import EmptyState from "../../common/EmptyState";
-import { formatCurrency } from "../../../utils/format";
+import { formatCurrency } from "@common/utils/format";
 import { useCabang } from "../../cabang/hooks/useCabang";
 import { useQuery } from "@tanstack/react-query";
 import produkSupplierService from "../../../services/produkSupplierService";

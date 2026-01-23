@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Save, Info, AlertTriangle, Check, X } from "lucide-react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
-import { useCabang } from "../../../features/cabang/hooks/useCabang";
+import { useCabang } from "@features/cabang/hooks/useCabang";
 
 const TaxSettings = () => {
   const { selectedCabang } = useCabang();

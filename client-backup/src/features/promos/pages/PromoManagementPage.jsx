@@ -23,7 +23,7 @@ import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
 import promoService from "../../../services/promoService";
-import { useCabang } from "../../../features/cabang/hooks/useCabang";
+import { useCabang } from "@features/cabang/hooks/useCabang";
 
 const PromoManagement = () => {
   const navigate = useNavigate();

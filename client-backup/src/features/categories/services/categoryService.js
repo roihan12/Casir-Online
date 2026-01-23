@@ -1,4 +1,4 @@
-import api from "../../../services/api";
+import api from "@common/utils/api";
 
 // Helper function to handle API errors
 const handleApiError = (error) => {

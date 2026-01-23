@@ -1,5 +1,5 @@
 import { Box, ChevronRight, MoreHorizontal } from "lucide-react";
-import formatCurrency from "../../utils/formatCurrency";
+import formatCurrency from "@common/utils/formatCurrency";
 
 const ProductTable = ({
   isGlobalView,

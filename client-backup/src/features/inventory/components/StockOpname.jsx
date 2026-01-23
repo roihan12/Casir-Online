@@ -21,11 +21,11 @@ import {
 import Spinner from "../../../features/common/Spinner";
 import Pagination from "../../../features/common/Pagination";
 import { useCabangList } from "../../../features/cabang/hooks/useCabangQueries";
-import useInventoryQueries from "../../../hooks/useInventoryQueries";
+import useInventoryQueries from "../hooks/useInventoryQueries";
 import { toast } from "react-hot-toast";
-import api from "../../../services/api";
-import useProdukQueries from "../../../hooks/useProdukQueries";
-import { useCategories } from "../../../hooks/useCategories";
+import api from "@common/utils/api";
+import useProdukQueries from "../../products/hooks/useProdukQueries";
+import { useCategories } from "../../categories/hooks/useCategories";
 
 // Validasi form stok opname
 const opnameItemSchema = z.object({

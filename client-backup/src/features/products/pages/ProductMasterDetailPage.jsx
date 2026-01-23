@@ -24,7 +24,7 @@ import {
 import {
   useProdukMasterDetail,
   useDeleteProdukMaster,
-} from "../../../hooks/useProdukMasterQueries";
+} from "../hooks/useProdukMasterQueries";
 import { toast } from "react-hot-toast";
 import Spinner from "../../../features/common/Spinner";
 import Alert from "../../../features/common/Alert";

@@ -1,4 +1,3 @@
-import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
@@ -11,25 +10,17 @@ import ForgotPasswordPage from "./features/auth/pages/ForgotPasswordPage";
 import ResetPasswordPage from "./features/auth/pages/ResetPasswordPage";
 
 // Dynamic Layout
-import DynamicLayout from "./components/layout/DynamicLayout";
+import DynamicLayout from "./common/components/layout/DynamicLayout";
 
-// SuperAdmin Pages
-// Dynamic Dashboard (Permission-Based)
+
 import DashboardPage from "./features/dashboard/pages/DashboardPage";
 import CabangManagement from "./features/cabang/pages/CabangManagementPage";
 import CabangDetail from "./features/cabang/components/CabangDetail";
-// import CabangConfig from "./pages/superadmin/CabangConfig";
-// import UserManagement from "./pages/superadmin/UserManagement";
-// import UserRoles from "./pages/superadmin/UserRoles";
-// import ProductMaster from "./pages/superadmin/ProductMaster";
-// import ProductCategories from "./pages/superadmin/ProductCategories";
-// import ProductRequests from "./pages/superadmin/ProductRequests";
-import SupplierManagement from "./pages/superadmin/SupplierManagement";
-import SupplierDetail from "./pages/superadmin/SupplierDetail";
-import SupplierForm from "./pages/superadmin/SupplierForm";
-// import SupplierProducts from "./pages/superadmin/SupplierProducts"; // Not migrating suppliers yet
-import SupplierProducts from "./pages/superadmin/SupplierProducts";
-import SupplierDebt from "./pages/superadmin/SupplierDebt";
+import SupplierManagement from "./features/suppliers/pages/SupplierManagementPage";
+import SupplierDetail from "./features/suppliers/pages/SupplierDetail";
+import SupplierForm from "./features/suppliers/components/SupplierForm";
+import SupplierProducts from "./features/suppliers/pages/SupplierProducts";
+import SupplierDebt from "./features/suppliers/pages/SupplierDebt";
 import InventoryManagement from "./features/inventory/pages/InventoryManagementPage";
 import InventoryTransfer from "./features/inventory/components/InventoryTransfer";
 import InventoryNotifications from "./features/inventory/components/InventoryNotifications";
@@ -42,19 +33,13 @@ import GlobalReturnCreate from "./features/transactions/pages/GlobalReturnCreate
 import InvoiceManagement from "./features/invoices/pages/InvoiceManagementPage";
 import InvoiceDetail from "./features/invoices/pages/InvoiceDetailPage";
 import InvoiceCreate from "./features/invoices/pages/InvoiceCreatePage";
-
-// Kredit Notifikasi Pages
-import KreditNotifikasiPage from "./pages/KreditNotifikasiPage";
-import KreditNotifikasiDetailPage from "./pages/KreditNotifikasiDetailPage";
-// import GlobalReturns from "./pages/superadmin/GlobalReturns";
-
-// Report Pages
-import ReportIndex from "./pages/superadmin/reports/index";
-import SalesReport from "./pages/superadmin/reports/SalesReport";
-import FinanceReport from "./pages/superadmin/reports/FinanceReport";
-import InventoryReport from "./pages/superadmin/reports/InventoryReport";
-import BranchReport from "./pages/superadmin/reports/BranchReport";
-
+import KreditNotifikasiPage from "@features/credit/pages/KreditNotifikasiPage";
+import KreditNotifikasiDetailPage from "@features/credit/pages/KreditNotifikasiDetailPage";
+import ReportIndex from "@features/reports/pages/index";
+import SalesReport from "@features/reports/pages/SalesReport";
+import FinanceReport from "@features/reports/pages/FinanceReport";
+import InventoryReport from "@features/reports/pages/InventoryReport";
+import BranchReport from "@features/reports/pages/BranchReport";
 import PromoManagement from "./features/promos/pages/PromoManagementPage";
 import DiscountManagement from "./features/discounts/pages/DiscountManagementPage";
 import PromoForm from "./features/promos/components/PromoForm";
@@ -63,53 +48,24 @@ import TaxSettings from "./features/settings/pages/TaxSettingsPage";
 import ReceiptSettings from "./features/settings/pages/ReceiptSettingsPage";
 import NotificationSettings from "./features/settings/pages/NotificationSettingsPage";
 import AuditLog from "./features/audit/pages/AuditLogPage";
-import CustomerManagement from "./pages/superadmin/CustomerManagement";
-import CustomerDetail from "./pages/superadmin/CustomerDetail";
-import CustomerForm from "./pages/superadmin/CustomerForm";
-import CustomerSegmentation from "./pages/superadmin/CustomerSegmentation";
+import CustomerManagement from "./features/customers/pages/CustomerManagementPage";
+import CustomerDetail from "./features/customers/pages/CustomerDetail";
+import CustomerForm from "./features/customers/components/CustomerForm";
+import CustomerSegmentation from "./features/customers/pages/CustomerSegmentation";
 import LoyaltyProgram from "./features/loyalty/pages/LoyaltyProgramPage";
 
-// AdminCabang Pages
-// import AdminCabangDashboard from "./pages/admincabang/AdminCabangDashboard";
-// import BranchProducts from "./pages/admincabang/BranchProducts";
-// import BranchProductRequests from "./pages/admincabang/BranchProductRequests";
-// import CustomerManagement from "./pages/admincabang/CustomerManagement";
-// import CustomerLoyalty from "./pages/admincabang/CustomerLoyalty";
-// import ShiftManagement from "./pages/admincabang/ShiftManagement";
-// import ShiftReports from "./pages/admincabang/ShiftReports";
-// import BranchPOS from "./pages/admincabang/BranchPOS";
-// import BranchTransactions from "./pages/admincabang/BranchTransactions";
-// import BranchReturns from "./pages/admincabang/BranchReturns";
-// import BranchSalesReports from "./pages/admincabang/BranchSalesReports";
-// import BranchInventoryReports from "./pages/admincabang/BranchInventoryReports";
-// import BranchPaymentReports from "./pages/admincabang/BranchPaymentReports";
-// import BranchSuppliers from "./pages/admincabang/BranchSuppliers";
-// import BranchSupplierOrders from "./pages/admincabang/BranchSupplierOrders";
-// import BranchInventoryNotifications from "./pages/admincabang/BranchInventoryNotifications";
-// import BranchInventoryAdjustment from "./pages/admincabang/BranchInventoryAdjustment";
-// import BranchTaxSettings from "./pages/admincabang/BranchTaxSettings";
-// import BranchReceiptSettings from "./pages/admincabang/BranchReceiptSettings";
 
-// Kasir Pages
-// import KasirDashboard from "./pages/kasir/KasirDashboard";
-import PointOfSale from "./pages/kasir/PointOfSale";
-// import KasirCustomers from "./pages/kasir/KasirCustomers";
-// import AddCustomer from "./pages/kasir/AddCustomer";
-// import OpenShift from "./pages/kasir/OpenShift";
-// import CloseShift from "./pages/kasir/CloseShift";
-// import KasirTransactions from "./pages/kasir/KasirTransactions";
-// import KasirPromos from "./pages/kasir/KasirPromos";
-// import KasirReturns from "./pages/kasir/KasirReturns";
-// import KasirStock from "./pages/kasir/KasirStock";
+
+
 
 // Other Components
-import NotFoundPage from "./pages/notfound/NotFoundPage";
-import SearchResults from "./pages/SearchResults";
-import NoAccessPage from "./pages/NoAccessPage";
+import NotFoundPage from "./features/common/pages/NotFoundPage";
+import SearchResults from "./features/common/pages/SearchResults";
+import NoAccessPage from "./features/auth/pages/NoAccessPage";
 
 // Route Protection Components
-import ProtectedRoute from "./routes/ProtectedRoute";
-import WithoutAuth from "./routes/WithoutAuth";
+import ProtectedRoute from "./app/router/ProtectedRoute";
+import WithoutAuth from "./app/router/WithoutAuth";
 import { UserManagementPage as UserManagement } from "./features/users";
 import UserDetail from "./features/users/pages/UserDetailPage";
 import UserRoles from "./features/users/pages/UserRolesPage";
@@ -117,15 +73,14 @@ import { ProductManagementPage as ProductManagement } from "./features/products"
 import { CategoryManagementPage as CategoryManagement } from "./features/categories";
 import ProductRequestManagement from "./features/products/pages/ProductRequestManagementPage";
 
-// Admin Cabang Shift Management Pages
-import ShiftManagement from "./pages/admincabang/ShiftManagement";
-import ShiftReports from "./pages/admincabang/ShiftReports";
-import ShiftDetail from "./pages/admincabang/ShiftDetail";
-import ShiftForm from "./pages/admincabang/ShiftForm";
+import ShiftManagement from "./features/cabang/pages/ShiftManagement";
+import ShiftReports from "./features/cabang/pages/ShiftReports";
+import ShiftDetail from "./features/cabang/pages/ShiftDetail";
+import ShiftForm from "./features/cabang/pages/ShiftForm";
 
 // Profile and Settings Pages
-import ProfilePage from "./pages/ProfilePage";
-import SettingsPage from "./pages/SettingsPage";
+import ProfilePage from "./features/settings/pages/ProfilePage";
+import SettingsPage from "./features/settings/pages/SettingsPage";
 
 // Add new imports for ProductMaster components
 import ProductMasterList from "./features/products/pages/ProductMasterListPage";
@@ -191,9 +146,7 @@ function App() {
           <Route
             path="/search"
             element={
-              <ProtectedRoute
-                allowedRoles={["super_admin", "admin_cabang", "kasir"]}
-              >
+              <ProtectedRoute>
                 <SearchResults />
               </ProtectedRoute>
             }
@@ -248,7 +201,7 @@ function App() {
           <Route
             path="/profile"
             element={
-              <ProtectedRoute allowedRoles={["super_admin", "admin_cabang", "kasir", "manajer", "gudang", "staff"]}>
+              <ProtectedRoute>
                 <DynamicLayout />
               </ProtectedRoute>
             }
@@ -259,7 +212,7 @@ function App() {
           <Route
             path="/settings"
             element={
-              <ProtectedRoute allowedRoles={["super_admin", "admin_cabang", "kasir", "manajer", "gudang"]}>
+              <ProtectedRoute requiredPermission="settings:read">
                 <DynamicLayout />
               </ProtectedRoute>
             }
@@ -276,7 +229,7 @@ function App() {
           <Route
             path="/cabang"
             element={
-              <ProtectedRoute allowedRoles={["super_admin"]}>
+              <ProtectedRoute requiredPermission="cabang:read">
                 <DynamicLayout />
               </ProtectedRoute>
             }
@@ -289,7 +242,7 @@ function App() {
           <Route
             path="/users"
             element={
-              <ProtectedRoute allowedRoles={["super_admin"]}>
+              <ProtectedRoute requiredPermission="user:read">
                 <DynamicLayout />
               </ProtectedRoute>
             }
@@ -303,7 +256,7 @@ function App() {
           <Route
             path="/produk"
             element={
-              <ProtectedRoute allowedRoles={["super_admin", "admin_cabang", "manajer", "gudang"]}>
+              <ProtectedRoute requiredPermission="produk:read">
                 <DynamicLayout />
               </ProtectedRoute>
             }
@@ -318,7 +271,7 @@ function App() {
           <Route
             path="/product-master"
             element={
-              <ProtectedRoute allowedRoles={["super_admin"]}>
+              <ProtectedRoute requiredPermission="produk:read">
                 <DynamicLayout />
               </ProtectedRoute>
             }
@@ -333,7 +286,7 @@ function App() {
           <Route
             path="/suppliers"
             element={
-              <ProtectedRoute allowedRoles={["super_admin", "admin_cabang", "manajer", "gudang"]}>
+              <ProtectedRoute requiredPermission="supplier:read">
                 <DynamicLayout />
               </ProtectedRoute>
             }
@@ -351,7 +304,7 @@ function App() {
           <Route
             path="/purchases"
             element={
-              <ProtectedRoute allowedRoles={["super_admin", "admin_cabang", "manajer"]}>
+              <ProtectedRoute requiredPermission="pembelian:read">
                 <DynamicLayout />
               </ProtectedRoute>
             }
@@ -364,7 +317,7 @@ function App() {
           <Route
             path="/customers"
             element={
-              <ProtectedRoute allowedRoles={["super_admin", "admin_cabang", "kasir", "manajer"]}>
+              <ProtectedRoute requiredPermission="pelanggan:read">
                 <DynamicLayout />
               </ProtectedRoute>
             }
@@ -381,7 +334,7 @@ function App() {
           <Route
             path="/inventory"
             element={
-              <ProtectedRoute allowedRoles={["super_admin", "admin_cabang", "gudang"]}>
+              <ProtectedRoute requiredPermission="inventory:read">
                 <DynamicLayout />
               </ProtectedRoute>
             }
@@ -398,21 +351,21 @@ function App() {
 
           {/* Point of Sale */}
           <Route
-            path="/pos"
+            path="/kasir/pos"
             element={
-              <ProtectedRoute allowedRoles={["super_admin", "admin_cabang", "kasir"]}>
+              <ProtectedRoute requiredPermission="pos:read">
                 <DynamicLayout />
               </ProtectedRoute>
             }
           >
-            <Route index element={<PointOfSale />} />
+            <Route index element={<GlobalPOS />} />
           </Route>
 
           {/* Transactions */}
           <Route
             path="/transactions"
             element={
-              <ProtectedRoute allowedRoles={["super_admin", "admin_cabang", "kasir"]}>
+              <ProtectedRoute requiredPermission="transaksi_global:read">
                 <DynamicLayout />
               </ProtectedRoute>
             }
@@ -427,7 +380,7 @@ function App() {
           <Route
             path="/invoices"
             element={
-              <ProtectedRoute allowedRoles={["super_admin", "admin_cabang"]}>
+              <ProtectedRoute requiredPermission="invoice:read">
                 <DynamicLayout />
               </ProtectedRoute>
             }
@@ -441,7 +394,7 @@ function App() {
           <Route
             path="/kredit-notifikasi"
             element={
-              <ProtectedRoute allowedRoles={["super_admin", "admin_cabang"]}>
+              <ProtectedRoute requiredPermission="kredit_notification:read">
                 <DynamicLayout />
               </ProtectedRoute>
             }
@@ -454,7 +407,7 @@ function App() {
           <Route
             path="/reports"
             element={
-              <ProtectedRoute allowedRoles={["super_admin", "admin_cabang", "manajer"]}>
+              <ProtectedRoute requiredPermission="laporan:read">
                 <DynamicLayout />
               </ProtectedRoute>
             }
@@ -470,7 +423,7 @@ function App() {
           <Route
             path="/promos"
             element={
-              <ProtectedRoute allowedRoles={["super_admin", "admin_cabang", "manajer"]}>
+              <ProtectedRoute requiredPermission="promo:read">
                 <DynamicLayout />
               </ProtectedRoute>
             }
@@ -487,7 +440,7 @@ function App() {
           <Route
             path="/stock-transfer-approval"
             element={
-              <ProtectedRoute allowedRoles={["super_admin"]}>
+              <ProtectedRoute requiredPermission="stock_transfer:manage">
                 <DynamicLayout />
               </ProtectedRoute>
             }
@@ -499,7 +452,7 @@ function App() {
           <Route
             path="/shifts"
             element={
-              <ProtectedRoute allowedRoles={["admin_cabang", "kasir"]}>
+              <ProtectedRoute requiredPermission="shift:read">
                 <DynamicLayout />
               </ProtectedRoute>
             }

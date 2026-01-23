@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../features/auth/hooks/useAuth.js";
-import { useCabang } from "../../../features/cabang/hooks/useCabang";
+import { useCabang } from "@features/cabang/hooks/useCabang";
 import toast, { Toaster } from "react-hot-toast";
 import {
   useProductsByBranch,
@@ -45,11 +45,11 @@ import {
   usePopularProducts,
   useProductSearch,
   useSearchHistory,
-} from "../../../hooks/usePosQueries";
-import useKeyboardShortcuts from "../../../hooks/useKeyboardShortcuts";
-import useFrequentProducts from "../../../hooks/useFrequentProducts";
-import useModalManager from "../../../hooks/useModalManager";
-import useKeyboardManager from "../../../hooks/useKeyboardManager";
+} from "../hooks/usePosQueries";
+import useKeyboardShortcuts from "@common/hooks/useKeyboardShortcuts";
+import useFrequentProducts from "../../products/hooks/useFrequentProducts"
+import useModalManager from "@common/hooks/useModalManager";
+import useKeyboardManager from "@common/hooks/useKeyboardManager";
 
 // Utility function to format currency
 const formatCurrency = (amount) => {

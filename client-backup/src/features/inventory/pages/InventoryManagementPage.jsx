@@ -37,9 +37,9 @@ import { toast } from "react-hot-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { stockAdjustmentSchema } from "../validation/InventoryValidation";
-import useInventoryQueries from "../../../hooks/useInventoryQueries";
+import useInventoryQueries from "../hooks/useInventoryQueries";
 import { useQueryClient } from "@tanstack/react-query";
-import useInventoryMutations from "../../../hooks/useInventoryMutations";
+import useInventoryMutations from "../hooks/useInventoryMutations";
 import { useCabangList } from "../../../features/cabang/hooks/useCabangQueries";
 
 // In a real application, you would import the actual service

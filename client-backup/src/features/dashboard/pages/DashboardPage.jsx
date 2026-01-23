@@ -1,14 +1,14 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { BarChart2, ShoppingBag, TrendingUp, CreditCard, DollarSign, Box } from 'lucide-react';
 import { useDashboardWidgets } from '../hooks/useDashboardWidgets';
-import { useCabang } from '../../cabang/hooks/useCabang';
-import { useAuth } from '../../auth/hooks/useAuth';
+import { useCabang } from '@features/cabang/hooks/useCabang';
+import { useAuth } from '@features/auth/hooks/useAuth';
 import { getDashboardData } from '../services/dashboardService';
 import { WIDGET_TYPES } from '../config/WidgetRegistry';
 import LoadingDashboard from '../components/LoadingDashboard';
 import ErrorDashboard from '../components/ErrorDashboard';
-import CabangIndicator from '../../cabang/components/CabangIndicator';
-import formatCurrency from '../../../utils/formatCurrency';
+import CabangIndicator from '@features/cabang/components/CabangIndicator';
+import formatCurrency from '@common/utils/formatCurrency';
 
 // Icon mapping for dynamic icon rendering
 const ICON_MAP = {

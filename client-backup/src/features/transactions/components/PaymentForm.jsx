@@ -5,9 +5,9 @@ import * as z from "zod";
 import { X, CreditCard, DollarSign } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import transaksiService from "../../services/transaksiService";
-import { formatCurrency } from "../../utils/format";
-import Spinner from "../../features/common/Spinner";
+import transaksiService from "../../../services/transaksiService";
+import formatCurrency from "@common/utils/formatCurrency";
+import Spinner from "../../common/Spinner";
 
 // Schema validasi
 const paymentFormSchema = z.object({

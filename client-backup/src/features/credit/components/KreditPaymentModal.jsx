@@ -5,13 +5,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "../ui/dialog";
-import { Button } from "../ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Badge } from "../ui/badge";
+} from "@common/components/ui/dialog";
+import { Button } from "@common/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@common/components/ui/card";
+import { Badge } from "@common/components/ui/badge";
 import { Loader2, AlertCircle, CheckCircle, XCircle } from "lucide-react";
-import { formatRupiah } from "../../utils/formatter";
-import { useKreditPaymentRecommendation, useCreateKreditTransaction } from "../../hooks/useKreditRekomendasiQueries";
+import { formatRupiah } from "@common/utils/formatter";
+import { useKreditPaymentRecommendation, useCreateKreditTransaction } from "@common/hooks/useKreditRekomendasiQueries";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,18 +22,11 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
-import { Input } from "../ui/input";
-import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
+} from "@common/components/ui/form"
+import { Input } from "@common/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@common/components/ui/radio-group";
 import { toast } from "react-hot-toast";
-import { Alert, AlertDescription } from "../ui/alert";
+import { Alert, AlertDescription } from "@common/components/ui/alert";
 
 const kreditTransactionSchema = z.object({
   transaksi_id: z.string(),

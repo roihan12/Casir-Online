@@ -23,10 +23,10 @@ import {
 import Spinner from "../../../features/common/Spinner";
 import Pagination from "../../../features/common/Pagination";
 import { useCabangList } from "../../../features/cabang/hooks/useCabangQueries";
-import { useBatchManagement } from "../../../hooks/useBatchManagement";
-import useProdukQueries from "../../../hooks/useProdukQueries";
+import { useBatchManagement } from "../hooks/useBatchManagement";
+import useProdukQueries from "../../products/hooks/useProdukQueries";
 import { toast } from "react-hot-toast";
-import api from "../../../services/api";
+import api from "@common/utils/api";
 
 // Batch creation schema validation
 const batchSchema = z.object({
