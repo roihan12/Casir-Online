@@ -130,17 +130,17 @@ const ProductMasterList = () => {
 
   // Handle add new product master
   const handleAddProduct = () => {
-    navigate("/superadmin/product-master/create");
+    navigate("/product-master/create");
   };
 
   // Handle edit product master
   const handleEditProduct = (id) => {
-    navigate(`/superadmin/product-master/edit/${id}`);
+    navigate(`/product-master/edit/${id}`);
   };
 
   // Handle view product master
   const handleViewProduct = (id) => {
-    navigate(`/superadmin/product-master/view/${id}`);
+    navigate(`/product-master/view/${id}`);
   };
 
   // Handle delete product master

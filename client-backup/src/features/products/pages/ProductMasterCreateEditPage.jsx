@@ -74,7 +74,7 @@ const ProductMasterCreateEdit = () => {
       }
 
       // Navigate back to product list
-      navigate("/superadmin/product-master");
+      navigate("/product-master");
     } catch (error) {
       console.error("Error saving product:", error);
       throw error;
@@ -83,7 +83,7 @@ const ProductMasterCreateEdit = () => {
 
   // Handle cancel
   const handleCancel = () => {
-    navigate("/superadmin/product-master");
+    navigate("/product-master");
   };
 
   // Loading state
@@ -105,7 +105,7 @@ const ProductMasterCreateEdit = () => {
           message={`Gagal memuat data: ${error?.message || "Unknown error"}`}
         />
         <button
-          onClick={() => navigate("/superadmin/product-master")}
+          onClick={() => navigate("/product-master")}
           className="mt-4 text-blue-600 hover:text-blue-800 flex items-center"
         >
           <ArrowLeft className="h-4 w-4 mr-2" /> Kembali ke Daftar Produk

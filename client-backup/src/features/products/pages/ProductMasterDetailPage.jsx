@@ -50,7 +50,7 @@ const ProductMasterDetail = () => {
 
   // Handle edit product
   const handleEdit = () => {
-    navigate(`/superadmin/product-master/edit/${id}`);
+    navigate(`/product-master/edit/${id}`);
   };
 
   // Handle delete product
@@ -59,7 +59,7 @@ const ProductMasterDetail = () => {
       try {
         await deleteMutation.mutateAsync(id);
         toast.success("Produk berhasil dihapus");
-        navigate("/superadmin/product-master");
+        navigate("/product-master");
       } catch (error) {
         toast.error(`Gagal menghapus produk: ${error.message}`);
       }
@@ -68,7 +68,7 @@ const ProductMasterDetail = () => {
 
   // Handle go back
   const handleBack = () => {
-    navigate("/superadmin/product-master");
+    navigate("/product-master");
   };
 
   // Loading state
