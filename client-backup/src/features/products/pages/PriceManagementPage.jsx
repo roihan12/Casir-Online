@@ -69,7 +69,7 @@ const PriceManagement = () => {
 
   // Queries
   const { data: cabangListData, isLoading: isCabangLoading } = useCabangList();
-  const { useUpdateProductPrice, usePriceHistory } = usePriceManagement();
+  const { useUpdateProductPrice, usePriceHistory } = usePriceManagementQueries();
   const updatePriceMutation = useUpdateProductPrice();
   const { data: priceHistoryData, isLoading: isPriceHistoryLoading } = usePriceHistory(
     selectedProduct?.id,
@@ -380,6 +380,19 @@ const PriceManagement = () => {
                           )}
                         </button>
                       </th>
+                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <button 
+                          className="flex items-center" 
+                          onClick={() => handleSort("hargaGrosir")}
+                        >
+                          Harga Grosir
+                          {sortField === "hargaGrosir" && (
+                            sortDirection === "asc" ? 
+                              <ArrowUp size={14} className="ml-1" /> : 
+                              <ArrowDown size={14} className="ml-1" />
+                          )}
+                        </button>
+                      </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         <button 
                           className="flex items-center" 
@@ -434,6 +447,9 @@ const PriceManagement = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {formatCurrency(product.hargaJual)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatCurrency(product.hargaGrosir)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {formatCurrency(product.hargaBeli)}

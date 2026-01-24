@@ -448,12 +448,12 @@ const InventoryManagement = ({ cabangData }) => {
 
   // Handle inventory transfer
   const handleNavigateToTransfer = () => {
-    navigate("/superadmin/inventory/transfer");
+    navigate("/inventory/transfer");
   };
 
   // Handle inventory notifications
   const handleNavigateToNotifications = () => {
-    navigate("/superadmin/inventory/notifications");
+    navigate("/inventory/notifications");
   };
 
   // Format currency
@@ -1205,9 +1205,7 @@ const InventoryManagement = ({ cabangData }) => {
                         <button
                           onClick={() => {
                             /* View product details */
-                            navigate(
-                              `/superadmin/inventory/product/${item.id}`
-                            );
+                            navigate(`/inventory/product/${item.id}`);
                           }}
                           className="text-indigo-600 hover:text-indigo-900"
                           title="Lihat detail"
@@ -1224,9 +1222,7 @@ const InventoryManagement = ({ cabangData }) => {
                         <button
                           onClick={() => {
                             /* Create movement history */
-                            navigate(
-                              `/superadmin/inventory/movements?productId=${item.id}`
-                            );
+                            navigate(`/inventory/movements?productId=${item.id}`);
                           }}
                           className="text-green-600 hover:text-green-900"
                           title="Riwayat pergerakan"
