@@ -30,10 +30,11 @@ import {
   Printer,
   Maximize,
   Minimize,
+  MapPin,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../features/auth/hooks/useAuth.js";
-import { useCabang } from "@features/cabang/hooks/useCabang";
+import { useCabang, GLOBAL_CABANG_ID } from "@features/cabang/hooks/useCabang";
 import toast, { Toaster } from "react-hot-toast";
 import {
   useProductsByBranch,
@@ -83,107 +84,97 @@ const ProductsSection = ({
   isFrequentProductsView = false,
 }) => {
   return (
-    <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg">
+    <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-100 min-h-[500px]">
       {loading ? (
-        <div className="flex flex-col items-center justify-center h-60">
-          <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-          <p className="mt-4 text-gray-500">Memuat produk...</p>
+        <div className="flex flex-col items-center justify-center h-80">
+          <div className="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+          <p className="mt-4 text-gray-500 font-medium">Memuat katalog produk...</p>
         </div>
       ) : products?.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-60 text-gray-500">
+        <div className="flex flex-col items-center justify-center h-80 text-gray-400">
           {isFrequentProductsView ? (
             <>
-              <Star size={48} className="mb-4 opacity-30" />
-              <p className="text-lg font-medium">
-                Belum ada produk yang sering digunakan
-              </p>
-              <p className="text-sm mt-2">
-                Produk akan muncul disini setelah sering digunakan dalam
-                transaksi
+              <Star size={48} className="mb-4 opacity-20" />
+              <p className="text-lg font-semibold">Belum ada favorit</p>
+              <p className="text-sm mt-1 text-center max-w-xs">
+                Produk yang sering Anda transaksikan akan muncul secara otomatis di sini.
               </p>
             </>
           ) : (
             <>
-              <Package size={48} className="mb-4 opacity-30" />
-              <p className="text-lg font-medium">Tidak ada produk ditemukan</p>
-              <p className="text-sm mt-2">
-                Coba pilih kategori lain atau cari dengan kata kunci berbeda
-              </p>
+              <Package size={48} className="mb-4 opacity-20" />
+              <p className="text-lg font-semibold">Produk tidak ditemukan</p>
+              <p className="text-sm mt-1">Coba gunakan kata kunci lain atau pilih kategori</p>
             </>
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
           {products.map((product) => {
-            // Get category info for styling
             const categoryId = product.produkMaster?.kategori?.id;
             const categoryColor = categoryId
-              ? categoryColors[categoryId] || "#374151"
-              : "#374151";
-
-            // Get product image or fallback to placeholder
+              ? categoryColors[categoryId % categoryColors.length]
+              : "bg-gray-500";
             const productImage = product.produkMaster?.produkImage?.[0]?.url;
 
             return (
               <div
                 key={product.id}
-                className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100 hover:shadow-lg hover:border-blue-300 transition-all duration-200 cursor-pointer transform hover:-translate-y-1"
+                className="group bg-white rounded-xl border border-gray-100 hover:border-indigo-400 hover:shadow-xl hover:shadow-indigo-500/5 transition-all duration-300 cursor-pointer flex flex-col h-full overflow-hidden relative"
                 onClick={() => addToCart(product)}
               >
-                <div className="h-36 bg-gray-100 flex items-center justify-center overflow-hidden">
+                {/* Product Image / Icon */}
+                <div className="h-32 bg-gray-50 flex items-center justify-center relative overflow-hidden group-hover:bg-indigo-50/30 transition-colors">
                   {productImage ? (
                     <img
                       src={productImage}
                       alt={product.produkMaster.namaProduk}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
                   ) : (
-                    <div className="p-4 flex items-center justify-center h-full w-full">
-                      <Package size={48} className="text-gray-300" />
+                    <div className="p-4 flex items-center justify-center text-gray-300 group-hover:text-indigo-200 transition-colors">
+                      <Package size={40} strokeWidth={1.5} />
                     </div>
                   )}
+                  
+                  {/* Stock Badge */}
+                  <div className="absolute top-2 right-2">
+                    <span className={`text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wider backdrop-blur-sm ${
+                      product.stok <= (product.minStok || 0) 
+                        ? "bg-red-500/90 text-white" 
+                        : "bg-white/90 text-gray-600 shadow-sm border border-gray-100"
+                    }`}>
+                      {product.stok <= (product.minStok || 0) ? "Low Stock" : `Stock: ${product.stok}`}
+                    </span>
+                  </div>
                 </div>
-                <div className="p-3">
-                  <div className="mb-1 flex items-start gap-1">
-                    {isFrequentProductsView && (
-                      <Star
-                        size={14}
-                        className="text-yellow-500 mt-1 flex-shrink-0"
-                      />
-                    )}
+
+                {/* Product Info */}
+                <div className="p-3 flex flex-col flex-1">
+                  <div className="mb-2">
                     {product.produkMaster?.kategori && (
-                      <span
-                        className="text-xs px-2 py-1 rounded-full text-white font-medium truncate"
-                        style={{ backgroundColor: categoryColor }}
-                      >
+                      <span className={`text-[9px] px-2 py-0.5 rounded uppercase font-bold text-white bg-indigo-500/80`}>
                         {product.produkMaster.kategori.namaKategori}
                       </span>
                     )}
-                    {product.stok <= (product.minStok || 0) && (
-                      <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700 font-medium">
-                        Stok Rendah
-                      </span>
-                    )}
                   </div>
-                  <h3 className="font-medium text-gray-900 line-clamp-2 h-12">
+                  
+                  <h3 className="text-sm font-bold text-gray-800 line-clamp-2 leading-tight flex-1 mb-2">
                     {product.produkMaster?.namaProduk || "Unnamed Product"}
                   </h3>
-                  <div className="mt-2">
-                    <div className="text-sm text-gray-500 flex justify-between">
-                      <span>Stok: {product.stok}</span>
-                      <span>{product.produkMaster?.satuan || "pcs"}</span>
-                    </div>
-                    <div className="mt-1 flex justify-between items-end">
-                      <div className="text-lg font-bold text-blue-600">
-                        {formatCurrency(product.hargaJual)}
-                      </div>
-                      {product.hargaGrosir && (
-                        <div className="text-xs text-gray-500">
-                          Grosir: {formatCurrency(product.hargaGrosir)}
-                        </div>
-                      )}
+                  
+                  <div className="mt-auto">
+                    <div className="text-sm font-black text-indigo-600 bg-indigo-50 inline-block px-2 py-1 rounded-lg">
+                      {formatCurrency(product.hargaJual)}
                     </div>
                   </div>
+                </div>
+                
+                {/* Hover Add Overlay */}
+                <div className="absolute inset-0 bg-indigo-600/0 group-hover:bg-indigo-600/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                   <div className="bg-white p-2 rounded-full shadow-lg transform scale-50 group-hover:scale-100 transition-transform">
+                     <Plus className="text-indigo-600" size={20} />
+                   </div>
                 </div>
               </div>
             );
@@ -203,51 +194,45 @@ const CategoriesSection = ({
   fetchFrequentProducts,
 }) => {
   return (
-    <div className="bg-white border-b border-gray-200">
-      <div className="px-4 py-2 flex items-center overflow-x-auto scrollbar-hide">
+    <div className="bg-gray-50/50 border-b border-gray-100 px-4 py-3 flex items-center gap-3 overflow-x-auto no-scrollbar">
+      <button
+        onClick={() => setSelectedCategory(null)}
+        className={`flex-shrink-0 px-5 py-2 rounded-xl text-sm font-bold transition-all ${
+          selectedCategory === null && !showFrequentProducts
+            ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-105"
+            : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 shadow-sm"
+        }`}
+      >
+        Semua Produk
+      </button>
+
+      <button
+        onClick={fetchFrequentProducts}
+        className={`flex-shrink-0 px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${
+          showFrequentProducts
+            ? "bg-amber-500 text-white shadow-lg shadow-amber-200 scale-105"
+            : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 shadow-sm"
+        }`}
+      >
+        <Star size={16} fill={showFrequentProducts ? "white" : "transparent"} strokeWidth={2.5} />
+        Favorit
+      </button>
+
+      <div className="w-px h-6 bg-gray-200 mx-1" />
+
+      {categories.map((category) => (
         <button
-          onClick={() => setSelectedCategory(null)}
-          className={`shrink-0 px-4 py-2 mr-2 rounded-lg font-medium ${
-            selectedCategory === null
-              ? "bg-blue-600 text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          key={category.id}
+          onClick={() => setSelectedCategory(category.id)}
+          className={`flex-shrink-0 px-5 py-2 rounded-xl text-sm font-bold transition-all ${
+            selectedCategory === category.id
+              ? "bg-white text-indigo-700 border-2 border-indigo-600 shadow-sm scale-105"
+              : "bg-white text-gray-600 border border-gray-200 hover:border-indigo-300 hover:text-indigo-600 shadow-sm"
           }`}
         >
-          Semua
+          {category.namaKategori}
         </button>
-
-        <button
-          onClick={fetchFrequentProducts}
-          className={`shrink-0 px-4 py-2 mr-2 rounded-lg font-medium ${
-            showFrequentProducts
-              ? "bg-yellow-500 text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-          }`}
-        >
-          <Star size={14} className="inline-block mr-1" />
-          Sering Digunakan
-        </button>
-
-        {categories.map((category) => (
-          <button
-            key={category.id}
-            onClick={() => setSelectedCategory(category.id)}
-            className={`shrink-0 px-4 py-2 mr-2 rounded-lg font-medium ${
-              selectedCategory === category.id
-                ? `text-white`
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-            style={{
-              backgroundColor:
-                selectedCategory === category.id
-                  ? categoryColors[category.id % categoryColors.length] || "#374151"
-                  : "",
-            }}
-          >
-            {category.namaKategori}
-          </button>
-        ))}
-      </div>
+      ))}
     </div>
   );
 };
@@ -267,117 +252,128 @@ const SearchBar = ({
   inputRef,
 }) => {
   return (
-    <div className="px-4 pt-4 pb-2 relative bg-gradient-to-r from-blue-50 to-indigo-50">
-      <div className="flex items-center relative">
-        <div className="w-full relative">
-          <input
-            ref={inputRef}
-            type="text"
-            placeholder="Cari produk..."
-            className="w-full px-4 py-3 pr-10 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            value={productSearch}
-            onChange={(e) => {
-              setProductSearch(e.target.value);
-              if (e.target.value) {
-                setShowAutocomplete(true);
-                setShowSearchHistory(false);
-              } else {
-                setShowAutocomplete(false);
-              }
-            }}
-            onFocus={() => {
-              if (!productSearch) {
-                setShowSearchHistory(true);
-              } else if (productSearch.length > 1) {
-                setShowAutocomplete(true);
-              }
-            }}
-          />
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-            {isLoading ? (
-              <div className="w-5 h-5 border-2 border-t-blue-500 rounded-full animate-spin"></div>
-            ) : (
-              <Search size={20} />
-            )}
-          </div>
+    <div className="px-6 py-5 bg-white border-b border-gray-100">
+      <div className="relative group">
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors">
+          {isLoading ? (
+            <div className="w-5 h-5 border-2 border-t-indigo-500 rounded-full animate-spin"></div>
+          ) : (
+            <Search size={22} strokeWidth={2.5} />
+          )}
+        </div>
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder="Cari produk dengan nama, SKU, atau Barcode... [F2]"
+          className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:bg-white focus:border-indigo-400 transition-all text-lg font-medium"
+          value={productSearch}
+          onChange={(e) => {
+            setProductSearch(e.target.value);
+            if (e.target.value) {
+              setShowAutocomplete(true);
+              setShowSearchHistory(false);
+            } else {
+              setShowAutocomplete(false);
+            }
+          }}
+          onFocus={() => {
+            if (!productSearch) {
+              setShowSearchHistory(true);
+            } else if (productSearch.length > 1) {
+              setShowAutocomplete(true);
+            }
+          }}
+        />
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+           <kbd className="hidden sm:inline-block px-2 py-1 bg-white border border-gray-200 rounded-lg text-[10px] font-black text-gray-400 shadow-sm">
+             F2
+           </kbd>
         </div>
       </div>
 
-      {/* Dropdown for search history and autocomplete */}
+      {/* Autocomplete Dropdown */}
       {(showSearchHistory || showAutocomplete) && (
-        <div className="absolute z-20 top-full left-4 right-4 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 max-h-96 overflow-y-auto">
+        <div className="absolute z-50 top-full left-6 right-6 mt-2 bg-white rounded-2xl shadow-2xl shadow-indigo-900/10 border border-gray-100 max-h-[450px] overflow-hidden flex flex-col">
           {showSearchHistory && searchHistory.length > 0 && (
-            <div className="p-2">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="text-sm font-medium text-gray-700">
+            <div className="p-4 border-b border-gray-50 bg-gray-50/50">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">
                   Riwayat Pencarian
                 </h3>
                 <button
-                  className="text-xs text-gray-500 hover:text-gray-700"
+                  className="text-xs font-bold text-red-500 hover:text-red-600 transition-colors"
                   onClick={() => clearHistory()}
                 >
-                  Hapus riwayat
+                  Clear
                 </button>
               </div>
-              <div className="space-y-1">
+              <div className="flex flex-wrap gap-2">
                 {searchHistory.map((item, index) => (
-                  <div
+                  <button
                     key={index}
-                    className="flex items-center px-3 py-2 hover:bg-gray-100 rounded-md cursor-pointer"
-                    onClick={() => {
+                    className="flex items-center px-3 py-1.5 bg-white border border-gray-200 rounded-full hover:border-indigo-400 hover:text-indigo-600 transition-all text-sm font-medium text-gray-700 shadow-sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setProductSearch(item);
                       setShowSearchHistory(false);
                       setShowAutocomplete(true);
                     }}
                   >
-                    <Clock size={16} className="mr-2 text-gray-400" />
-                    <span className="text-gray-700">{item}</span>
-                  </div>
+                    <Clock size={14} className="mr-1.5 opacity-50" />
+                    {item}
+                  </button>
                 ))}
               </div>
             </div>
           )}
 
           {showAutocomplete && searchResults && searchResults.length > 0 && (
-            <div className="p-2">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">
+            <div className="flex-1 overflow-y-auto p-2">
+              <div className="px-3 py-2 text-xs font-black uppercase tracking-widest text-gray-400 mb-1">
                 Hasil Pencarian
-              </h3>
+              </div>
               <div className="space-y-1">
                 {searchResults.map((product) => (
-                  <div
+                  <button
                     key={product.id}
-                    className="flex items-center px-3 py-2 hover:bg-gray-100 rounded-md cursor-pointer"
+                    className="w-full flex items-center px-3 py-3 hover:bg-indigo-50 rounded-xl transition-all group text-left"
                     onClick={() => {
                       addToCart(product);
                       setShowAutocomplete(false);
+                      setProductSearch("");
                     }}
                   >
-                    <div className="w-10 h-10 rounded-md bg-gray-200 mr-3 overflow-hidden">
-                      {product.image_url ? (
+                    <div className="w-12 h-12 rounded-xl bg-gray-100 mr-4 overflow-hidden shadow-inner flex-shrink-0">
+                      {product.produkMaster?.produkImage?.[0]?.url ? (
                         <img
-                          src={product.produkImage[0].filePath}
+                          src={product.produkMaster.produkImage[0].url}
                           alt={product.produkMaster.namaProduk}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <LayoutGrid size={16} className="text-gray-400" />
+                        <div className="w-full h-full flex items-center justify-center text-gray-300">
+                          <Package size={24} />
                         </div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {product.produkMaster.namaProduk}
+                      <p className="text-sm font-bold text-gray-900 truncate group-hover:text-indigo-700 transition-colors">
+                        {product.produkMaster?.namaProduk}
                       </p>
-                      <p className="text-sm text-gray-500 truncate">
-                        {formatCurrency(product.hargaJual)}
-                      </p>
+                      <div className="flex items-center gap-3">
+                         <p className="text-sm font-black text-indigo-600">
+                           {formatCurrency(product.hargaJual)}
+                         </p>
+                         <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                         <p className="text-xs font-medium text-gray-400">
+                           Stock: {product.stok}
+                         </p>
+                      </div>
                     </div>
-                    <div className="ml-2 text-sm text-gray-500">
-                      {product.stok} tersedia
+                    <div className="ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                       <Plus size={20} className="text-indigo-600" />
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -386,8 +382,9 @@ const SearchBar = ({
           {showAutocomplete &&
             (!searchResults || searchResults.length === 0) &&
             productSearch && (
-              <div className="p-4 text-center text-gray-500">
-                Produk tidak ditemukan
+              <div className="p-10 text-center text-gray-400">
+                <Search size={40} className="mx-auto mb-3 opacity-20" />
+                <p className="font-bold">Produk tidak ditemukan</p>
               </div>
             )}
         </div>
@@ -482,8 +479,9 @@ const CartSection = ({
   updateQuantity,
   removeFromCart,
   saleMode,
+  handleModeChange,
   customer,
-  selectCustomer,
+  setShowCustomerSearch,
   totalAmount,
   tax,
   discount,
@@ -493,227 +491,194 @@ const CartSection = ({
   processPayment,
   handleQrisPayment,
 }) => {
+  const subtotal = cart.reduce((sum, item) => {
+    const price = saleMode === "wholesale" ? item.wholesale_price : item.retail_price;
+    return sum + price * item.quantity;
+  }, 0);
+
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-white to-blue-50">
+    <div className="flex flex-col h-full bg-white border-l border-gray-100 shadow-xl">
       {/* Cart header */}
-      <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50">
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold flex items-center">
-            <ShoppingCart className="mr-2" size={20} />
+      <div className="p-5 border-b border-gray-100 bg-gray-50/50">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-black text-gray-800 flex items-center gap-2">
+            <ShoppingCart className="text-indigo-600" size={22} strokeWidth={2.5} />
             Keranjang
           </h2>
-          <div className="flex space-x-2">
+          <div className="flex bg-gray-100 p-1 rounded-xl">
             <button
-              className={`px-3 py-1 rounded-lg text-xs font-medium ${
+              className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all ${
                 saleMode === "retail"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 hover:bg-gray-200 text-gray-800"
+                  ? "bg-white text-indigo-600 shadow-sm"
+                  : "text-gray-400 hover:text-gray-600"
               }`}
               onClick={() => handleModeChange("retail")}
             >
-              Retail
+              RETAIL
             </button>
             <button
-              className={`px-3 py-1 rounded-lg text-xs font-medium ${
+              className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all ${
                 saleMode === "wholesale"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 hover:bg-gray-200 text-gray-800"
+                  ? "bg-white text-indigo-600 shadow-sm"
+                  : "text-gray-400 hover:text-gray-600"
               }`}
               onClick={() => handleModeChange("wholesale")}
             >
-              Grosir
+              GROSIR
             </button>
           </div>
         </div>
 
         {/* Customer selection */}
-        <div
-          className="mt-3 p-3 bg-gray-50 rounded-lg flex justify-between items-center cursor-pointer hover:bg-gray-100"
+        <button
+          className="w-full p-3 bg-white border border-gray-200 rounded-xl flex items-center justify-between group hover:border-indigo-400 hover:bg-indigo-50/30 transition-all shadow-sm"
           onClick={() => setShowCustomerSearch(true)}
         >
-          <div className="flex items-center">
-            <Users size={16} className="text-gray-500 mr-2" />
-            <div>
-              <p className="text-sm text-gray-500">Pelanggan</p>
-              <p className="font-medium">
-                {customer ? customer.name || customer.namaPelanggan : "Umum"}
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+              <Users size={18} />
+            </div>
+            <div className="text-left">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pelanggan</p>
+              <p className="font-bold text-gray-800 truncate max-w-[150px]">
+                {customer ? customer.name || customer.namaPelanggan : "Umum (Non-Member)"}
               </p>
             </div>
           </div>
-          <ChevronDown size={16} className="text-gray-500" />
-        </div>
+          <ChevronDown size={18} className="text-gray-300 group-hover:text-indigo-400" />
+        </button>
       </div>
 
       {/* Cart items */}
-      <div className="flex-1 overflow-y-auto px-4 py-2">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 no-scrollbar">
         {cart.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-gray-400">
-            <ShoppingCart size={48} className="mb-4 opacity-50" />
-            <p className="text-lg font-medium">Keranjang Kosong</p>
-            <p className="text-sm mt-1">Tambahkan produk untuk memulai</p>
+          <div className="h-full flex flex-col items-center justify-center text-gray-300 py-10">
+            <div className="p-6 bg-gray-50 rounded-full mb-4">
+               <ShoppingCart size={40} className="opacity-20" />
+            </div>
+            <p className="font-bold text-gray-400 uppercase tracking-wider text-sm">Keranjang Kosong</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {cart.map((item) => (
-              <div key={item.id} className="bg-white rounded-lg p-3 shadow-sm">
-                <div className="flex justify-between">
-                  <div className="flex-1 pr-4">
-                    <h3 className="font-medium text-gray-900">{item.name}</h3>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {formatCurrency(
-                        saleMode === "wholesale"
-                          ? item.wholesale_price
-                          : item.retail_price
-                      )}{" "}
-                      × {item.quantity}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-gray-900">
-                      {formatCurrency(
-                        (saleMode === "wholesale"
-                          ? item.wholesale_price
-                          : item.retail_price) * item.quantity
-                      )}
-                    </p>
-                  </div>
+          cart.map((item) => (
+            <div key={item.id} className="group bg-white rounded-xl p-3 border border-gray-100 hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-500/5 transition-all">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-gray-800 text-sm leading-tight mb-1 truncate">
+                    {item.name}
+                  </h3>
+                  <p className="text-xs font-black text-indigo-500">
+                    {formatCurrency(saleMode === "wholesale" ? item.wholesale_price : item.retail_price)}
+                  </p>
                 </div>
-
-                <div className="flex justify-between items-center mt-3">
-                  <button
-                    className="p-1 rounded-md text-red-600 hover:bg-red-50"
-                    onClick={() => removeFromCart(item.id)}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-
-                  <div className="flex items-center">
-                    <button
-                      className="p-1 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      onClick={() =>
-                        updateQuantity(item.id, Math.max(1, item.quantity - 1))
-                      }
-                    >
-                      <Minus size={14} />
-                    </button>
-                    <span className="w-8 text-center font-medium">
-                      {item.quantity}
-                    </span>
-                    <button
-                      className="p-1 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                    >
-                      <Plus size={14} />
-                    </button>
-                  </div>
-                </div>
+                <button
+                  className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                  onClick={() => removeFromCart(item.id)}
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
-            ))}
-          </div>
+
+              <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-50">
+                <div className="flex items-center bg-gray-50 rounded-lg p-0.5 border border-gray-100">
+                  <button
+                    className="p-1 rounded-md text-gray-500 hover:bg-white hover:text-indigo-600 transition-all disabled:opacity-30"
+                    onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                    disabled={item.quantity <= 1}
+                  >
+                    <Minus size={14} strokeWidth={3} />
+                  </button>
+                  <span className="w-8 text-center text-sm font-black text-gray-800">
+                    {item.quantity}
+                  </span>
+                  <button
+                    className="p-1 rounded-md text-gray-500 hover:bg-white hover:text-indigo-600 transition-all"
+                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                  >
+                    <Plus size={14} strokeWidth={3} />
+                  </button>
+                </div>
+                <p className="font-black text-gray-900 text-sm">
+                  {formatCurrency((saleMode === "wholesale" ? item.wholesale_price : item.retail_price) * item.quantity)}
+                </p>
+              </div>
+            </div>
+          ))
         )}
       </div>
 
       {/* Cart summary */}
-      <div className="p-4 border-t border-gray-200 bg-gradient-to-b from-blue-50 to-blue-100">
-        {cart.length > 0 && (
-          <>
-            {/* Discount input */}
-            <div className="mb-3 flex items-center">
-              <div className="flex-1">
-                <label className="block text-sm text-gray-500 mb-1">
-                  Diskon
-                </label>
-                <div className="flex">
-                  <input
-                    type="number"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    value={discount}
-                    onChange={(e) => setDiscount(Number(e.target.value) || 0)}
-                    min="0"
-                  />
-                  <select
-                    className="px-2 py-2 border border-l-0 border-gray-300 rounded-r-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    value={discountType}
-                    onChange={(e) => setDiscountType(e.target.value)}
-                  >
-                    <option value="percentage">%</option>
-                    <option value="fixed">Rp</option>
-                  </select>
-                </div>
+      <div className="p-6 bg-gray-50 border-t border-gray-100">
+        <div className="space-y-3 mb-6">
+          {/* Discount Section */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 relative">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <Tag size={14} />
               </div>
+              <input
+                type="number"
+                placeholder="Diskon"
+                className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-400 outline-none"
+                value={discount || ""}
+                onChange={(e) => setDiscount(Number(e.target.value) || 0)}
+              />
             </div>
+            <select
+              className="bg-white border border-gray-200 rounded-lg py-2 px-2 text-xs font-black text-gray-600 focus:ring-2 focus:ring-indigo-500/10 outline-none"
+              value={discountType}
+              onChange={(e) => setDiscountType(e.target.value)}
+            >
+              <option value="percentage">%</option>
+              <option value="fixed">IDR</option>
+            </select>
+          </div>
 
-            {/* Summary details */}
-            <div className="space-y-2 mb-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Subtotal</span>
-                <span className="font-medium">
-                  {formatCurrency(
-                    cart.reduce((sum, item) => {
-                      const price =
-                        saleMode === "wholesale"
-                          ? item.wholesale_price
-                          : item.retail_price;
-                      return sum + price * item.quantity;
-                    }, 0)
-                  )}
+          <div className="space-y-1 text-sm font-medium">
+            <div className="flex justify-between text-gray-500">
+              <span>Subtotal</span>
+              <span className="text-gray-800 font-bold">{formatCurrency(subtotal)}</span>
+            </div>
+            {discount > 0 && (
+              <div className="flex justify-between text-red-500">
+                <span>Diskon</span>
+                <span className="font-bold">
+                  -{formatCurrency(discountType === "percentage" ? subtotal * (discount / 100) : discount)}
                 </span>
               </div>
-
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Diskon</span>
-                <span className="font-medium text-red-600">
-                  -
-                  {formatCurrency(
-                    discountType === "percentage"
-                      ? cart.reduce((sum, item) => {
-                          const price =
-                            saleMode === "wholesale"
-                              ? item.wholesale_price
-                              : item.retail_price;
-                          return sum + price * item.quantity;
-                        }, 0) *
-                          (discount / 100)
-                      : discount
-                  )}
-                </span>
-              </div>
-
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Pajak (10%)</span>
-                <span className="font-medium">{formatCurrency(tax)}</span>
-              </div>
-
-              <div className="flex justify-between text-lg font-bold mt-3 pt-3 border-t border-gray-200">
-                <span>Total</span>
-                <span className="text-green-600">
-                  {formatCurrency(totalAmount)}
-                </span>
-              </div>
+            )}
+            <div className="flex justify-between text-gray-500">
+              <span>Pajak (10%)</span>
+              <span className="text-gray-800 font-bold">{formatCurrency(tax)}</span>
             </div>
+          </div>
+        </div>
 
-            {/* Payment buttons */}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                className="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={processPayment}
-                disabled={cart.length === 0}
-              >
-                <DollarSign className="mr-2" size={18} />
-                Tunai
-              </button>
+        <div className="flex justify-between items-end mb-6">
+           <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Total Bayar</span>
+           <span className="text-3xl font-black text-indigo-700 tracking-tight">
+             {formatCurrency(totalAmount)}
+           </span>
+        </div>
 
-              <button
-                className="px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={handleQrisPayment}
-                disabled={cart.length === 0}
-              >
-                <CreditCard className="mr-2" size={18} />
-                QRIS
-              </button>
-            </div>
-          </>
-        )}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            className="group py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm flex items-center justify-center transition-all shadow-lg shadow-indigo-200 disabled:opacity-50 active:scale-95"
+            onClick={processPayment}
+            disabled={cart.length === 0}
+          >
+            <DollarSign className="mr-2 group-hover:scale-110 transition-transform" size={20} strokeWidth={2.5} />
+            TUNAI
+          </button>
+
+          <button
+            className="group py-4 bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 rounded-2xl font-black text-sm flex items-center justify-center transition-all disabled:opacity-50 active:scale-95"
+            onClick={handleQrisPayment}
+            disabled={cart.length === 0}
+          >
+            <CreditCard className="mr-2 group-hover:scale-110 transition-transform" size={20} strokeWidth={2.5} />
+            QRIS
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -726,7 +691,6 @@ const ReceiptModal = ({ show, onClose, data, onPrint }) => {
   const { user } = useAuth();
   const { transaction, payment, items, customer, branch } = data;
 
-  // Format tanggal
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat("id-ID", {
@@ -735,150 +699,128 @@ const ReceiptModal = ({ show, onClose, data, onPrint }) => {
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-      second: "2-digit",
     }).format(date);
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-lg max-w-lg w-full max-h-[80vh] overflow-y-auto">
-        <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-            <FileText className="mr-2" size={20} /> Struk Pembayaran
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <X size={20} />
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-100 text-green-600 rounded-xl">
+              <FileText size={22} strokeWidth={2.5} />
+            </div>
+            <h2 className="text-lg font-black text-gray-800">Struk Pembayaran</h2>
+          </div>
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-800 transition-colors">
+            <X size={24} strokeWidth={2.5} />
           </button>
         </div>
 
-        <div id="receipt-content" className="p-6 space-y-4">
-          {/* Header toko */}
-          <div className="text-center mb-4">
-            <h3 className="font-bold text-lg">
-              {branch?.namaCabang || "CASIR Online"}
-            </h3>
-            <p className="text-sm text-gray-600">{branch?.alamat || ""}</p>
-            <p className="text-sm text-gray-600">
-              Telp: {branch?.telepon || "-"}
-            </p>
-          </div>
+        <div className="flex-1 overflow-y-auto p-8 no-scrollbar">
+          {/* Virtual Receipt Paper */}
+          <div id="receipt-content" className="bg-white p-6 shadow-[0_0_40px_rgba(0,0,0,0.05)] border border-gray-100 rounded-lg mx-auto max-w-[320px] text-gray-800 font-mono text-[13px]">
+            {/* Header */}
+            <div className="text-center mb-6 space-y-1">
+              <h3 className="font-black text-lg uppercase tracking-wider">{branch?.namaCabang || "CASIR Online"}</h3>
+              {branch?.alamat && <p className="leading-tight">{branch.alamat}</p>}
+              {branch?.telepon && <p>Telp: {branch.telepon}</p>}
+            </div>
 
-          {/* Informasi transaksi */}
-          <div className="border-t border-b border-gray-200 py-2">
-            <div className="flex justify-between text-sm">
-              <span>No. Transaksi:</span>
-              <span className="font-medium">{transaction?.id || "-"}</span>
+            <div className="border-t border-dashed border-gray-300 py-3 space-y-1">
+              <div className="flex justify-between">
+                <span>TRX ID:</span>
+                <span className="font-bold">{transaction?.id?.slice(-8).toUpperCase() || "-"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>WAKTU:</span>
+                <span>{formatDate(transaction?.tanggal || new Date())}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>KASIR:</span>
+                <span className="uppercase">{user?.name?.split(' ')[0] || "ADMIN"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>MEMBER:</span>
+                <span className="uppercase truncate max-w-[120px]">{customer?.name || customer?.namaPelanggan || "UMUM"}</span>
+              </div>
             </div>
-            <div className="flex justify-between text-sm">
-              <span>Tanggal:</span>
-              <span>{formatDate(transaction?.tanggal || new Date())}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span>Kasir:</span>
-              <span>{user?.name || "Admin"}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span>Pelanggan:</span>
-              <span>{customer?.namaPelanggan || customer?.name || "Umum"}</span>
-            </div>
-          </div>
 
-          {/* Daftar item */}
-          <div className="space-y-2">
-            <div className="text-sm font-medium border-b border-gray-200 pb-1">
-              Detail Pembelian
+            {/* Items */}
+            <div className="border-t border-dashed border-gray-300 py-3 space-y-3">
+              {items?.map((item, index) => (
+                <div key={index}>
+                  <div className="flex justify-between mb-0.5 font-bold">
+                    <span className="uppercase">{item.name}</span>
+                    <span>{formatCurrency(item.price * item.quantity)}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px] opacity-70">
+                    <span>{formatCurrency(item.price)} x {item.quantity}</span>
+                  </div>
+                </div>
+              ))}
             </div>
-            {items?.map((item, index) => (
-              <div key={index} className="text-sm">
+
+            {/* Totals */}
+            <div className="border-t-2 border-dashed border-gray-800 py-3 space-y-1.5">
+              <div className="flex justify-between">
+                <span>SUBTOTAL:</span>
+                <span>{formatCurrency(transaction?.subtotal || 0)}</span>
+              </div>
+              {transaction?.discount_amount > 0 && (
+                <div className="flex justify-between text-indigo-600">
+                  <span>DISKON:</span>
+                  <span>-{formatCurrency(transaction?.discount_amount || 0)}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span>PAJAK (10%):</span>
+                <span>{formatCurrency(transaction?.tax_amount || 0)}</span>
+              </div>
+              <div className="flex justify-between text-lg font-black pt-2 border-t border-gray-200">
+                <span>TOTAL:</span>
+                <span>{formatCurrency(transaction?.total_amount || 0)}</span>
+              </div>
+            </div>
+
+            {/* Payments */}
+            <div className="border-t border-dashed border-gray-300 py-3 space-y-1">
+              <div className="flex justify-between">
+                <span>METODE:</span>
+                <span className="font-bold uppercase">{payment?.metode_pembayaran || "TUNAI"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>BAYAR:</span>
+                <span>{formatCurrency(payment?.jumlah_bayar || 0)}</span>
+              </div>
+              {payment?.jumlah_kembali > 0 && (
                 <div className="flex justify-between">
-                  <span>
-                    {item.name} x{item.quantity}
-                  </span>
-                  <span>{formatCurrency(item.price * item.quantity)}</span>
+                  <span>KEMBALI:</span>
+                  <span className="font-bold">{formatCurrency(payment?.jumlah_kembali || 0)}</span>
                 </div>
-                <div className="text-xs text-gray-500 ml-4">
-                  {formatCurrency(item.price)} / {item.unit || "pcs"}
-                </div>
-              </div>
-            ))}
-          </div>
+              )}
+            </div>
 
-          {/* Summary */}
-          <div className="border-t border-gray-200 pt-2 space-y-1">
-            <div className="flex justify-between text-sm">
-              <span>Subtotal:</span>
-              <span>{formatCurrency(transaction?.subtotal || 0)}</span>
+            <div className="text-center mt-8 pt-4 border-t border-dashed border-gray-300">
+              <p className="font-bold mb-1 uppercase tracking-widest text-[11px]">Terima Kasih</p>
+              <p className="text-[10px] opacity-50 italic">Powered by CASIR Online</p>
             </div>
-            {transaction?.discount_amount > 0 && (
-              <div className="flex justify-between text-sm">
-                <span>
-                  Diskon{" "}
-                  {transaction?.discount_type === "percentage"
-                    ? `(${transaction?.discount_value}%)`
-                    : ""}
-                  :
-                </span>
-                <span>
-                  -{formatCurrency(transaction?.discount_amount || 0)}
-                </span>
-              </div>
-            )}
-            <div className="flex justify-between text-sm">
-              <span>Pajak (10%):</span>
-              <span>{formatCurrency(transaction?.tax_amount || 0)}</span>
-            </div>
-            <div className="flex justify-between text-base font-bold pt-1 border-t border-gray-200">
-              <span>Total:</span>
-              <span>{formatCurrency(transaction?.total_amount || 0)}</span>
-            </div>
-          </div>
-
-          {/* Payment info */}
-          <div className="border-t border-gray-200 pt-2 space-y-1">
-            <div className="flex justify-between text-sm">
-              <span>Metode Pembayaran:</span>
-              <span>
-                {payment?.metode_pembayaran === "TUNAI"
-                  ? "Tunai"
-                  : payment?.metode_pembayaran === "QRIS"
-                  ? "QRIS"
-                  : "Kartu"}
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span>Jumlah Bayar:</span>
-              <span>{formatCurrency(payment?.jumlah_bayar || 0)}</span>
-            </div>
-            {payment?.jumlah_kembali > 0 && (
-              <div className="flex justify-between text-sm font-medium">
-                <span>Kembali:</span>
-                <span>{formatCurrency(payment?.jumlah_kembali || 0)}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Footer */}
-          <div className="text-center text-sm pt-4 border-t border-gray-200">
-            <p className="font-medium">Terima Kasih</p>
-            <p className="text-xs text-gray-500 mt-1">
-              Barang yang sudah dibeli tidak dapat dikembalikan
-            </p>
-            <p className="text-xs text-gray-400 mt-2">
-              Powered by CASIR Online
-            </p>
           </div>
         </div>
 
-        <div className="p-4 border-t border-gray-200 flex justify-center">
+        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-4">
           <button
             onClick={onPrint}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center justify-center"
+            className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black flex items-center justify-center gap-3 shadow-lg shadow-indigo-200 transition-all active:scale-95"
           >
-            <Printer className="mr-2" size={18} />
-            Cetak Struk
+            <Printer size={20} />
+            CETAK STRUK
+          </button>
+          <button
+            onClick={onClose}
+            className="px-6 py-4 bg-white border border-gray-200 text-gray-600 rounded-2xl font-bold hover:bg-gray-50 transition-all active:scale-95"
+          >
+            SELESAI
           </button>
         </div>
       </div>
@@ -1058,26 +1000,30 @@ const GlobalPOS = () => {
     // Initialize branch data
     if (cabangList && cabangList.length > 0) {
       setFilteredBranches(cabangList);
-      // If a branch is already selected in context, use it
-      if (selectedCabang) {
-        setCurrentBranch(selectedCabang);
-        loadProductsForBranch(selectedCabang.id);
-      } else {
-        // Otherwise set the first branch as default
-        setCurrentBranch(cabangList[0]);
-        if (setSelectedCabangById) {
-          setSelectedCabangById(cabangList[0].id);
-        }
-        loadProductsForBranch(cabangList[0].id);
+      
+      // If a branch is already selected in context, use it, but skip GLOBAL_CABANG_ID
+      let branchToUse = selectedCabang;
+      
+      if (!branchToUse || branchToUse.id === GLOBAL_CABANG_ID) {
+        // Fallback to first non-global branch
+        branchToUse = cabangList.find(c => c.id !== GLOBAL_CABANG_ID) || cabangList[0];
+      }
+
+      // Important: Use the full branch object from cabangList to ensure metadata like name/address is present
+      const fullBranchObject = cabangList.find(c => c.id === branchToUse.id) || branchToUse;
+      
+      setCurrentBranch(fullBranchObject);
+      
+      if (setSelectedCabangById && branchToUse.id !== selectedCabang?.id) {
+        setSelectedCabangById(branchToUse.id);
       }
     }
 
-    // Show branch selector for superadmin on initial load
-    if (user && user.role === "superadmin" && !selectedCabang) {
+    // Show branch selector for superadmin on initial load ONLY if no specific branch is selected
+    if (user && user.role === "superadmin" && (!selectedCabang || selectedCabang.id === GLOBAL_CABANG_ID)) {
       setShowBranchSelector(true);
     }
-  }, [cabangList, selectedCabang, user]);
-
+  }, [cabangList, selectedCabang, user, setSelectedCabangById]);
   // Calculate totals when cart or sale mode changes
   useEffect(() => {
     calculateTotal();
@@ -1131,13 +1077,16 @@ const GlobalPOS = () => {
   }, [productSearch, productsData]);
 
   // Load branch-specific products
-  const loadProductsForBranch = async (branchId) => {
+  const loadProductsForBranch = useCallback((branchId) => {
     if (!branchId) return;
 
-    // Produk akan diambil secara otomatis melalui React Query
-    // ketika currentBranch.id berubah
-    setCurrentBranch({ ...currentBranch, id: branchId });
-  };
+    // We don't need to manually fetch here as React Query handles it.
+    // However, if we need to sync local currentBranch with a specific ID:
+    const branch = cabangList?.find(c => c.id === branchId);
+    if (branch && currentBranch?.id !== branchId) {
+      setCurrentBranch(branch);
+    }
+  }, [cabangList, currentBranch]);
 
   // Calculate total amount
   const calculateTotal = () => {
@@ -1243,19 +1192,29 @@ const GlobalPOS = () => {
 
   // Handle branch selection
   const selectBranch = (branch) => {
-    setCurrentBranch(branch);
+    let targetBranch = branch;
+    
+    // Safety check: POS must use a specific branch, not "Global/All Branches"
+    if (targetBranch.id === GLOBAL_CABANG_ID) {
+      const firstBranch = cabangList.find(c => c.id !== GLOBAL_CABANG_ID);
+      if (firstBranch) {
+        targetBranch = firstBranch;
+        toast.info("Otomatis menggunakan cabang pertama");
+      }
+    }
+
+    setCurrentBranch(targetBranch);
 
     if (setSelectedCabangById) {
-      setSelectedCabangById(branch.id);
+      setSelectedCabangById(targetBranch.id);
     }
 
     setShowBranchSelector(false);
-    toast.success(`Cabang ${branch.namaCabang || branch.name} dipilih`);
+    toast.success(`Cabang ${targetBranch.namaCabang || targetBranch.name} dipilih`);
 
     // Reset cart when branch changes
     setCart([]);
   };
-
   // Handle mode change
   const handleModeChange = (mode) => {
     setSaleMode(mode);
@@ -1526,64 +1485,86 @@ const GlobalPOS = () => {
   // Fungsi untuk mencetak struk
   const handlePrintReceipt = () => {
     const printContent = document.getElementById("receipt-content");
-    const originalContents = document.body.innerHTML;
-
-    // Prepare for print
-    const printStyles = `
-      <style>
-        @media print {
-          body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
-          #receipt-print-container { width: 80mm; padding: 5mm; margin: 0 auto; }
-          .text-center { text-align: center; }
-          .font-bold { font-weight: bold; }
-          .text-lg { font-size: 16px; }
-          .text-sm { font-size: 12px; }
-          .text-xs { font-size: 10px; }
-          .text-gray-600, .text-gray-500, .text-gray-400 { color: #666; }
-          .mb-4 { margin-bottom: 16px; }
-          .space-y-4 > * + * { margin-top: 16px; }
-          .space-y-2 > * + * { margin-top: 8px; }
-          .space-y-1 > * + * { margin-top: 4px; }
-          .border-t, .border-b { border-color: #eee; }
-          .border-t { border-top: 1px solid; padding-top: 8px; }
-          .border-b { border-bottom: 1px solid; padding-bottom: 8px; }
-          .py-2 { padding-top: 8px; padding-bottom: 8px; }
-          .pt-2 { padding-top: 8px; }
-          .pt-4 { padding-top: 16px; }
-          .pb-1 { padding-bottom: 4px; }
-          .flex { display: flex; }
-          .justify-between { justify-content: space-between; }
-          .font-medium { font-weight: 500; }
-          .ml-4 { margin-left: 16px; }
-          .mt-1 { margin-top: 4px; }
-          .mt-2 { margin-top: 8px; }
-        }
-      </style>
-    `;
-
+    
     const printWindow = window.open("", "_blank");
     printWindow.document.write(`
       <html>
         <head>
-          <title>Struk Pembayaran</title>
-          ${printStyles}
+          <title>Cetak Struk</title>
+          <style>
+            @page {
+              margin: 0;
+              size: 80mm auto;
+            }
+            body {
+              font-family: 'Courier New', Courier, monospace;
+              margin: 0;
+              padding: 5mm;
+              width: 70mm; /* Account for 5mm padding on each side */
+              color: #000;
+              background: #fff;
+            }
+            #receipt-print-container {
+              width: 100%;
+            }
+            .text-center { text-align: center; }
+            .font-bold { font-weight: bold; }
+            .font-black { font-weight: 900; }
+            .uppercase { text-transform: uppercase; }
+            .tracking-widest { letter-spacing: 0.1em; }
+            .tracking-wider { letter-spacing: 0.05em; }
+            .text-lg { font-size: 16px; }
+            .text-3xl { font-size: 24px; }
+            .flex { display: flex; }
+            .justify-between { justify-content: space-between; }
+            .items-end { align-items: flex-end; }
+            .mb-6 { margin-bottom: 24px; }
+            .mb-1 { margin-bottom: 4px; }
+            .mb-0\\.5 { margin-bottom: 2px; }
+            .mt-8 { margin-top: 32px; }
+            .mt-3 { margin-top: 12px; }
+            .pt-4 { padding-top: 16px; }
+            .pt-2 { padding-top: 8px; }
+            .pt-3 { padding-top: 12px; }
+            .py-3 { padding-top: 12px; padding-bottom: 12px; }
+            .space-y-1 > * + * { margin-top: 4px; }
+            .space-y-1\\.5 > * + * { margin-top: 6px; }
+            .space-y-3 > * + * { margin-top: 12px; }
+            .border-t { border-top: 1px dashed #000; }
+            .border-t-2 { border-top: 2px dashed #000; }
+            .opacity-50 { opacity: 0.5; }
+            .opacity-70 { opacity: 0.7; }
+            .italic { font-style: italic; }
+            .text-[11px] { font-size: 11px; }
+            .text-[10px] { font-size: 10px; }
+            .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .max-w-[120px] { max-width: 120px; }
+            
+            /* Remove some web-only styles that might break print */
+            .shadow-lg, .shadow-\\[0_0_40px_rgba\\(0\\,0\\,0\\,0\\.05\\)\\], .border-gray-100, .rounded-lg {
+              box-shadow: none !important;
+              border: none !important;
+              border-radius: 0 !important;
+            }
+          </style>
         </head>
         <body>
           <div id="receipt-print-container">
             ${printContent.innerHTML}
           </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              window.onafterprint = function() {
+                window.close();
+              };
+            };
+          </script>
         </body>
       </html>
     `);
 
     printWindow.document.close();
-    printWindow.focus();
-
-    // Print the document
-    printWindow.print();
-    printWindow.onafterprint = function () {
-      printWindow.close();
-    };
   };
 
   // Get current branch name for display
@@ -1794,54 +1775,66 @@ const GlobalPOS = () => {
       <Toaster position="top-right" />
 
       {/* Header */}
-      <header className="bg-white shadow z-10">
-        <div className="container mx-auto px-4 py-3">
+      <header className="bg-white border-b border-gray-100 z-10 sticky top-0">
+        <div className="px-6 py-4">
           <div className="flex justify-between items-center">
-            <div className="flex items-center">
+            <div className="flex items-center gap-8">
               <div
-                className="text-lg font-bold flex items-center cursor-pointer"
+                className="flex items-center gap-3 cursor-pointer group"
                 onClick={() => navigate("/dashboard")}
               >
-                <Store className="mr-2" size={24} />
-                CASIR Online
+                <div className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-100 rotate-3 group-hover:rotate-0 transition-transform">
+                  <Store size={26} strokeWidth={2.5} />
+                </div>
+                <div>
+                  <h1 className="text-xl font-black text-gray-800 tracking-tight">CASIR<span className="text-indigo-600">Online</span></h1>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] leading-none mt-1">Retail POS System</p>
+                </div>
               </div>
 
-              <div className="ml-8 relative">
+              <div className="h-10 w-px bg-gray-100 hidden md:block" />
+
+              <div className="relative group hidden md:block">
                 <button
-                  className="px-4 py-2 bg-gray-100 rounded-lg text-gray-800 flex items-center hover:bg-gray-200"
+                  className="px-5 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-gray-700 font-bold text-sm flex items-center gap-3 hover:bg-white hover:border-indigo-200 transition-all shadow-sm"
                   onClick={() => modalManager.openModal("branchSelector")}
                 >
-                  <span className="mr-2">{getCurrentBranchName()}</span>
-                  <ChevronDown size={16} />
+                  <MapPin size={18} className="text-indigo-500" />
+                  <span>{getCurrentBranchName()}</span>
+                  <ChevronDown size={14} className="text-gray-400 group-hover:text-indigo-500" />
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center space-x-3">
-              <button
-                className="p-2 text-gray-600 hover:text-gray-800 rounded-full hover:bg-gray-100"
-                onClick={toggleFullscreen}
-                title={
-                  isFullscreen
-                    ? "Keluar dari mode layar penuh"
-                    : "Masuk ke mode layar penuh"
-                }
-              >
-                {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
-              </button>
-              <button
-                className="p-2 text-gray-600 hover:text-gray-800 rounded-full hover:bg-gray-100"
-                onClick={() => modalManager.openModal("shortcutsHelp")}
-              >
-                <Keyboard size={20} />
-              </button>
+            <div className="flex items-center gap-2">
+              <div className="hidden lg:flex flex-col items-end mr-4">
+                 <p className="text-sm font-black text-gray-800">{user?.name || "Cashier User"}</p>
+                 <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">{user?.role || "Operator"}</p>
+              </div>
 
-              <button
-                className="p-2 text-gray-600 hover:text-gray-800 rounded-full hover:bg-gray-100"
-                onClick={() => navigate("/dashboard")}
-              >
-                <X size={20} />
-              </button>
+              <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100">
+                <button
+                  className="p-2.5 text-gray-500 hover:text-indigo-600 hover:bg-white rounded-lg transition-all shadow-none hover:shadow-sm"
+                  onClick={toggleFullscreen}
+                  title="Fullscreen [F11]"
+                >
+                  {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+                </button>
+                <button
+                  className="p-2.5 text-gray-500 hover:text-indigo-600 hover:bg-white rounded-lg transition-all shadow-none hover:shadow-sm"
+                  onClick={() => modalManager.openModal("shortcutsHelp")}
+                  title="Keyboard Shortcuts [F1]"
+                >
+                  <Keyboard size={20} />
+                </button>
+                <button
+                  className="p-2.5 text-gray-500 hover:text-red-600 hover:bg-white rounded-lg transition-all shadow-none hover:shadow-sm"
+                  onClick={() => navigate("/dashboard")}
+                  title="Close POS"
+                >
+                  <X size={20} strokeWidth={2.5} />
+                </button>
+              </div>
             </div>
           </div>
         </div>

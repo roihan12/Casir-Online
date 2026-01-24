@@ -114,7 +114,7 @@ const SupplierForm = () => {
         await supplierService.createSupplier(formData);
         toast.success("Supplier baru berhasil ditambahkan");
       }
-      navigate("/superadmin/suppliers");
+      navigate("/suppliers");
     } catch (err) {
       console.error("Error saving supplier:", err);
       toast.error(
@@ -147,7 +147,7 @@ const SupplierForm = () => {
       <div className="bg-indigo-600 text-white py-6">
         <div className="mx-6">
           <button
-            onClick={() => navigate("/superadmin/suppliers")}
+            onClick={() => navigate("/suppliers")}
             className="flex items-center text-indigo-100 hover:text-white mb-4"
           >
             <ArrowLeft size={16} className="mr-1" />
@@ -360,7 +360,7 @@ const SupplierForm = () => {
             <button
               type="button"
               className="mr-3 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              onClick={() => navigate("/superadmin/suppliers")}
+              onClick={() => navigate("/suppliers")}
             >
               Batal
             </button>

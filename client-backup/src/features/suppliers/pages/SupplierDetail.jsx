@@ -94,7 +94,7 @@ const SupplierDetail = () => {
   const handleDeleteSupplier = async () => {
     deleteSupplierMutation.mutate(id, {
       onSuccess: () => {
-        navigate("/superadmin/suppliers");
+        navigate("/suppliers");
       },
     });
     setShowDeleteModal(false);
@@ -145,7 +145,7 @@ const SupplierDetail = () => {
       icon: <Package size={18} />,
       onClick: () =>
         navigate(
-          `/superadmin/suppliers/products?supplierId=${id}&supplierName=${supplier.namaSupplier}`
+          `/suppliers/products?supplierId=${id}&supplierName=${supplier.namaSupplier}`
         ),
     },
     {
@@ -154,7 +154,7 @@ const SupplierDetail = () => {
       icon: <DollarSign size={18} />,
       onClick: () =>
         navigate(
-          `/superadmin/suppliers/debt?supplierId=${id}&supplierName=${supplier.namaSupplier}`
+          `/suppliers/debt?supplierId=${id}&supplierName=${supplier.namaSupplier}`
         ),
     },
     { id: "transactions", label: "Transaksi", icon: <FileText size={18} /> },
@@ -167,7 +167,7 @@ const SupplierDetail = () => {
       <div className="bg-indigo-600 text-white py-6">
         <div className="mx-6">
           <button
-            onClick={() => navigate("/superadmin/suppliers")}
+            onClick={() => navigate("/suppliers")}
             className="flex items-center text-indigo-100 hover:text-white mb-4"
           >
             <ArrowLeft size={16} className="mr-1" />
@@ -177,7 +177,7 @@ const SupplierDetail = () => {
             <h1 className="text-2xl font-bold">{supplier.namaSupplier}</h1>
             <div className="flex space-x-2">
               <button
-                onClick={() => navigate(`/superadmin/suppliers/${id}/edit`)}
+                onClick={() => navigate(`/suppliers/${id}/edit`)}
                 className="px-3 py-1 bg-white text-indigo-700 rounded-md flex items-center text-sm"
               >
                 <Edit size={14} className="mr-1" />
@@ -187,7 +187,7 @@ const SupplierDetail = () => {
               <button
                 onClick={() =>
                   navigate(
-                    `/superadmin/suppliers/products?supplierId=${id}&supplierName=${supplier.namaSupplier}`
+                    `/suppliers/products?supplierId=${id}&supplierName=${supplier.namaSupplier}`
                   )
                 }
                 className="px-3 py-1 bg-blue-500 text-white rounded-md flex items-center text-sm"
@@ -199,7 +199,7 @@ const SupplierDetail = () => {
               <button
                 onClick={() =>
                   navigate(
-                    `/superadmin/suppliers/debt?supplierId=${id}&supplierName=${supplier.namaSupplier}`
+                    `/suppliers/debt?supplierId=${id}&supplierName=${supplier.namaSupplier}`
                   )
                 }
                 className="px-3 py-1 bg-orange-500 text-white rounded-md flex items-center text-sm"
@@ -489,7 +489,7 @@ const SupplierDetail = () => {
               <button
                 onClick={() =>
                   navigate(
-                    `/superadmin/suppliers/${id}/products/create${
+                    `/suppliers/${id}/products/create${
                       selectedBranchId ? `?cabangId=${selectedBranchId}` : ""
                     }`
                   )
@@ -609,7 +609,7 @@ const SupplierDetail = () => {
                             className="text-blue-600 hover:text-blue-900"
                             onClick={() =>
                               navigate(
-                                `/superadmin/suppliers/${id}/products/${product.id}/edit`
+                                `/suppliers/${id}/products/${product.id}/edit`
                               )
                             }
                           >
@@ -635,7 +635,7 @@ const SupplierDetail = () => {
                 <button
                   onClick={() => {
                     navigate(
-                      `/superadmin/suppliers/${id}/purchase/create?preselect=true${
+                      `/suppliers/${id}/purchase/create?preselect=true${
                         selectedBranchId ? `&cabangId=${selectedBranchId}` : ""
                       }`
                     );
@@ -648,7 +648,7 @@ const SupplierDetail = () => {
                 <button
                   onClick={() => {
                     navigate(
-                      `/superadmin/suppliers/${id}/purchase/create${
+                      `/suppliers/${id}/purchase/create${
                         selectedBranchId ? `?cabangId=${selectedBranchId}` : ""
                       }`
                     );

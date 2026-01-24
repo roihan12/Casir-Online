@@ -279,7 +279,7 @@ const PurchaseCreate = () => {
 
   // Handle supplier selection
   const handleSelectSupplier = (selectedSupplierId) => {
-    navigate(`/superadmin/suppliers/${selectedSupplierId}/purchase/create`);
+    navigate(`/suppliers/${selectedSupplierId}/purchase/create`);
     setSelectingSupplier(false);
   };
 
@@ -339,7 +339,7 @@ const PurchaseCreate = () => {
 
   // Create new supplier
   const handleCreateNewSupplier = () => {
-    navigate("/superadmin/suppliers/create");
+    navigate("/suppliers/create");
   };
 
   // Change branch locally without triggering navigation
@@ -450,7 +450,7 @@ const PurchaseCreate = () => {
       toast.success("Pembelian berhasil dibuat");
 
       // Redirect back to supplier detail
-      navigate(`/superadmin/suppliers/${supplierId}`);
+      navigate(`/suppliers/${supplierId}`);
     } catch (error) {
       console.error("Error creating purchase:", error);
       console.error("Current branch state during error:", localSelectedBranch);
@@ -783,7 +783,7 @@ const PurchaseCreate = () => {
       <div className="bg-indigo-600 text-white py-6">
         <div className="mx-6">
           <button
-            onClick={() => navigate(`/superadmin/suppliers/${supplierId}`)}
+            onClick={() => navigate(`/suppliers/${supplierId}`)}
             className="flex items-center text-indigo-100 hover:text-white mb-4"
           >
             <ArrowLeft size={16} className="mr-1" />
@@ -1223,7 +1223,7 @@ const PurchaseCreate = () => {
           <div className="flex justify-end">
             <button
               type="button"
-              onClick={() => navigate(`/superadmin/suppliers/${supplierId}`)}
+              onClick={() => navigate(`/suppliers/${supplierId}`)}
               className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 mr-2"
             >
               Batal

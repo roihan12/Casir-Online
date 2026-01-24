@@ -164,12 +164,12 @@ const SupplierManagementPage = () => {
 
   // Handle view supplier details
   const handleViewSupplier = (id) => {
-    navigate(`/superadmin/suppliers/${id}`);
+    navigate(`/suppliers/${id}`);
   };
 
   // Handle edit supplier
   const handleEditSupplier = (id) => {
-    navigate(`/superadmin/suppliers/${id}/edit`);
+    navigate(`/suppliers/${id}/edit`);
   };
 
   // Define table columns
@@ -474,7 +474,7 @@ const SupplierManagementPage = () => {
           {/* Add New Supplier Button */}
           <button
             className="flex items-center justify-center px-3 py-2 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700"
-            onClick={() => navigate("/superadmin/suppliers/create")}
+            onClick={() => navigate("/suppliers/create")}
           >
             <PlusCircle size={16} className="mr-1" />
             <span>Tambah Supplier</span>

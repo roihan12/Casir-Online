@@ -147,7 +147,7 @@ const GlobalTransactions = () => {
 
   // View transaction detail
   const viewTransactionDetail = (transactionId) => {
-    navigate(`/superadmin/transactions/${transactionId}`);
+    navigate(`/transactions/${transactionId}`);
   };
 
   // Status badge component

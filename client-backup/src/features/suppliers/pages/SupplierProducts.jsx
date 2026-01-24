@@ -336,7 +336,7 @@ const SupplierProducts = () => {
             Silakan pilih supplier dari daftar supplier terlebih dahulu.
           </p>
           <button
-            onClick={() => navigate("/superadmin/suppliers")}
+            onClick={() => navigate("/suppliers")}
             className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
           >
             Kembali ke Daftar Supplier
@@ -352,7 +352,7 @@ const SupplierProducts = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <div>
           <button
-            onClick={() => navigate(`/superadmin/suppliers/${supplierId}`)}
+            onClick={() => navigate(`/suppliers/${supplierId}`)}
             className="flex items-center text-sm text-indigo-600 hover:text-indigo-800 mb-2"
           >
             <ArrowLeft size={16} className="mr-1" />
