@@ -599,7 +599,7 @@ const SupplierDetail = () => {
                             className="text-indigo-600 hover:text-indigo-900 mr-2"
                             onClick={() =>
                               navigate(
-                                `/superadmin/products/${product.produkMasterId}`
+                                `/products/${product.produkMasterId}`
                               )
                             }
                           >

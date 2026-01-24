@@ -621,7 +621,7 @@ const updateProduk = async (id, data, { userId, userName, ipAddress }) => {
     const existingProduk = await tx.produk.findUnique({
       where: { id },
       include: {
-        priceHistory: {
+        produkPriceHistory: {
           orderBy: {
             createdAt: "desc",
           },
@@ -771,7 +771,7 @@ const updateProduk = async (id, data, { userId, userName, ipAddress }) => {
           },
         },
         cabang: true,
-        priceHistory: {
+        produkPriceHistory: {
           orderBy: {
             createdAt: "desc",
           },
@@ -988,12 +988,6 @@ const getPriceHistory = async (produkId, { page = 1, limit = 10 }) => {
             deleted_by: true,
             cabangId: true,
             createdAt: true,
-            updatedAt: true,
-            deletedAt: true,
-            supplier: true,
-            cabang: true,
-          },
-          include: {
             supplier: true,
             cabang: true,
           },

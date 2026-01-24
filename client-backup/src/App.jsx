@@ -88,6 +88,8 @@ import ProductMasterList from "./features/products/pages/ProductMasterListPage";
 import ProductMasterCreateEdit from "./features/products/pages/ProductMasterCreateEditPage";
 import ProductMasterDetail from "./features/products/pages/ProductMasterDetailPage";
 import ProductCreate from "./features/products/pages/ProductCreatePage";
+import ProductDetail from "./features/products/pages/ProductDetailPage";
+import ProductEdit from "./features/products/pages/ProductEditPage";
 
 // Add the import at the top of the file
 import StockTransferApprovalList from "./features/stock-transfers/components/StockTransferApprovalList";
@@ -259,7 +261,7 @@ function App() {
 
           {/* Product Management */}
           <Route
-            path="/produk"
+            path="/products"
             element={
               <ProtectedRoute requiredPermission="produk:read">
                 <DynamicLayout />
@@ -268,6 +270,8 @@ function App() {
           >
             <Route index element={<ProductManagement />} />
             <Route path="create" element={<ProductCreate />} />
+            <Route path="edit/:id" element={<ProductEdit />} />
+            <Route path=":id" element={<ProductDetail />} />
             <Route path="categories" element={<CategoryManagement />} />
             <Route path="requests" element={<ProductRequestManagement />} />
           </Route>

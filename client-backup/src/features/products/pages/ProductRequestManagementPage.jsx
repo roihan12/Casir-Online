@@ -371,7 +371,7 @@ const ProductRequestManagement = () => {
           </h1>
           <div className="flex space-x-2">
             <button
-              onClick={() => navigate("/superadmin/products")}
+              onClick={() => navigate("/products")}
               className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center hover:bg-gray-200"
             >
               <Package className="h-5 w-5 mr-2" />

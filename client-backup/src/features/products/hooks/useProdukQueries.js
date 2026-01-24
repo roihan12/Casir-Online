@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@common/utils/api";
 import { z } from "zod";
+import produkService from "../services/produkService";
 
-// Updated Validation schemas with all filter parameters
+// ... (existing constants)
 const ProdukFilterSchema = z.object({
   search: z.string().optional(),
   produkMasterId: z.string().optional(),
@@ -59,11 +60,11 @@ const StokUpdateSchema = z.object({
 const PaginationSchema = z.object({
   page: z.number().int().positive().optional().default(1),
   limit: z.number().int().positive().optional().default(10),
+  search: z.string().optional(),
 });
 
 const useProdukQueries = () => {
   const queryClient = useQueryClient();
-  const API_URL = "/produk"; // Adjust based on your API URL structure
 
   // GET ALL PRODUCTS - Updated with all filter parameters
   const useAllProducts = (filters = {}) => {
@@ -83,22 +84,7 @@ const useProdukQueries = () => {
 
     return useQuery({
       queryKey: ["products", validatedFilters],
-      queryFn: async () => {
-        const params = new URLSearchParams();
-        Object.entries(validatedFilters).forEach(([key, value]) => {
-          if (value !== undefined) {
-            // Handle date objects properly
-            if (value instanceof Date) {
-              params.append(key, value.toISOString());
-            } else {
-              params.append(key, String(value));
-            }
-          }
-        });
-
-        const { data } = await api.get(`${API_URL}?${params.toString()}`);
-        return data;
-      },
+      queryFn: () => produkService.getAllProduk(validatedFilters),
       placeholderData: (previousData) => previousData,
     });
   };
@@ -107,10 +93,9 @@ const useProdukQueries = () => {
   const useProductById = (id) => {
     return useQuery({
       queryKey: ["product", id],
-      queryFn: async () => {
+      queryFn: () => {
         if (!id) return null;
-        const { data } = await api.get(`${API_URL}/${id}`);
-        return data;
+        return produkService.getProdukById(id);
       },
       enabled: !!id,
     });
@@ -120,24 +105,40 @@ const useProdukQueries = () => {
   const useProductByMasterAndBranch = (produkMasterId, cabangId) => {
     return useQuery({
       queryKey: ["product", produkMasterId, cabangId],
-      queryFn: async () => {
+      queryFn: () => {
         if (!produkMasterId || !cabangId) return null;
-        const { data } = await api.get(
-          `${API_URL}/master/${produkMasterId}/cabang/${cabangId}`
-        );
-        return data;
+        return api.get(`/produk/master/${produkMasterId}/cabang/${cabangId}`).then(res => res.data);
       },
       enabled: !!produkMasterId && !!cabangId,
+    });
+  };
+
+  // GET PRODUCT TEMPLATES
+  const useProductTemplates = (cabangId) => {
+    return useQuery({
+      queryKey: ["templates", cabangId],
+      queryFn: () => produkService.getProductTemplates(cabangId),
+      enabled: !!cabangId,
+    });
+  };
+
+  // GET PRODUCT RECOMMENDATIONS
+  const useProductRecommendations = (cabangId, filters = {}) => {
+    const validatedFilters = PaginationSchema.parse(filters);
+    return useQuery({
+      queryKey: ["recommendations", cabangId, validatedFilters],
+      queryFn: () => produkService.getProductRecommendations(cabangId, validatedFilters),
+      enabled: !!cabangId,
+      placeholderData: (previousData) => previousData,
     });
   };
 
   // CREATE PRODUCT
   const useCreateProduct = () => {
     return useMutation({
-      mutationFn: async (productData) => {
+      mutationFn: (productData) => {
         const validatedData = ProdukCreateSchema.parse(productData);
-        const { data } = await api.post(API_URL, validatedData);
-        return data;
+        return produkService.createProduk(validatedData);
       },
       onSuccess: () => {
         queryClient.invalidateQueries({
@@ -147,16 +148,24 @@ const useProdukQueries = () => {
     });
   };
 
+  // BULK ADD PRODUCTS
+  const useBulkAddProducts = (cabangId) => {
+    return useMutation({
+      mutationFn: (productsData) => produkService.bulkAddProducts(cabangId, productsData).then(res => res.data),
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: ["products", cabangId],
+        });
+      },
+    });
+  };
+
   // UPDATE PRODUCT
   const useUpdateProduct = () => {
     return useMutation({
-      mutationFn: async ({ id, data }) => {
+      mutationFn: ({ id, data }) => {
         const validatedData = ProdukUpdateSchema.parse(data);
-        const { data: response } = await api.put(
-          `${API_URL}/${id}`,
-          validatedData
-        );
-        return response;
+        return produkService.updateProduk(id, validatedData);
       },
       onSuccess: (data) => {
         queryClient.invalidateQueries({
@@ -172,13 +181,9 @@ const useProdukQueries = () => {
   // UPDATE STOCK
   const useUpdateStock = () => {
     return useMutation({
-      mutationFn: async ({ id, data }) => {
+      mutationFn: ({ id, data }) => {
         const validatedData = StokUpdateSchema.parse(data);
-        const { data: response } = await api.patch(
-          `${API_URL}/${id}/stock`,
-          validatedData
-        );
-        return response;
+        return produkService.updateStok(id, validatedData);
       },
       onSuccess: (data) => {
         queryClient.invalidateQueries({
@@ -203,18 +208,9 @@ const useProdukQueries = () => {
 
     return useQuery({
       queryKey: ["inventory-movements", produkId, validatedPagination],
-      queryFn: async () => {
+      queryFn: () => {
         if (!produkId) return null;
-
-        const params = new URLSearchParams();
-        Object.entries(validatedPagination).forEach(([key, value]) => {
-          if (value !== undefined) params.append(key, String(value));
-        });
-
-        const { data } = await api.get(
-          `${API_URL}/${produkId}/inventory-movements?${params.toString()}`
-        );
-        return data;
+        return produkService.getInventoryMovements(produkId, validatedPagination);
       },
       enabled: !!produkId,
       placeholderData: (previousData) => previousData,
@@ -227,18 +223,9 @@ const useProdukQueries = () => {
 
     return useQuery({
       queryKey: ["price-history", produkId, validatedPagination],
-      queryFn: async () => {
+      queryFn: () => {
         if (!produkId) return null;
-
-        const params = new URLSearchParams();
-        Object.entries(validatedPagination).forEach(([key, value]) => {
-          if (value !== undefined) params.append(key, String(value));
-        });
-
-        const { data } = await api.get(
-          `${API_URL}/${produkId}/price-history?${params.toString()}`
-        );
-        return data;
+        return produkService.getPriceHistory(produkId, validatedPagination);
       },
       enabled: !!produkId,
       placeholderData: (previousData) => previousData,
@@ -251,18 +238,13 @@ const useProdukQueries = () => {
 
     return useQuery({
       queryKey: ["low-stock-products", cabangId, validatedPagination],
-      queryFn: async () => {
+      queryFn: () => {
         if (!cabangId) return null;
-
         const params = new URLSearchParams();
         Object.entries(validatedPagination).forEach(([key, value]) => {
           if (value !== undefined) params.append(key, String(value));
         });
-
-        const { data } = await api.get(
-          `${API_URL}/low-stock/${cabangId}?${params.toString()}`
-        );
-        return data;
+        return api.get(`/produk/reports/low-stock/${cabangId}?${params.toString()}`).then(res => res.data);
       },
       enabled: !!cabangId,
       placeholderData: (previousData) => previousData,
@@ -273,7 +255,10 @@ const useProdukQueries = () => {
     useAllProducts,
     useProductById,
     useProductByMasterAndBranch,
+    useProductTemplates,
+    useProductRecommendations,
     useCreateProduct,
+    useBulkAddProducts,
     useUpdateProduct,
     useUpdateStock,
     useInventoryMovements,

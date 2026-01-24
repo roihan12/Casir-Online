@@ -9,8 +9,8 @@ import {
   useUpdateProdukMaster,
   useCategories,
 } from "../hooks/useProdukMasterQueries";
-// FIXME: Component doesn't exist - needs to be created
-// import ProductMasterForm from "../../../components/superadmin/ProductMasterForm";
+// ProductMasterForm is now created
+import ProductMasterForm from "../components/ProductMasterForm";
 import Spinner from "../../../features/common/Spinner";
 import Alert from "../../../features/common/Alert";
 
@@ -62,6 +62,8 @@ const ProductMasterCreateEdit = () => {
           id,
           data: formData.data,
           images: formData.images,
+          // If we had a specific delete images API, we'd use it here. 
+          // For now, the service handles multipart/form-data.
           imagesToDelete: formData.imagesToDelete,
         });
         toast.success("Produk berhasil diperbarui");
@@ -77,7 +79,7 @@ const ProductMasterCreateEdit = () => {
       navigate("/product-master");
     } catch (error) {
       console.error("Error saving product:", error);
-      throw error;
+      toast.error(error?.response?.data?.message || "Gagal menyimpan produk");
     }
   };
 
@@ -131,7 +133,7 @@ const ProductMasterCreateEdit = () => {
       </div>
 
       {/* Form */}
-      <div className="bg-white rounded-lg shadow-sm">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <ProductMasterForm
           product={isEditMode ? product : null}
           categories={categoriesArray}

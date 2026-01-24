@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 import formatRupiah from "@common/utils/formatCurrency";
 import { useAuth } from "../../../features/auth/hooks/useAuth.js";
-import api from "@common/utils/api";
+import { useCabang } from "../../../features/cabang/hooks/useCabang.js";
+import useProdukQueries from "../hooks/useProdukQueries.js";
 import Pagination from "../../../features/common/Pagination.jsx";
 
 // Form validation schema with Zod
@@ -35,16 +35,25 @@ const productFormSchema = z.object({
 const ProductCreate = () => {
   const { cabangId } = useParams();
   const navigate = useNavigate();
-  const { getUserRole } = useAuth();
-  const queryClient = useQueryClient();
+  const { isSuperAdmin } = useAuth();
+  const { cabangList, selectedCabang, isLoading: branchesLoading } = useCabang();
+  const { 
+    useProductTemplates, 
+    useProductRecommendations, 
+    useBulkAddProducts 
+  } = useProdukQueries();
 
-  const userRole = getUserRole();
-
-  // Add state for branches and selected branch
-  const [branches, setBranches] = useState([]);
+  const adminMode = isSuperAdmin();
   const [selectedBranchId, setSelectedBranchId] = useState(
-    userRole === "super_admin" ? "" : cabangId
+    adminMode ? "" : (cabangId || selectedCabang?.id || "")
   );
+
+  // Sync selectedBranchId for non-admins if it's empty but selectedCabang is available
+  React.useEffect(() => {
+    if (!adminMode && !selectedBranchId && selectedCabang?.id) {
+      setSelectedBranchId(selectedCabang.id);
+    }
+  }, [adminMode, selectedBranchId, selectedCabang]);
 
   // State for selected products and template
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -53,10 +62,10 @@ const ProductCreate = () => {
   // State for individual product prices
   const [productPrices, setProductPrices] = useState({});
 
-  // Add pagination state
+  // Pagination and Search state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // React Hook Form setup
   const {
@@ -76,39 +85,19 @@ const ProductCreate = () => {
     },
   });
 
-  // React Query hooks
-  const { data: templates, isLoading: templatesLoading } = useQuery({
-    queryKey: ["templates", selectedBranchId],
-    queryFn: async () => {
-      if (!selectedBranchId) {
-        return [];
-      }
-      const response = await api.get(
-        `/produk/new/templates?cabangId=${selectedBranchId}`
-      );
-      return response.data.data;
-    },
-    enabled: !!selectedBranchId,
-  });
+  // Queries using centralized hooks
+  const { data: templates, isLoading: templatesLoading } = useProductTemplates(selectedBranchId);
 
-  // Add query for fetching branches for super admin
-  const { data: branchesData, isLoading: branchesLoading } = useQuery({
-    queryKey: ["branches"],
-    queryFn: async () => {
-      const response = await api.get("/cabang");
-      return response.data.data;
-    },
-    enabled: userRole === "super_admin", // Only fetch if user is super admin
-  });
+  const { data: recommendations, isLoading: recommendationsLoading } = useProductRecommendations(
+    selectedBranchId, 
+    { page: currentPage, limit: itemsPerPage, search: searchQuery }
+  );
 
-  // Update branches state when data is loaded
-  useEffect(() => {
-    if (branchesData) {
-      setBranches(branchesData);
-    }
-  }, [branchesData]);
+  console.log("recommendations", recommendations);
 
-  // Add handler for branch change
+  const addProductsMutation = useBulkAddProducts(selectedBranchId);
+
+  // Handle branch change
   const handleBranchChange = (e) => {
     const newBranchId = e.target.value;
     setSelectedBranchId(newBranchId);
@@ -119,64 +108,35 @@ const ProductCreate = () => {
     setSelectedTemplate(null);
   };
 
-  // Update React Query hooks with pagination
-  const { data: recommendations, isLoading: recommendationsLoading } = useQuery(
-    {
-      queryKey: [
-        "recommendations",
-        selectedBranchId,
-        currentPage,
-        itemsPerPage,
-      ],
-      queryFn: async () => {
-        if (!selectedBranchId) {
-          return { data: [], pagination: { totalPages: 1 } };
-        }
-
-        // Note: Backend endpoint needs to be updated to support pagination
-        // Make sure the API returns data in the format:
-        // { data: [...products], pagination: { totalPages, currentPage, totalItems, etc. } }
-        const response = await api.get(
-          `/produk/recommendations/${selectedBranchId}?page=${currentPage}&limit=${itemsPerPage}`
-        );
-
-        // Update total pages from response pagination
-        if (response.data.pagination && response.data.pagination.totalPages) {
-          setTotalPages(response.data.pagination.totalPages);
-        }
-
-        return response.data;
-      },
-      enabled: !!selectedBranchId,
-    }
-  );
-
   // Handler for page changes
   const handlePageChange = (page) => {
     setCurrentPage(page);
   };
 
-  const addProductsMutation = useMutation({
-    mutationFn: async (data) => {
-      return await api.post(`/produk/bulk/${selectedBranchId}`, data);
-    },
-    onSuccess: (response) => {
-      toast.success(
-        `Berhasil menambahkan ${response.data.data.addedProducts} produk ke cabang`
-      );
-      queryClient.invalidateQueries({
-        queryKey: ["products", selectedBranchId],
-      });
-      setTimeout(() => {
-        navigate(`/superadmin/products`);
-      }, 2000);
-    },
-    onError: (error) => {
-      toast.error(
-        error.response?.data?.message || "Gagal menambahkan produk ke cabang"
-      );
-    },
-  });
+  // Handle search input
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1); // Reset to first page when search changes
+  };
+
+  // Mutation handler moved to hook
+  const handleAddProducts = (payload) => {
+    addProductsMutation.mutate(payload, {
+      onSuccess: (response) => {
+        toast.success(
+          `Berhasil menambahkan ${response.addedProducts} produk ke cabang`
+        );
+        setTimeout(() => {
+          navigate(`/products`);
+        }, 2000);
+      },
+      onError: (error) => {
+        toast.error(
+          error.response?.data?.message || "Gagal menambahkan produk ke cabang"
+        );
+      }
+    });
+  };
 
   // Watch form values
   const watchMarginPercentage = watch("marginPercentage");
@@ -189,7 +149,7 @@ const ProductCreate = () => {
       return;
     }
 
-    const template = templates.find((t) => t.id === templateId);
+    const template = templates?.data?.find((t) => t.id === templateId);
     setSelectedTemplate(template);
 
     // Update form values with template defaults
@@ -301,7 +261,7 @@ const ProductCreate = () => {
       products: productsData,
     };
 
-    addProductsMutation.mutate(payload);
+    handleAddProducts(payload);
   };
 
   // Perbaiki isLoading khusus untuk button submit
@@ -424,7 +384,7 @@ const ProductCreate = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Add Branch Selection for Super Admin */}
-        {userRole === "super_admin" && (
+        {adminMode && (
           <div className="lg:col-span-12">
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="bg-blue-50 py-3 px-4 border-b border-blue-100">
@@ -452,9 +412,9 @@ const ProductCreate = () => {
                     disabled={branchesLoading}
                   >
                     <option value="">-- Pilih Cabang --</option>
-                    {branches.map((branch) => (
+                    {cabangList.filter(c => c.id !== "global").map((branch) => (
                       <option key={branch.id} value={branch.id}>
-                        {branch.namaCabang} - {branch.alamat}
+                        {branch.namaCabang}
                       </option>
                     ))}
                   </select>
@@ -465,7 +425,7 @@ const ProductCreate = () => {
         )}
 
         {/* After branch selection section, add conditional for super admin without branch selection */}
-        {userRole === "super_admin" && !selectedBranchId && (
+        {adminMode && !selectedBranchId && (
           <div className="lg:col-span-12">
             <div className="bg-yellow-50 text-yellow-700 p-4 rounded-md border border-yellow-200">
               <div className="flex items-center">
@@ -491,8 +451,8 @@ const ProductCreate = () => {
         )}
 
         {/* Template Selection - Only show when branch selected for super admin */}
-        {(userRole !== "super_admin" ||
-          (userRole === "super_admin" && selectedBranchId)) && (
+        {(!adminMode ||
+          (adminMode && selectedBranchId)) && (
           <div className="lg:col-span-12">
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="bg-blue-50 py-3 px-4 border-b border-blue-100">
@@ -521,7 +481,7 @@ const ProductCreate = () => {
                     disabled={templatesLoading}
                   >
                     <option value="">-- Pilih Template --</option>
-                    {templates?.map((template) => (
+                    {templates?.data?.map((template) => (
                       <option key={template.id} value={template.id}>
                         {template.name} - {template.description}
                       </option>
@@ -576,8 +536,8 @@ const ProductCreate = () => {
         )}
 
         {/* Product Selection - Only show when branch selected for super admin */}
-        {(userRole !== "super_admin" ||
-          (userRole === "super_admin" && selectedBranchId)) && (
+        {(!adminMode ||
+          (adminMode && selectedBranchId)) && (
           <div className="lg:col-span-7">
             <div className="bg-white rounded-lg shadow-md overflow-hidden h-full">
               <div className="bg-blue-50 py-3 px-4 border-b border-blue-100">
@@ -586,9 +546,44 @@ const ProductCreate = () => {
                 </h2>
               </div>
               <div className="p-4">
-                <p className="text-sm text-gray-500 mb-3">
-                  Produk yang populer di cabang lain dan belum ada di cabang ini
-                </p>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                  <p className="text-sm text-gray-500">
+                    Produk yang populer di cabang lain dan belum ada di cabang ini
+                  </p>
+                  <div className="relative w-full md:w-80">
+                    <input
+                      type="text"
+                      placeholder="Cari Nama Produk, SKU, atau Barcode..."
+                      className="w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                    />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                    {searchQuery && (
+                      <button
+                        onClick={() => { setSearchQuery(""); setCurrentPage(1); }}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
 
                 {recommendationsLoading ? (
                   <div className="flex justify-center items-center py-8">
@@ -725,7 +720,7 @@ const ProductCreate = () => {
                       <Pagination
                         currentPage={currentPage}
                         totalPages={
-                          recommendations?.pagination?.totalPages || totalPages
+                          recommendations?.pagination?.totalPages || 1
                         }
                         onPageChange={handlePageChange}
                         align="center"
@@ -739,8 +734,8 @@ const ProductCreate = () => {
         )}
 
         {/* Form and Selected Products - Only show when branch selected for super admin */}
-        {(userRole !== "super_admin" ||
-          (userRole === "super_admin" && selectedBranchId)) && (
+        {(!adminMode ||
+          (adminMode && selectedBranchId)) && (
           <div className="lg:col-span-5">
             <div className="bg-white rounded-lg shadow-md overflow-hidden h-full">
               <div className="bg-blue-50 py-3 px-4 border-b border-blue-100">

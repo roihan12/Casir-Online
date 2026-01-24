@@ -28,10 +28,14 @@ import Spinner from "@features/common/Spinner";
 import Pagination from "@features/common/Pagination";
 import Alert from "@features/common/Alert";
 import Table from "@features/common/Table";
+import { useAuth } from "@features/auth/hooks/useAuth";
 
 const ProductMasterList = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { hasPermission } = useAuth();
+  
+  const canManage = hasPermission("produk:manage");
 
   // State for filters and pagination
   const [searchTerm, setSearchTerm] = useState("");
@@ -278,26 +282,31 @@ const ProductMasterList = () => {
           >
             <Eye className="h-5 w-5" />
           </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEditProduct(row.id);
-            }}
-            className="text-yellow-600 hover:text-yellow-900"
-            title="Edit"
-          >
-            <Edit className="h-5 w-5" />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDeleteProduct(row.id);
-            }}
-            className="text-red-600 hover:text-red-900"
-            title="Hapus"
-          >
-            <Trash2 className="h-5 w-5" />
-          </button>
+          
+          {canManage && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEditProduct(row.id);
+                }}
+                className="text-yellow-600 hover:text-yellow-900"
+                title="Edit"
+              >
+                <Edit className="h-5 w-5" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteProduct(row.id);
+                }}
+                className="text-red-600 hover:text-red-900"
+                title="Hapus"
+              >
+                <Trash2 className="h-5 w-5" />
+              </button>
+            </>
+          )}
         </div>
       ),
     },
@@ -344,13 +353,15 @@ const ProductMasterList = () => {
           <Package className="mr-2 h-6 w-6" />
           Manajemen Produk Master
         </h1>
-        <button
-          onClick={handleAddProduct}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Tambah Produk
-        </button>
+        {canManage && (
+          <button
+            onClick={handleAddProduct}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Tambah Produk
+          </button>
+        )}
       </div>
 
       {/* Dashboard Section */}

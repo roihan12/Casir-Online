@@ -20,6 +20,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useAuth } from "../../auth/hooks/useAuth.js";
+import { useCabang } from "../../cabang/hooks/useCabang.js";
 import { toast } from "react-hot-toast";
 import Modal from "../../common/Modal.jsx";
 import Table from "../../common/Table.jsx";
@@ -30,13 +31,19 @@ import {
   useProdukMasterDashboard,
 } from "../hooks/useProdukMasterQueries";
 import useProdukQueries from "../hooks/useProdukQueries";
-import { useCabangList } from "../../cabang/hooks/useCabangQueries";
 import { useQueryClient } from "@tanstack/react-query";
 
 const ProductManagementPage = () => {
   const navigate = useNavigate();
-  const { hasRole } = useAuth();
-  const isAdminCabang = hasRole("admin_cabang");
+  const { isSuperAdmin, hasPermission } = useAuth();
+  const { cabangList, selectedCabang, isGlobalView } = useCabang();
+  
+  const adminMode = isSuperAdmin();
+  const canCreate = hasPermission("produk:create");
+  const canRead = hasPermission("produk:read");
+  const canUpdate = hasPermission("produk:update");
+  const canDelete = hasPermission("produk:delete");
+  
   const queryClient = useQueryClient();
   const { useAllProducts } = useProdukQueries();
 
@@ -47,7 +54,9 @@ const ProductManagementPage = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [cabangFilter, setCabangFilter] = useState("all");
+  const [cabangFilter, setCabangFilter] = useState(
+    adminMode ? (isGlobalView ? "all" : selectedCabang?.id || "all") : selectedCabang?.id || "all"
+  );
   const [minHargaFilter, setMinHargaFilter] = useState("");
   const [maxHargaFilter, setMaxHargaFilter] = useState("");
   const [minStokFilter, setMinStokFilter] = useState("");
@@ -64,9 +73,12 @@ const ProductManagementPage = () => {
   const [categories, setCategories] = useState([]);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
-  // Fetch cabang list data from useCabangQueries
-  const { data: cabangData, isLoading: isCabangLoading } = useCabangList();
-  const cabangList = cabangData?.data || [];
+  // Sync cabangFilter for non-admins if it changes in context
+  useEffect(() => {
+    if (!adminMode && selectedCabang?.id) {
+      setCabangFilter(selectedCabang.id);
+    }
+  }, [adminMode, selectedCabang]);
 
   // Create filter params for the API
   const filterParams = {
@@ -127,7 +139,7 @@ const ProductManagementPage = () => {
   // Reset filters with page reset
   const resetFilters = () => {
     setCategoryFilter("all");
-    setCabangFilter("all");
+    setCabangFilter(adminMode ? "all" : selectedCabang?.id || "all");
     setStatusFilter("all");
     setSearchQuery("");
     setMinHargaFilter("");
@@ -203,18 +215,18 @@ const ProductManagementPage = () => {
 
   // Handle add new product
   const handleAddProduct = () => {
-    navigate("/superadmin/products/create");
+    navigate("/products/create");
   };
 
   // Handle edit product
   const handleEditProduct = (product) => {
-    navigate(`/superadmin/products/edit/${product.id}`);
+    navigate(`/products/edit/${product.id}`);
   };
 
   // Handle view product details
   const handleViewProduct = (product) => {
     if (product && product.id) {
-      navigate(`/superadmin/products/${product.id}`);
+      navigate(`/products/${product.id}`);
     } else {
       // If no specific product, just show the main list
       setShowDashboard(false);
@@ -277,12 +289,12 @@ const ProductManagementPage = () => {
 
   // Navigate to categories
   const handleNavigateToCategories = () => {
-    navigate("/superadmin/products/categories");
+    navigate("/products/categories");
   };
 
   // Navigate to product requests
   const handleNavigateToRequests = () => {
-    navigate("/superadmin/products/requests");
+    navigate("/products/requests");
   };
 
   // Format price
@@ -434,27 +446,33 @@ const ProductManagementPage = () => {
       accessor: "actions",
       cell: (row) => (
         <div className="flex space-x-2">
-          <button
-            onClick={() => handleViewProduct(row)}
-            className="p-1 text-gray-600 hover:text-indigo-800 rounded-full hover:bg-indigo-100"
-            title="Lihat Detail"
-          >
-            <Eye className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => handleEditProduct(row)}
-            className="p-1 text-blue-600 hover:text-blue-800 rounded-full hover:bg-blue-100"
-            title="Edit"
-          >
-            <Edit className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => handleDeleteProduct(row)}
-            className="p-1 text-red-600 hover:text-red-800 rounded-full hover:bg-red-100"
-            title="Hapus"
-          >
-            <Trash className="h-4 w-4" />
-          </button>
+          {canRead && (
+            <button
+              onClick={() => handleViewProduct(row)}
+              className="p-1 text-gray-600 hover:text-indigo-800 rounded-full hover:bg-indigo-100"
+              title="Lihat Detail"
+            >
+              <Eye className="h-4 w-4" />
+            </button>
+          )}
+          {canUpdate && (
+            <button
+              onClick={() => handleEditProduct(row)}
+              className="p-1 text-blue-600 hover:text-blue-800 rounded-full hover:bg-blue-100"
+              title="Edit"
+            >
+              <Edit className="h-4 w-4" />
+            </button>
+          )}
+          {canDelete && (
+            <button
+              onClick={() => handleDeleteProduct(row)}
+              className="p-1 text-red-600 hover:text-red-800 rounded-full hover:bg-red-100"
+              title="Hapus"
+            >
+              <Trash className="h-4 w-4" />
+            </button>
+          )}
         </div>
       ),
     },
@@ -544,16 +562,18 @@ const ProductManagementPage = () => {
               />
             </button>
 
-            <button
-              onClick={handleNavigateToCategories}
-              className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center hover:bg-gray-200"
-            >
-              <Layers className="h-5 w-5 mr-2" />
-              Kategori
-            </button>
+            {adminMode && (
+              <button
+                onClick={handleNavigateToCategories}
+                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center hover:bg-gray-200"
+              >
+                <Layers className="h-5 w-5 mr-2" />
+                Kategori
+              </button>
+            )}
 
-            {/* Request button only visible for admin_cabang */}
-            {isAdminCabang && (
+            {/* Request button only visible for non-super-admins */}
+            {!adminMode && (
               <button
                 onClick={handleNavigateToRequests}
                 className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg flex items-center hover:bg-blue-200"
@@ -563,21 +583,25 @@ const ProductManagementPage = () => {
               </button>
             )}
 
-            <button
-              onClick={() => setShowImportExportModal(true)}
-              className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center hover:bg-gray-200"
-            >
-              <Upload className="h-5 w-5 mr-2" />
-              Impor/Ekspor
-            </button>
+            {canCreate && (
+              <>
+                <button
+                  onClick={() => setShowImportExportModal(true)}
+                  className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center hover:bg-gray-200"
+                >
+                  <Upload className="h-5 w-5 mr-2" />
+                  Impor/Ekspor
+                </button>
 
-            <button
-              onClick={handleAddProduct}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-indigo-700"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Tambah Produk
-            </button>
+                <button
+                  onClick={handleAddProduct}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-indigo-700"
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  Tambah Produk
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -600,7 +624,7 @@ const ProductManagementPage = () => {
                     stok rendah.
                   </span>
                 )}
-                {isAdminCabang && (
+                {!adminMode && (
                   <button
                     onClick={handleNavigateToRequests}
                     className="text-blue-600 hover:text-blue-800 underline mt-1 font-medium"
@@ -681,9 +705,10 @@ const ProductManagementPage = () => {
 
               <div className="flex items-center space-x-2">
                 <select
-                  className="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
                   value={cabangFilter}
                   onChange={handleCabangChange}
+                  disabled={!adminMode}
                 >
                   <option value="all">Semua Cabang</option>
                   {cabangList.map((cabang) => (
