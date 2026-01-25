@@ -1,177 +1,108 @@
-import React, { forwardRef, useState, useEffect, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, forwardRef } from "react";
 import { ChevronDown, Check } from "lucide-react";
 import { cn } from "@common/utils/cn";
 
-const Select = forwardRef(({
-  children,
-  value,
-  onChange,
-  placeholder = "Select an option",
-  disabled = false,
-  className,
-  ...props
-}, ref) => {
-  const [open, setOpen] = useState(false);
-  const [selectedValue, setSelectedValue] = useState(value);
-  const [selectedLabel, setSelectedLabel] = useState("");
-  const selectRef = useRef(null);
+const SelectContext = createContext(null);
 
-  // Handle outside click to close dropdown
+const useSelect = () => {
+  const context = useContext(SelectContext);
+  if (!context) {
+    throw new Error("Select components must be used within a Select");
+  }
+  return context;
+};
+
+const Select = ({ children, value, onChange, onValueChange, defaultValue, disabled = false }) => {
+  const [open, setOpen] = useState(false);
+  const [selectedValue, setSelectedValue] = useState(value || defaultValue);
+  const [selectedLabel, setSelectedLabel] = useState("");
+  const containerRef = useRef(null);
+
+  // Handle outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (selectRef.current && !selectRef.current.contains(event.target)) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
         setOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Update selected value when prop changes
+  // Sync internal state with external value
   useEffect(() => {
-    setSelectedValue(value);
-    
-    // Find the label for the selected value
-    React.Children.forEach(children, child => {
-      if (child.props.value === value) {
-        setSelectedLabel(child.props.children);
-      }
-    });
-  }, [value, children]);
+    if (value !== undefined) {
+      setSelectedValue(value);
+    }
+  }, [value]);
 
-  // Handle selection
-  const handleSelect = (value, label) => {
-    setSelectedValue(value);
+  const handleSelect = (val, label) => {
+    setSelectedValue(val);
     setSelectedLabel(label);
     setOpen(false);
-    if (onChange) {
-      onChange(value);
-    }
+    if (onChange) onChange(val);
+    if (onValueChange) onValueChange(val);
   };
 
   return (
-    <div 
-      ref={selectRef}
-      className={cn("relative", className)} 
-      {...props}
-    >
-      <button
-        type="button"
-        onClick={() => !disabled && setOpen(!open)}
-        className={cn(
-          "flex h-10 w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-left",
-          "focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2",
-          disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
-          className
-        )}
-        disabled={disabled}
-        ref={ref}
-      >
-        <span className={selectedLabel ? "" : "text-gray-400"}>
-          {selectedLabel || placeholder}
-        </span>
-        <ChevronDown className="h-4 w-4 opacity-50" />
-      </button>
-      
-      {open && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
-          <ul className="py-1">
-            {React.Children.map(children, child => 
-              React.cloneElement(child, {
-                onSelect: handleSelect,
-                isSelected: child.props.value === selectedValue
-              })
-            )}
-          </ul>
-        </div>
-      )}
-    </div>
+    <SelectContext.Provider value={{ 
+      open, 
+      setOpen, 
+      selectedValue, 
+      setSelectedValue, 
+      handleSelect, 
+      selectedLabel, 
+      setSelectedLabel,
+      disabled 
+    }}>
+      <div ref={containerRef} className="relative w-full">
+        {children}
+      </div>
+    </SelectContext.Provider>
   );
-});
+};
 
-Select.displayName = "Select";
-
-const SelectItem = forwardRef(({ 
-  children, 
-  value, 
-  onSelect, 
-  isSelected,
-  disabled = false,
-  className,
-  ...props 
-}, ref) => {
-  return (
-    <li
-      ref={ref}
-      className={cn(
-        "relative flex items-center px-3 py-2 text-sm cursor-pointer select-none",
-        isSelected ? "bg-indigo-50 text-indigo-900" : "hover:bg-gray-50",
-        disabled ? "opacity-50 cursor-not-allowed" : "",
-        className
-      )}
-      onClick={() => !disabled && onSelect && onSelect(value, children)}
-      {...props}
-    >
-      <span className="flex-grow">{children}</span>
-      {isSelected && (
-        <Check className="h-4 w-4 text-indigo-600" />
-      )}
-    </li>
-  );
-});
-
-SelectItem.displayName = "SelectItem";
-
-// These are additional components to maintain compatibility with the previous Radix UI implementation
 const SelectTrigger = forwardRef(({ className, children, ...props }, ref) => {
-  // This is just a wrapper around the button in the Select component
-  // It's here for backward compatibility
+  const { open, setOpen, disabled, selectedLabel } = useSelect();
+  
   return (
     <button
       ref={ref}
       type="button"
+      onClick={() => !disabled && setOpen(!open)}
       className={cn(
-        "flex h-10 w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-left",
-        "focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2",
+        "flex h-10 w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-left shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1",
+        disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:border-gray-400",
         className
       )}
+      disabled={disabled}
       {...props}
     >
-      {children}
-      <ChevronDown className="h-4 w-4 opacity-50" />
+      <span className={cn("truncate flex-grow", !selectedLabel && !children && "text-gray-400")}>
+        {selectedLabel || children || "Select..."}
+      </span>
+      <ChevronDown className={cn("ml-2 h-4 w-4 shrink-0 opacity-50 transition-transform", open && "rotate-180")} />
     </button>
   );
 });
 
-SelectTrigger.displayName = "SelectTrigger";
-
-const SelectValue = forwardRef(({ className, placeholder, ...props }, ref) => {
-  // This is just a wrapper around the span in the Select component
-  // It's here for backward compatibility
+const SelectValue = ({ placeholder, children, className }) => {
+  const { selectedLabel } = useSelect();
   return (
-    <span
-      ref={ref}
-      className={cn("text-sm", className)}
-      {...props}
-    >
-      {props.children || placeholder}
+    <span className={cn("truncate block", !selectedLabel && "text-gray-400", className)}>
+      {selectedLabel || children || placeholder}
     </span>
   );
-});
+};
 
-SelectValue.displayName = "SelectValue";
+const SelectContent = ({ className, children, ...props }) => {
+  const { open } = useSelect();
+  if (!open) return null;
 
-const SelectContent = forwardRef(({ className, children, ...props }, ref) => {
-  // This is just a wrapper around the div in the Select component
-  // It's here for backward compatibility
   return (
     <div
-      ref={ref}
       className={cn(
-        "absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto",
+        "absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto animate-in fade-in slide-in-from-top-1 duration-200",
         className
       )}
       {...props}
@@ -181,9 +112,36 @@ const SelectContent = forwardRef(({ className, children, ...props }, ref) => {
       </div>
     </div>
   );
-});
+};
 
-SelectContent.displayName = "SelectContent";
+const SelectItem = forwardRef(({ children, value, disabled = false, className, ...props }, ref) => {
+  const { selectedValue, handleSelect, setSelectedLabel } = useSelect();
+  const isSelected = selectedValue === value;
+
+  // Sync initial label if selected
+  useEffect(() => {
+    if (isSelected) {
+      setSelectedLabel(children);
+    }
+  }, [isSelected, children, setSelectedLabel]);
+
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "relative flex w-full items-center px-3 py-2 text-sm cursor-pointer select-none transition-colors",
+        isSelected ? "bg-indigo-50 text-indigo-900 font-medium" : "text-gray-700 hover:bg-gray-50",
+        disabled ? "opacity-50 cursor-not-allowed pointer-events-none" : "",
+        className
+      )}
+      onClick={() => !disabled && handleSelect(value, children)}
+      {...props}
+    >
+      <span className="flex-grow truncate">{children}</span>
+      {isSelected && <Check className="ml-2 h-4 w-4 text-indigo-600 shrink-0" />}
+    </div>
+  );
+});
 
 export { 
   Select, 

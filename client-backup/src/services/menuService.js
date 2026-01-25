@@ -36,7 +36,7 @@ export const getAllMenus = async () => {
  * Get menus untuk role tertentu
  */
 export const getRoleMenus = async (roleId) => {
-    const response = await api.get(`/menu-view/role/${roleId}/menus`);
+    const response = await api.get(`/menu-view/sidebar/${roleId}`);
     return response.data?.data || [];
 };
 

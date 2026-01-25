@@ -1,6 +1,4 @@
-// userService.js - Service untuk mengelola operasi terkait user
-
-import api from "@common/utils/api";
+import api from "@services/api";
 
 const userService = {
   // Get all users with optional filters
@@ -108,6 +106,65 @@ const userService = {
     }
   },
 
+  // Update user status
+  async updateUserStatus(id, status) {
+    try {
+      const response = await api.put(`/users/${id}/status`, { status });
+      return response.data;
+    } catch (error) {
+      this._handleError(error);
+    }
+  },
+
+  // Force logout user
+  async forceLogout(id) {
+    try {
+      const response = await api.post(`/users/${id}/force-logout`);
+      return response.data;
+    } catch (error) {
+      this._handleError(error);
+    }
+  },
+
+  // Get user activity logs
+  async getActivityLogs(params = {}) {
+    try {
+      const queryParams = new URLSearchParams(params);
+      const response = await api.get(`/users/activity-logs?${queryParams.toString()}`);
+      return response.data;
+    } catch (error) {
+      this._handleError(error);
+    }
+  },
+
+  // Dashboard Stats
+  async getUserStats() {
+    try {
+      const response = await api.get("/user-dashboard/stats");
+      return response.data;
+    } catch (error) {
+      this._handleError(error);
+    }
+  },
+
+  async getRoleDistribution() {
+    try {
+      const response = await api.get("/user-dashboard/role-distribution");
+      return response.data;
+    } catch (error) {
+      this._handleError(error);
+    }
+  },
+
+  async getUsersPerCabang() {
+    try {
+      const response = await api.get("/user-dashboard/users-per-cabang");
+      return response.data;
+    } catch (error) {
+      this._handleError(error);
+    }
+  },
+
   // Invalidate user cache
   async invalidateCache(id = "") {
     try {
@@ -123,14 +180,19 @@ const userService = {
   // Helper method to handle errors
   _handleError(error) {
     if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
       const errorMessage = error.response.data.message || "An error occurred";
       throw new Error(errorMessage);
     } else if (error.request) {
+      // The request was made but no response was received
       throw new Error("No response from server. Please check your connection.");
     } else {
+      // Something happened in setting up the request that triggered an Error
       throw new Error(error.message);
     }
   },
 };
 
 export default userService;
+

@@ -17,9 +17,10 @@ import {
   CheckCircle,
   XCircle,
 } from "lucide-react";
-import userService from "@services/userService";
+import userService from "../services/userService";
 import Modal from "@features/common/Modal";
 import UserForm from "../components/UserForm";
+import { Can } from "@features/common/Can";
 
 const UserDetail = () => {
   const { id } = useParams();
@@ -33,6 +34,8 @@ const UserDetail = () => {
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
   const [showForceLogoutModal, setShowForceLogoutModal] = useState(false);
   const [actionInProgress, setActionInProgress] = useState(false);
+  const [activityLogs, setActivityLogs] = useState([]);
+  const [isLogsLoading, setIsLogsLoading] = useState(false);
 
   // Load user data
   useEffect(() => {
@@ -53,6 +56,24 @@ const UserDetail = () => {
       loadUserDetail();
     }
   }, [id]);
+
+  // Load activity logs when tab changes to activity
+  useEffect(() => {
+    if (activeTab === "activity" && id) {
+      const loadActivityLogs = async () => {
+        try {
+          setIsLogsLoading(true);
+          const response = await userService.getActivityLogs({ userId: id, limit: 20 });
+          setActivityLogs(response.data || []);
+        } catch (error) {
+          console.error("Error loading activity logs:", error);
+        } finally {
+          setIsLogsLoading(false);
+        }
+      };
+      loadActivityLogs();
+    }
+  }, [activeTab, id]);
 
   // Format date
   const formatDate = (dateString) => {
@@ -117,17 +138,16 @@ const UserDetail = () => {
   const confirmToggleStatus = async () => {
     setActionInProgress(true);
     try {
-      const newStatus = user.status === "active" ? "inactive" : "active";
-      const updatedUser = await userService.updateUserStatus(
-        user.id,
-        newStatus
-      );
+      const newStatus = user.status === "aktif" ? "nonaktif" : "aktif";
+      await userService.updateUserStatus(user.id, newStatus);
+      
+      // Refresh user data
+      const updatedUser = await userService.getUserById(id);
       setUser(updatedUser);
+      
       setShowDeactivateModal(false);
-      // Show success message
     } catch (error) {
       console.error("Error updating user status:", error);
-      // Show error message
     } finally {
       setActionInProgress(false);
     }
@@ -139,10 +159,11 @@ const UserDetail = () => {
     try {
       await userService.forceLogout(user.id);
       setShowForceLogoutModal(false);
-      // Show success message
+      // Refresh user data
+      const updatedUser = await userService.getUserById(id);
+      setUser(updatedUser);
     } catch (error) {
       console.error("Error forcing logout:", error);
-      // Show error message
     } finally {
       setActionInProgress(false);
     }
@@ -202,17 +223,19 @@ const UserDetail = () => {
             <ArrowLeft className="h-5 w-5 text-gray-500" />
           </button>
           <h1 className="text-2xl font-semibold text-gray-900">
-            Detail User: {user.nama}
+            Detail User: {user.namaLengkap}
           </h1>
         </div>
         <div className="flex space-x-2">
-          <button
-            onClick={handleEditUser}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center"
-          >
-            <Edit className="h-5 w-5 mr-2" />
-            Edit User
-          </button>
+          <Can permission="user:update">
+            <button
+              onClick={handleEditUser}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center"
+            >
+              <Edit className="h-5 w-5 mr-2" />
+              Edit User
+            </button>
+          </Can>
         </div>
       </div>
 
@@ -220,17 +243,17 @@ const UserDetail = () => {
       <div className="mb-6">
         <span
           className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-            user.status === "active"
+            user.status === "aktif"
               ? "bg-green-100 text-green-800"
               : "bg-red-100 text-red-800"
           }`}
         >
-          {user.status === "active" ? (
+          {user.status === "aktif" ? (
             <CheckCircle className="h-4 w-4 mr-1" />
           ) : (
             <XCircle className="h-4 w-4 mr-1" />
           )}
-          Status: {user.status === "active" ? "Aktif" : "Nonaktif"}
+          Status: {user.status === "aktif" ? "Aktif" : "Nonaktif"}
         </span>
       </div>
 
@@ -297,7 +320,7 @@ const UserDetail = () => {
               {/* User Info */}
               <div className="ml-6 flex-grow">
                 <h2 className="text-xl font-semibold text-gray-900">
-                  {user.nama}
+                  {user.namaLengkap}
                 </h2>
                 <div className="mt-2 space-y-3">
                   <div className="flex items-center text-gray-600">
@@ -327,42 +350,50 @@ const UserDetail = () => {
 
               {/* Action Buttons */}
               <div className="ml-6 flex flex-col space-y-2">
-                <button
-                  onClick={() => setShowResetPasswordModal(true)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center"
-                >
-                  <Lock className="h-4 w-4 mr-2" />
-                  Reset Password
-                </button>
-                <button
-                  onClick={() => setShowForceLogoutModal(true)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center"
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Force Logout
-                </button>
-                <button
-                  onClick={() => setShowDeactivateModal(true)}
-                  className={`px-4 py-2 rounded-lg flex items-center ${
-                    user.status === "active"
-                      ? "bg-yellow-100 border border-yellow-300 text-yellow-800 hover:bg-yellow-200"
-                      : "bg-green-100 border border-green-300 text-green-800 hover:bg-green-200"
-                  }`}
-                >
-                  {user.status === "active" ? (
-                    <XCircle className="h-4 w-4 mr-2" />
-                  ) : (
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                  )}
-                  {user.status === "active" ? "Nonaktifkan" : "Aktifkan"}
-                </button>
-                <button
-                  onClick={() => setShowDeleteModal(true)}
-                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center"
-                >
-                  <Trash className="h-4 w-4 mr-2" />
-                  Hapus User
-                </button>
+                <Can permission="user:reset-password">
+                  <button
+                    onClick={() => setShowResetPasswordModal(true)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center"
+                  >
+                    <Lock className="h-4 w-4 mr-2" />
+                    Reset Password
+                  </button>
+                </Can>
+                <Can permission="user:force-logout">
+                  <button
+                    onClick={() => setShowForceLogoutModal(true)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Force Logout
+                  </button>
+                </Can>
+                <Can permission="user:update-status">
+                  <button
+                    onClick={() => setShowDeactivateModal(true)}
+                    className={`px-4 py-2 rounded-lg flex items-center ${
+                      user.status === "aktif"
+                        ? "bg-yellow-100 border border-yellow-300 text-yellow-800 hover:bg-yellow-200"
+                        : "bg-green-100 border border-green-300 text-green-800 hover:bg-green-200"
+                    }`}
+                  >
+                    {user.status === "aktif" ? (
+                      <XCircle className="h-4 w-4 mr-2" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                    )}
+                    {user.status === "aktif" ? "Nonaktifkan" : "Aktifkan"}
+                  </button>
+                </Can>
+                <Can permission="user:delete">
+                  <button
+                    onClick={() => setShowDeleteModal(true)}
+                    className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center"
+                  >
+                    <Trash className="h-4 w-4 mr-2" />
+                    Hapus User
+                  </button>
+                </Can>
               </div>
             </div>
 
@@ -461,11 +492,15 @@ const UserDetail = () => {
             <h3 className="text-lg font-medium text-gray-900 mb-4">
               Riwayat Aktivitas
             </h3>
-            {user.activities && user.activities.length > 0 ? (
+            {isLogsLoading ? (
+              <div className="flex justify-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
+              </div>
+            ) : activityLogs && activityLogs.length > 0 ? (
               <div className="relative">
                 {/* Activity Timeline */}
                 <div className="border-l-2 border-gray-200 ml-4">
-                  {user.activities.map((activity, index) => (
+                  {activityLogs.map((activity, index) => (
                     <div key={index} className="mb-6 ml-6 relative">
                       {/* Timeline dot */}
                       <div
@@ -739,13 +774,13 @@ const UserDetail = () => {
       <Modal
         isOpen={showDeactivateModal}
         onClose={() => setShowDeactivateModal(false)}
-        title={user.status === "active" ? "Nonaktifkan User" : "Aktifkan User"}
+        title={user.status === "aktif" ? "Nonaktifkan User" : "Aktifkan User"}
       >
         <div className="p-6">
           <p className="text-gray-700 mb-4">
-            {user.status === "active"
-              ? `Apakah Anda yakin ingin menonaktifkan user "${user.nama}"? User tidak akan dapat login ke sistem.`
-              : `Apakah Anda yakin ingin mengaktifkan user "${user.nama}"? User akan dapat login ke sistem.`}
+            {user.status === "aktif"
+              ? `Apakah Anda yakin ingin menonaktifkan user "${user.namaLengkap}"? User tidak akan dapat login ke sistem.`
+              : `Apakah Anda yakin ingin mengaktifkan user "${user.namaLengkap}"? User akan dapat login ke sistem.`}
           </p>
           <div className="flex justify-end space-x-3">
             <button
@@ -806,7 +841,7 @@ const UserDetail = () => {
         <div className="p-6">
           <p className="text-gray-700 mb-4">
             Apakah Anda yakin ingin melakukan force logout untuk user "
-            {user.nama}"? Tindakan ini akan menghentikan semua sesi aktif
+            {user.namaLengkap}"? Tindakan ini akan menghentikan semua sesi aktif
             pengguna.
           </p>
           <div className="flex justify-end space-x-3">
@@ -861,7 +896,7 @@ const UserDetail = () => {
       >
         <div className="p-6">
           <p className="text-gray-700 mb-4">
-            Apakah Anda yakin ingin menghapus user "{user.nama}"? Tindakan ini
+            Apakah Anda yakin ingin menghapus user "{user.namaLengkap}"? Tindakan ini
             tidak dapat dibatalkan dan semua data pengguna akan dihapus.
           </p>
           <div className="flex justify-end space-x-3">

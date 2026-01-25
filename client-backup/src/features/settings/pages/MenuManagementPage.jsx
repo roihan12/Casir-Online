@@ -41,7 +41,7 @@ import {
 import { Badge } from "@common/components/ui/badge";
 import { useToast } from "@app/providers/ToastContext";
 import menuService from "@services/menuService";
-import permissionService  from "@services/permissionService";
+import { usePermissions } from "../../users/hooks/usePermissions";
 
 import { 
   DropdownMenu, 
@@ -275,11 +275,8 @@ const MenuManagementPage = () => {
   });
 
   // Fetch Permissions
-  const { data: permissions = [] } = useQuery({
-    queryKey: ["permissions"],
-    queryFn: permissionService.getAllPermissions,
-    select: (data) => data || [] // handle potential null/undefined
-  });
+  const { data: permissionsData } = usePermissions();
+  const permissions = permissionsData?.data || [];
 
   // Mutations
   const createMutation = useMutation({

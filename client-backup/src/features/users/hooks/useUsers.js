@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import userService from "../services/userService";
-import roleService from "../../../services/roleService";
+import roleService from "../services/roleService";
 import { toast } from "react-hot-toast";
 
 /**
@@ -33,19 +33,14 @@ export const useUsers = (filters = {}) => {
   const getRolesQuery = useQuery({
     queryKey: ["user-management-roles"],
     queryFn: async () => {
-      try {
-        const response = await roleService.getRoleList();
-        return response.data || [];
-      } catch (error) {
-        console.error("Error fetching role list:", error);
-        return [];
-      }
+      const roles = await roleService.getRoleList();
+      return roles || [];
     },
     staleTime: 5 * 60 * 1000,
   });
 
-  // Get user by ID
-  const getUserById = (id) => useQuery({
+  // Get user by ID hook
+  const useUserById = (id) => useQuery({
     queryKey: ["users", id],
     queryFn: () => userService.getUserById(id),
     enabled: !!id,
@@ -106,7 +101,7 @@ export const useUsers = (filters = {}) => {
     getUsersQuery,
     getDashboardQuery,
     getRolesQuery,
-    getUserById,
+    useUserById,
     // Mutations
     createUser,
     updateUser,

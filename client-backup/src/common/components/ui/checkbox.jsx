@@ -2,7 +2,7 @@ import * as React from "react"
 import { Check } from "lucide-react"
 import { cn } from "@common/utils/cn";
 
-const Checkbox = React.forwardRef(({ className, checked, defaultChecked, onChange, disabled, ...props }, ref) => {
+const Checkbox = React.forwardRef(({ className, checked, defaultChecked, onChange, onCheckedChange, disabled, ...props }, ref) => {
   const [isChecked, setIsChecked] = React.useState(defaultChecked || false);
   
   React.useEffect(() => {
@@ -12,10 +12,16 @@ const Checkbox = React.forwardRef(({ className, checked, defaultChecked, onChang
   }, [checked]);
   
   const handleChange = (e) => {
+    if (disabled) return;
+    
+    const newValue = !isChecked;
     if (checked === undefined) {
-      setIsChecked(!isChecked);
+      setIsChecked(newValue);
     }
+    
+    // Call both handlers if they exist
     onChange?.(e);
+    onCheckedChange?.(newValue);
   };
   
   return (

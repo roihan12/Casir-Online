@@ -20,12 +20,12 @@ import {
   MessageSquare,
   Clipboard,
 } from "lucide-react";
-// import productRequestService from "../../../services/productRequestService";
+import productRequestService from "../services/productRequestService";
 import Modal from "@features/common/Modal";
 import Table from "@features/common/Table";
-// FIXME: Component doesn't exist - needs to be created
-// import ProductRequestForm from "../../../components/superadmin/ProductRequestForm";
-// import ProductRequestDetails from "../../../components/superadmin/ProductRequestDetails";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@common/components/ui/select";
+import ProductRequestForm from "../components/ProductRequestForm";
+import ProductRequestDetails from "../components/ProductRequestDetails";
 
 const ProductRequestManagement = () => {
   const navigate = useNavigate();
@@ -44,6 +44,7 @@ const ProductRequestManagement = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [branchList, setBranchList] = useState([]);
   const [userList, setUserList] = useState([]);
+
 
   // Load request list from API
   useEffect(() => {
@@ -472,58 +473,74 @@ const ProductRequestManagement = () => {
             <div className="flex items-center flex-wrap gap-4">
               <div className="flex items-center space-x-2">
                 <Filter className="text-gray-400" size={18} />
-                <select
-                  className="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                <Select
                   value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
+                  onValueChange={setTypeFilter}
                 >
-                  <option value="all">Semua Tipe</option>
-                  <option value="new_product">Produk Baru</option>
-                  <option value="restock">Restock</option>
-                </select>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Semua Tipe" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Tipe</SelectItem>
+                    <SelectItem value="new_product">Produk Baru</SelectItem>
+                    <SelectItem value="restock">Restock</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex items-center space-x-2">
-                <select
-                  className="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                <Select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  onValueChange={setStatusFilter}
                 >
-                  <option value="all">Semua Status</option>
-                  <option value="draft">Draft</option>
-                  <option value="pending">Pending</option>
-                  <option value="approved">Disetujui</option>
-                  <option value="rejected">Ditolak</option>
-                  <option value="partial">Disetujui Sebagian</option>
-                </select>
+                  <SelectTrigger className="w-44">
+                    <SelectValue placeholder="Semua Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Status</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="approved">Disetujui</SelectItem>
+                    <SelectItem value="rejected">Ditolak</SelectItem>
+                    <SelectItem value="partial">Disetujui Sebagian</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex items-center space-x-2">
-                <select
-                  className="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                <Select
                   value={priorityFilter}
-                  onChange={(e) => setPriorityFilter(e.target.value)}
+                  onValueChange={setPriorityFilter}
                 >
-                  <option value="all">Semua Prioritas</option>
-                  <option value="low">Rendah</option>
-                  <option value="normal">Normal</option>
-                  <option value="high">Tinggi</option>
-                  <option value="urgent">Urgent</option>
-                </select>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Semua Prioritas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Prioritas</SelectItem>
+                    <SelectItem value="low">Rendah</SelectItem>
+                    <SelectItem value="normal">Normal</SelectItem>
+                    <SelectItem value="high">Tinggi</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-gray-600">Tampilkan:</span>
-                <select
-                  className="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={itemsPerPage}
-                  onChange={handleItemsPerPageChange}
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(val) => handleItemsPerPageChange({ target: { value: val } })}
                 >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                </select>
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>

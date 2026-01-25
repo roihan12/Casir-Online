@@ -1,16 +1,21 @@
 // roleService.js - Service untuk mengelola operasi terkait roles dan permissions
 
-import api from "./api";
+import api from "@services/api";
 
 const roleService = {
   // Get all roles
   async getAllRoles() {
     try {
       const response = await api.get("/roles");
-      return response.data;
+      return response.data.data;
     } catch (error) {
       this._handleError(error);
     }
+  },
+
+  // Alias for backward compatibility
+  async getRoleList() {
+    return this.getAllRoles();
   },
 
   // Get role by ID
@@ -66,7 +71,7 @@ const roleService = {
   // Get role permissions
   async getRolePermissions(id) {
     try {
-      const response = await api.get(`/roles/${id}/permissions`);
+      const response = await api.get(`/permissions/role/${id}`);
       return response.data.data;
     } catch (error) {
       this._handleError(error);

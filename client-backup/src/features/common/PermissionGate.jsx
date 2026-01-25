@@ -1,4 +1,4 @@
-import useAuthStore from '../../store/useAuthStore';
+import useAuthStore from '@app/store/useAuthStore';
 
 /**
  * PermissionGate Component

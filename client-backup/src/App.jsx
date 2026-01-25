@@ -69,7 +69,8 @@ import ProtectedRoute from "./app/router/ProtectedRoute";
 import WithoutAuth from "./app/router/WithoutAuth";
 import { UserManagementPage as UserManagement } from "./features/users";
 import UserDetail from "./features/users/pages/UserDetailPage";
-import UserRoles from "./features/users/pages/UserRolesPage";
+import RoleManagement from "./features/users/pages/RoleManagementPage";
+import PermissionsPage from "./features/users/pages/PermissionsPage";
 import { ProductManagementPage as ProductManagement } from "./features/products";
 import { CategoryManagementPage as CategoryManagement } from "./features/categories";
 import ProductRequestManagement from "./features/products/pages/ProductRequestManagementPage";
@@ -256,7 +257,8 @@ function App() {
           >
             <Route index element={<UserManagement />} />
             <Route path=":id" element={<UserDetail />} />
-            <Route path="roles" element={<UserRoles />} />
+            <Route path="roles" element={<RoleManagement />} />
+            <Route path="permissions" element={<PermissionsPage />} />
           </Route>
 
           {/* Product Management */}
