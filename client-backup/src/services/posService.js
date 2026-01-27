@@ -30,8 +30,8 @@ const posService = {
 
   // Pelanggan
   getCustomers: async (query = "") => {
-    const response = await api.get(`/pelanggan/search?q=${query}`);
-    return response.data;
+    const response = await api.get(`/pelanggan?search=${query}`);
+    return response.data.data;
   },
 
   // Transaksi

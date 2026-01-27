@@ -77,7 +77,7 @@ const CustomerForm = () => {
     } catch (error) {
       console.error("Error loading customer data:", error);
       toast.error("Gagal memuat data pelanggan");
-      navigate("/superadmin/customers");
+      navigate("/customers");
     } finally {
       setIsLoading(false);
     }
@@ -119,7 +119,7 @@ const CustomerForm = () => {
         await pelangganService.createPelanggan(formData);
         toast.success("Pelanggan baru berhasil dibuat");
       }
-      navigate("/superadmin/customers");
+      navigate("/customers");
     } catch (error) {
       console.error("Error saving customer:", error);
       toast.error(
@@ -152,7 +152,7 @@ const CustomerForm = () => {
       <div className="mb-6 flex justify-between items-center">
         <div className="flex items-center">
           <button
-            onClick={() => navigate("/superadmin/customers")}
+            onClick={() => navigate("/customers")}
             className="mr-4 p-2 rounded-full hover:bg-gray-100"
           >
             <ArrowLeft className="h-5 w-5 text-gray-600" />
@@ -419,7 +419,7 @@ const CustomerForm = () => {
         <div className="px-6 py-3 bg-gray-50 text-right">
           <button
             type="button"
-            onClick={() => navigate("/superadmin/customers")}
+            onClick={() => navigate("/customers")}
             className="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mr-3"
           >
             Batal

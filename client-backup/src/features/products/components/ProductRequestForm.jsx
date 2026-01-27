@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { 
@@ -14,54 +14,94 @@ import { Button } from "@common/components/ui/button";
 import { Input } from "@common/components/ui/input";
 import { Label } from "@common/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@common/components/ui/select";
-import { Badge } from "@common/components/ui/badge";
-import productRequestService from "../services/productRequestService";
-import produkMasterService from "../services/produkMasterService";
+
+
+import { useCreateProductRequest } from "../hooks/useProductRequest";
+import { useProdukMasterList, useCategories } from "../hooks/useProdukMasterQueries";
 
 const productRequestSchema = z.object({
-  requestType: z.enum(["new_product", "restock"]),
+  requestType: z.enum(["new_product", "restock"], {
+    required_error: "Tipe request wajib dipilih",
+  }),
   cabangId: z.string().min(1, "Cabang wajib dipilih"),
-  prioritas: z.enum(["normal", "urgent", "critical"]),
+  prioritas: z.enum(["normal", "urgent", "critical"]).default("normal"),
   alasan: z.string().optional().nullable(),
   catatan: z.string().optional().nullable(),
   items: z.array(z.object({
-    produkMasterId: z.string().optional().nullable(),
-    namaProduk: z.string().optional().nullable(),
-    sku: z.string().optional().nullable(),
-    jumlahDiminta: z.number().int().min(1, "Jumlah minimal 1"),
+    // Shared fields
+    jumlahDiminta: z.number({ 
+      invalid_type_error: "Jumlah harus berupa angka" 
+    }).int().min(1, "Jumlah minimal 1"),
+    catatan: z.string().optional().nullable(),
+    
+    // Prices
     hargaBeli: z.number().min(0).optional().nullable(),
     hargaJual: z.number().min(0).optional().nullable(),
     hargaGrosir: z.number().min(0).optional().nullable(),
-    catatan: z.string().optional().nullable(),
-    barcode: z.string().optional().nullable(),
+
+    // Restock specific
+    produkMasterId: z.string().optional().nullable(),
+
+    // New Product specific
+    namaProduk: z.string().max(100, "Nama produk maksimal 100 karakter").optional().nullable(),
+    sku: z.string().max(50, "SKU maksimal 50 karakter").optional().nullable(),
+    barcode: z.string().max(50, "Barcode maksimal 50 karakter").optional().nullable(),
     deskripsi: z.string().optional().nullable(),
     kategoriId: z.string().optional().nullable(),
-    brand: z.string().optional().nullable(),
-    satuan: z.string().optional().nullable(),
-    berat: z.number().optional().nullable(),
-    dimensiP: z.number().optional().nullable(),
-    dimensiL: z.number().optional().nullable(),
-    dimensiT: z.number().optional().nullable(),
+    brand: z.string().max(100, "Brand maksimal 100 karakter").optional().nullable(),
+    satuan: z.string().max(50, "Satuan maksimal 50 karakter").optional().nullable(),
+    
+    // Dimensions & Specs
+    berat: z.number().min(0).optional().nullable(),
+    dimensiP: z.number().min(0).optional().nullable(),
+    dimensiL: z.number().min(0).optional().nullable(),
+    dimensiT: z.number().min(0).optional().nullable(),
     isManagedStock: z.boolean().optional().nullable(),
     hasExpired: z.boolean().optional().nullable(),
   })).min(1, "Minimal 1 item")
-}).refine(data => {
-  return data.items.every(item => {
+}).superRefine((data, ctx) => {
+  data.items.forEach((item, index) => {
     if (data.requestType === "restock") {
-      return !!item.produkMasterId;
-    } else {
-      return !!item.namaProduk && !!item.sku;
+      if (!item.produkMasterId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Produk wajib dipilih untuk restock request",
+          path: ["items", index, "produkMasterId"],
+        });
+      }
+    } else { // new_product
+      if (!item.namaProduk) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Nama produk wajib diisi untuk produk baru",
+          path: ["items", index, "namaProduk"],
+        });
+      }
+      if (!item.sku) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "SKU wajib diisi untuk produk baru",
+          path: ["items", index, "sku"],
+        });
+      }
     }
   });
-}, {
-  message: "Semua item harus memiliki data yang lengkap sesuai tipe request",
-  path: ["items"]
 });
 
 const ProductRequestForm = ({ requestList, branchList, userList, onSubmitSuccess, onCancel }) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [produkMasterList, setProdukMasterList] = useState([]);
-  const [kategoriList, setKategoriList] = useState([]);
+  const { data: produkMasterListResponse } = useProdukMasterList();
+  const produkMasterList = Array.isArray(produkMasterListResponse) 
+    ? produkMasterListResponse 
+    : (produkMasterListResponse?.data || []);
+    
+  // While useCategories from useProdukMasterQueries might work, checking if we need explicit mapping
+  const { data: kategoriListResponse } = useCategories();
+  const kategoriList = Array.isArray(kategoriListResponse)
+    ? kategoriListResponse
+    : (kategoriListResponse?.data || []);
+
+  const createMutation = useCreateProductRequest();
+  const isLoading = createMutation.isPending;
 
   const {
     register,
@@ -86,33 +126,24 @@ const ProductRequestForm = ({ requestList, branchList, userList, onSubmitSuccess
 
   const requestType = watch("requestType");
 
-  useEffect(() => {
-    const loadMasterData = async () => {
-      try {
-        const [masterData, categories] = await Promise.all([
-          produkMasterService.getAllProdukMaster(),
-          produkMasterService.getCategories()
-        ]);
-        setProdukMasterList(masterData.data || masterData || []);
-        setKategoriList(categories || []);
-      } catch (error) {
-        console.error("Error loading master data:", error);
-      }
-    };
-    loadMasterData();
-  }, []);
-
-  const onSubmit = async (data) => {
+  const onSubmit = (data) => {
+    console.log("Form submitting with data:", data);
+    
     try {
-      setIsLoading(true);
-      const response = await productRequestService.createRequest(data);
-      // If the page expects the whole list back, we might need to refetch
-      // but usually onSubmitSuccess just triggers a refresh or close
-      onSubmitSuccess(response);
+      createMutation.mutate(data, {
+        onSuccess: (response) => {
+          console.log("Product request created successfully:", response);
+          // Call parent's success handler to close modal and refresh data
+          onSubmitSuccess(response);
+        },
+        onError: (error) => {
+          // Error is already handled in the hook with toast notification
+          console.error("Product request creation failed:", error);
+          console.error("Error details:", error.response?.data);
+        },
+      });
     } catch (error) {
-      console.error("Error creating request:", error);
-    } finally {
-      setIsLoading(false);
+      console.error("Unexpected error during form submission:", error);
     }
   };
 
@@ -121,38 +152,44 @@ const ProductRequestForm = ({ requestList, branchList, userList, onSubmitSuccess
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Tipe Request</Label>
-          <Select 
-            onValueChange={(val) => setValue("requestType", val)} 
-            defaultValue="restock"
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Pilih Tipe" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="restock">Restock Produk</SelectItem>
-              <SelectItem value="new_product">Produk Baru</SelectItem>
-            </SelectContent>
-          </Select>
+          <Controller
+            name="requestType"
+            control={control}
+            render={({ field }) => (
+              <Select onValueChange={field.onChange} value={field.value}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih Tipe" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="restock">Restock Produk</SelectItem>
+                  <SelectItem value="new_product">Produk Baru</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          />
           {errors.requestType && <p className="text-red-500 text-xs">{errors.requestType.message}</p>}
         </div>
 
         <div className="space-y-2">
           <Label>Cabang</Label>
-          <Select 
-            onValueChange={(val) => setValue("cabangId", val)}
-            value={watch("cabangId")}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Pilih Cabang" />
-            </SelectTrigger>
-            <SelectContent>
-              {branchList.map((branch) => (
-                <SelectItem key={branch.id} value={branch.id}>
-                  {branch.namaCabang || branch.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Controller
+            name="cabangId"
+            control={control}
+            render={({ field }) => (
+              <Select onValueChange={field.onChange} value={field.value}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih Cabang" />
+                </SelectTrigger>
+                <SelectContent>
+                  {branchList.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id}>
+                      {branch.namaCabang || branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
           {errors.cabangId && <p className="text-red-500 text-xs">{errors.cabangId.message}</p>}
         </div>
       </div>
@@ -160,19 +197,22 @@ const ProductRequestForm = ({ requestList, branchList, userList, onSubmitSuccess
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Prioritas</Label>
-          <Select 
-            onValueChange={(val) => setValue("prioritas", val)} 
-            defaultValue="normal"
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Pilih Prioritas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="normal">Normal</SelectItem>
-              <SelectItem value="urgent">Urgent</SelectItem>
-              <SelectItem value="critical">Critical</SelectItem>
-            </SelectContent>
-          </Select>
+          <Controller
+            name="prioritas"
+            control={control}
+            render={({ field }) => (
+              <Select onValueChange={field.onChange} value={field.value}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih Prioritas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="urgent">Urgent</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          />
         </div>
       </div>
 
@@ -209,44 +249,169 @@ const ProductRequestForm = ({ requestList, branchList, userList, onSubmitSuccess
                 {requestType === "restock" ? (
                   <div className="md:col-span-2 space-y-2">
                     <Label>Pilih Produk</Label>
-                    <Select 
-                      onValueChange={(val) => setValue(`items.${index}.produkMasterId`, val)}
-                      value={watch(`items.${index}.produkMasterId`)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Cari Produk..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {produkMasterList.map((produk) => (
-                          <SelectItem key={produk.id} value={produk.id}>
-                            {produk.namaProduk} ({produk.sku})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Controller
+                      name={`items.${index}.produkMasterId`}
+                      control={control}
+                      render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Cari Produk..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {produkMasterList.map((produk) => (
+                              <SelectItem key={produk.id} value={produk.id}>
+                                {produk.namaProduk} ({produk.sku})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.items?.[index]?.produkMasterId && (
+                      <p className="text-red-500 text-xs mt-1">{errors.items[index].produkMasterId.message}</p>
+                    )}
                   </div>
                 ) : (
                   <>
-                    <div className="space-y-2">
-                      <Label>Nama Produk</Label>
-                      <Input {...register(`items.${index}.namaProduk`)} placeholder="Nama Produk Baru" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>SKU</Label>
-                      <Input {...register(`items.${index}.sku`)} placeholder="SKU" />
+                    <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Basic Info */}
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Nama Produk</Label>
+                          <Input {...register(`items.${index}.namaProduk`)} placeholder="Nama Produk Baru" />
+                          {errors.items?.[index]?.namaProduk && (
+                            <p className="text-red-500 text-xs">{errors.items[index].namaProduk.message}</p>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                             <Label>SKU</Label>
+                             <Input {...register(`items.${index}.sku`)} placeholder="SKU" />
+                             {errors.items?.[index]?.sku && (
+                               <p className="text-red-500 text-xs">{errors.items[index].sku.message}</p>
+                             )}
+                          </div>
+                          <div className="space-y-2">
+                             <Label>Barcode</Label>
+                             <Input {...register(`items.${index}.barcode`)} placeholder="Barcode" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                           <div className="space-y-2">
+                             <Label>Kategori</Label>
+                             <Controller
+                               name={`items.${index}.kategoriId`}
+                               control={control}
+                               render={({ field }) => (
+                                 <Select onValueChange={field.onChange} value={field.value}>
+                                   <SelectTrigger>
+                                     <SelectValue placeholder="Pilih Kategori" />
+                                   </SelectTrigger>
+                                   <SelectContent>
+                                     {kategoriList.map((kat) => (
+                                       <SelectItem key={kat.id} value={kat.id}>{kat.namaKategori}</SelectItem>
+                                     ))}
+                                   </SelectContent>
+                                 </Select>
+                               )}
+                             />
+                           </div>
+                           <div className="space-y-2">
+                             <Label>Brand</Label>
+                             <Input {...register(`items.${index}.brand`)} placeholder="Brand" />
+                           </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Satuan</Label>
+                            <Input {...register(`items.${index}.satuan`)} placeholder="Pcs, Box, dll" />
+                        </div>
+                      </div>
+
+                      {/* Prices & Specs */}
+                      <div className="space-y-4">
+                         <div className="grid grid-cols-2 gap-4">
+                           <div className="space-y-2">
+                             <Label>Harga Beli</Label>
+                             <Input 
+                               type="number"
+                               {...register(`items.${index}.hargaBeli`, { valueAsNumber: true })} 
+                               placeholder="0"
+                             />
+                           </div>
+                           <div className="space-y-2">
+                             <Label>Harga Jual</Label>
+                             <Input 
+                               type="number"
+                               {...register(`items.${index}.hargaJual`, { valueAsNumber: true })} 
+                               placeholder="0"
+                             />
+                           </div>
+                         </div>
+                         
+                         <div className="space-y-2">
+                             <Label>Deskripsi</Label>
+                             <Input {...register(`items.${index}.deskripsi`)} placeholder="Deskripsi singkat produk" />
+                         </div>
+
+                         <div className="grid grid-cols-4 gap-2">
+                           <div className="space-y-2">
+                             <Label className="text-xs">Berat (g)</Label>
+                             <Input 
+                               type="number" 
+                               className="text-xs px-2"
+                               {...register(`items.${index}.berat`, { valueAsNumber: true })} 
+                               placeholder="0" 
+                             />
+                           </div>
+                           <div className="space-y-2">
+                             <Label className="text-xs">P (cm)</Label>
+                             <Input 
+                               type="number" 
+                               className="text-xs px-2"
+                               {...register(`items.${index}.dimensiP`, { valueAsNumber: true })} 
+                               placeholder="0" 
+                             />
+                           </div>
+                           <div className="space-y-2">
+                             <Label className="text-xs">L (cm)</Label>
+                             <Input 
+                               type="number" 
+                               className="text-xs px-2"
+                               {...register(`items.${index}.dimensiL`, { valueAsNumber: true })} 
+                               placeholder="0" 
+                             />
+                           </div>
+                           <div className="space-y-2">
+                             <Label className="text-xs">T (cm)</Label>
+                             <Input 
+                               type="number" 
+                               className="text-xs px-2"
+                               {...register(`items.${index}.dimensiT`, { valueAsNumber: true })} 
+                               placeholder="0" 
+                             />
+                           </div>
+                         </div>
+                      </div>
                     </div>
                   </>
                 )}
                 
-                <div className="space-y-2">
-                  <Label>Jumlah</Label>
-                  <Input 
-                    type="number" 
-                    {...register(`items.${index}.jumlahDiminta`, { valueAsNumber: true })} 
-                  />
-                  {errors.items?.[index]?.jumlahDiminta && (
-                    <p className="text-red-500 text-xs">{errors.items[index].jumlahDiminta.message}</p>
-                  )}
+                <div className="md:col-span-3 mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <div className="space-y-2">
+                      <Label>Jumlah Diminta</Label>
+                      <Input 
+                        type="number" 
+                        {...register(`items.${index}.jumlahDiminta`, { valueAsNumber: true })} 
+                      />
+                      {errors.items?.[index]?.jumlahDiminta && (
+                        <p className="text-red-500 text-xs">{errors.items[index].jumlahDiminta.message}</p>
+                      )}
+                   </div>
+                   <div className="space-y-2">
+                      <Label>Catatan Item</Label>
+                      <Input {...register(`items.${index}.catatan`)} placeholder="Catatan khusus untuk item ini" />
+                   </div>
+
                 </div>
               </div>
             </div>

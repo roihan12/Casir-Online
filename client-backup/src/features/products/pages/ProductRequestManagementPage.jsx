@@ -2,121 +2,126 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus,
-  Edit,
   Trash,
   Search,
   Filter,
-  ChevronDown,
   FileText,
   Clock,
   AlertCircle,
   CheckCircle,
   XCircle,
   Eye,
-  Download,
-  BarChart2,
   Package,
-  Calendar,
-  MessageSquare,
-  Clipboard,
 } from "lucide-react";
-import productRequestService from "../services/productRequestService";
+
 import Modal from "@features/common/Modal";
 import Table from "@features/common/Table";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@common/components/ui/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@common/components/ui/select";
 import ProductRequestForm from "../components/ProductRequestForm";
 import ProductRequestDetails from "../components/ProductRequestDetails";
+import {
+  useProductRequests,
+  useDeleteProductRequest,
+  useProductRequestAnalytics,
+} from "../hooks/useProductRequest";
+import { useCabangList } from "../../cabang/hooks/useCabangQueries";
+import useUsers from "../../users/hooks/useUsers";
+import useAuthStore from "@app/store/useAuthStore";
 
 const ProductRequestManagement = () => {
   const navigate = useNavigate();
-  const [requestList, setRequestList] = useState([]);
-  const [filteredRequestList, setFilteredRequestList] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+
+  // Get user data and permissions from auth store
+  const user = useAuthStore((state) => state.user);
+  const isSuperAdmin = useAuthStore((state) => state.isSuperAdmin());
+  const userCabang = useAuthStore((state) => state.getUserCabang());
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const canCreateProduct = hasPermission("produk:create");
+  const canReadProduct = hasPermission("produk:read");
+  const canManageProduct = hasPermission("produk:manage");
+
+  // States
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [branchFilter, setBranchFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [branchList, setBranchList] = useState([]);
-  const [userList, setUserList] = useState([]);
 
-
-  // Load request list from API
+  // Auto-select branch if user only has one branch
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
-        const [requests, branches, users] = await Promise.all([
-          productRequestService.getRequestList(),
-          productRequestService.getBranchList(),
-          productRequestService.getUserList(),
-        ]);
+    if (!isSuperAdmin && userCabang.length === 1) {
+      setBranchFilter(userCabang[0].cabangId);
+    } else {
+      setBranchFilter("all");
+    }
+  }, [isSuperAdmin, userCabang]);
 
-        setRequestList(requests);
-        setFilteredRequestList(requests);
-        setBranchList(branches);
-        setUserList(users);
-      } catch (error) {
-        console.error("Error loading request list:", error);
-        // In a real application, show a toast or notification here
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-  }, []);
-
-  // Filter request list when search query or filters change
+  // Debounce search query to reduce API calls
   useEffect(() => {
-    const filterRequestList = () => {
-      let filtered = requestList;
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+      setCurrentPage(1); // Reset to first page when searching
+    }, 500);
 
-      // Apply search filter
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        filtered = filtered.filter(
-          (request) =>
-            request.id.toLowerCase().includes(query) ||
-            getBranchName(request.cabangId).toLowerCase().includes(query) ||
-            getUserName(request.requestById).toLowerCase().includes(query) ||
-            (request.alasan && request.alasan.toLowerCase().includes(query))
-        );
-      }
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-      // Apply type filter
-      if (typeFilter !== "all") {
-        filtered = filtered.filter(
-          (request) => request.requestType === typeFilter
-        );
-      }
+  // Queries - pass filters including pagination to use server-side filtering
+  const { data: requestsData, isLoading: isRequestsLoading } =
+    useProductRequests({
+      search: debouncedSearchQuery,
+      cabangId: branchFilter !== "all" ? branchFilter : undefined,
+      requestType: typeFilter !== "all" ? typeFilter : undefined,
+      status: statusFilter !== "all" ? statusFilter : undefined,
+      prioritas: priorityFilter !== "all" ? priorityFilter : undefined,
+      page: currentPage,
+      limit: itemsPerPage,
+    });
+  const { data: analyticsData } = useProductRequestAnalytics();
 
-      // Apply status filter
-      if (statusFilter !== "all") {
-        filtered = filtered.filter(
-          (request) => request.status === statusFilter
-        );
-      }
+  // Extract data and pagination from server response
+  const requestList = requestsData?.data || [];
+  const paginationData = requestsData?.pagination;
 
-      // Apply priority filter
-      if (priorityFilter !== "all") {
-        filtered = filtered.filter(
-          (request) => request.prioritas === priorityFilter
-        );
-      }
+  // Fetch branches and users for lookup
+  const { data: branchListResponse } = useCabangList(1, 100);
+  const branchList = branchListResponse?.data || [];
 
-      setFilteredRequestList(filtered);
-      // Reset to first page when filters change
-      setCurrentPage(1);
-    };
+  const availableBranches = isSuperAdmin
+    ? branchList // Super admin can see all branches
+    : userCabang.map((c) => ({ id: c.cabangId, namaCabang: c.namaCabang }));
 
-    filterRequestList();
-  }, [requestList, searchQuery, typeFilter, statusFilter, priorityFilter]);
+  const { getUsersQuery } = useUsers({ limit: 1000 });
+  const { data: userListResponse } = getUsersQuery;
+  const userList = userListResponse?.data || [];
+
+  // Mutations
+  const deleteMutation = useDeleteProductRequest();
+
+  const isLoading = isRequestsLoading;
+
+  // Use server-side pagination data
+  const paginationProps = {
+    currentPage: paginationData?.currentPage || 1,
+    totalPages: paginationData?.totalPages || 1,
+    itemsPerPage: paginationData?.itemsPerPage || 10,
+    totalItems: paginationData?.totalItems || 0,
+    hasNextPage: paginationData?.hasNextPage || false,
+    hasPrevPage: paginationData?.hasPrevPage || false,
+  };
 
   // Handle add new request
   const handleAddRequest = () => {
@@ -138,20 +143,18 @@ const ProductRequestManagement = () => {
 
   // Confirm delete request
   const confirmDeleteRequest = async () => {
-    try {
-      await productRequestService.deleteRequest(selectedRequest.id);
-      setRequestList(requestList.filter((r) => r.id !== selectedRequest.id));
-      setShowDeleteModal(false);
-      // Show success notification
-    } catch (error) {
-      console.error("Error deleting request:", error);
-      // Show error notification
+    if (selectedRequest) {
+      deleteMutation.mutate(selectedRequest.id, {
+        onSuccess: () => {
+          setShowDeleteModal(false);
+          setSelectedRequest(null);
+        },
+      });
     }
   };
 
   // Handle form submit for add
-  const handleFormSubmit = (updatedRequestList) => {
-    setRequestList(updatedRequestList);
+  const handleFormSubmit = () => {
     setShowAddModal(false);
   };
 
@@ -164,18 +167,6 @@ const ProductRequestManagement = () => {
   const handleItemsPerPageChange = (e) => {
     setItemsPerPage(Number(e.target.value));
     setCurrentPage(1); // Reset to first page when changing items per page
-  };
-
-  // Helper function to get branch name by id
-  const getBranchName = (branchId) => {
-    const branch = branchList.find((b) => b.id === branchId);
-    return branch ? branch.name : "Unknown Branch";
-  };
-
-  // Helper function to get user name by id
-  const getUserName = (userId) => {
-    const user = userList.find((u) => u.id === userId);
-    return user ? `${user.firstName} ${user.lastName}` : "Unknown User";
   };
 
   // Get request type display
@@ -304,19 +295,19 @@ const ProductRequestManagement = () => {
     },
     {
       header: "Cabang",
-      accessor: "cabangId",
+      accessor: "cabang",
       cell: (row) => (
         <div className="text-sm text-gray-900">
-          {getBranchName(row.cabangId)}
+          {row.cabang?.namaCabang || "-"}
         </div>
       ),
     },
     {
       header: "Requester",
-      accessor: "requestById",
+      accessor: "createdByUser",
       cell: (row) => (
         <div className="text-sm text-gray-900">
-          {getUserName(row.requestById)}
+          {row.createdByUser?.namaLengkap || "-"}
         </div>
       ),
     },
@@ -349,7 +340,7 @@ const ProductRequestManagement = () => {
           >
             <Eye className="h-4 w-4" />
           </button>
-          {row.status === "draft" && (
+          {row.status === "draft" && canManageProduct && (
             <button
               onClick={() => handleDeleteRequest(row)}
               className="p-1 text-red-600 hover:text-red-800 rounded-full hover:bg-red-100"
@@ -378,13 +369,15 @@ const ProductRequestManagement = () => {
               <Package className="h-5 w-5 mr-2" />
               Produk
             </button>
-            <button
-              onClick={handleAddRequest}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-indigo-700"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Buat Request
-            </button>
+            {canCreateProduct && (
+              <button
+                onClick={handleAddRequest}
+                className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-indigo-700"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Buat Request
+              </button>
+            )}
           </div>
         </div>
 
@@ -400,7 +393,8 @@ const ProductRequestManagement = () => {
                   Total Request
                 </p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {requestList.length}
+                  {analyticsData?.totalRequests ||
+                    (Array.isArray(requestList) ? requestList.length : 0)}
                 </p>
               </div>
             </div>
@@ -411,9 +405,12 @@ const ProductRequestManagement = () => {
                 <Clock className="h-6 w-6 text-yellow-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Pending</p>
+                <p className="text-sm font-medium text-gray-500">Draft</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {requestList.filter((r) => r.status === "pending").length}
+                  {analyticsData?.statusDistribution?.draft ||
+                    (Array.isArray(requestList)
+                      ? requestList.filter((r) => r.status === "draft").length
+                      : 0)}
                 </p>
               </div>
             </div>
@@ -426,27 +423,28 @@ const ProductRequestManagement = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Disetujui</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {requestList.filter((r) => r.status === "approved").length}
+                  {analyticsData?.statusDistribution?.approved ||
+                    (Array.isArray(requestList)
+                      ? requestList.filter((r) => r.status === "approved")
+                          .length
+                      : 0)}
                 </p>
               </div>
             </div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
             <div className="flex items-center">
-              <div className="flex-shrink-0 bg-red-100 rounded-md p-3">
-                <AlertCircle className="h-6 w-6 text-red-600" />
+              <div className="flex-shrink-0 bg-indigo-100 rounded-md p-3">
+                <CheckCircle className="h-6 w-6 text-indigo-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Urgent</p>
+                <p className="text-sm font-medium text-gray-500">Selesai</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {
-                    requestList.filter(
-                      (r) =>
-                        r.prioritas === "urgent" &&
-                        r.status !== "approved" &&
-                        r.status !== "rejected"
-                    ).length
-                  }
+                  {analyticsData?.statusDistribution?.completed ||
+                    (Array.isArray(requestList)
+                      ? requestList.filter((r) => r.status === "completed")
+                          .length
+                      : 0)}
                 </p>
               </div>
             </div>
@@ -471,12 +469,28 @@ const ProductRequestManagement = () => {
             </div>
 
             <div className="flex items-center flex-wrap gap-4">
+              {/* Branch Filter - Only show if user has multiple branches or is super admin */}
+              {(isSuperAdmin || userCabang.length > 1) && (
+                <div className="flex items-center space-x-2">
+                  <Select value={branchFilter} onValueChange={setBranchFilter}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Semua Cabang" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Cabang</SelectItem>
+                      {availableBranches.map((branch) => (
+                        <SelectItem key={branch.id} value={branch.id}>
+                          {branch.namaCabang}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <div className="flex items-center space-x-2">
                 <Filter className="text-gray-400" size={18} />
-                <Select
-                  value={typeFilter}
-                  onValueChange={setTypeFilter}
-                >
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder="Semua Tipe" />
                   </SelectTrigger>
@@ -489,10 +503,7 @@ const ProductRequestManagement = () => {
               </div>
 
               <div className="flex items-center space-x-2">
-                <Select
-                  value={statusFilter}
-                  onValueChange={setStatusFilter}
-                >
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-44">
                     <SelectValue placeholder="Semua Status" />
                   </SelectTrigger>
@@ -529,7 +540,9 @@ const ProductRequestManagement = () => {
                 <span className="text-sm text-gray-600">Tampilkan:</span>
                 <Select
                   value={itemsPerPage.toString()}
-                  onValueChange={(val) => handleItemsPerPageChange({ target: { value: val } })}
+                  onValueChange={(val) =>
+                    handleItemsPerPageChange({ target: { value: val } })
+                  }
                 >
                   <SelectTrigger className="w-20">
                     <SelectValue />
@@ -547,12 +560,12 @@ const ProductRequestManagement = () => {
 
           <Table
             columns={columns}
-            data={filteredRequestList}
+            data={requestList}
             isLoading={isLoading}
             emptyMessage="Tidak ada data request yang tersedia"
-            itemsPerPage={itemsPerPage}
-            currentPage={currentPage}
+            pagination={paginationProps}
             onPageChange={handlePageChange}
+            usePagination={true}
           />
         </div>
       </div>
@@ -582,7 +595,7 @@ const ProductRequestManagement = () => {
       >
         {selectedRequest && (
           <ProductRequestDetails
-            request={selectedRequest}
+            requestId={selectedRequest?.id}
             branchList={branchList}
             userList={userList}
             onClose={() => setShowDetailsModal(false)}

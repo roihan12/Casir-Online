@@ -8,9 +8,9 @@ const { cabang } = require("../config/db");
   telepon: Joi.string().max(20).allow(null, ""),
   email: Joi.string().email().max(100).allow(null, ""),
   tanggalLahir: Joi.date().allow(null),
-  gender: Joi.string().valid("male", "female").allow(null),
+  gender: Joi.string().valid("pria", "wanita").allow(null),
   poin: Joi.number().integer().allow(null),
-  segmen: Joi.string().valid("silver", "gold", "platinum").allow(null),
+  segmen: Joi.string().valid("retail", "grosir", "vip").allow(null),
   status: Joi.string().valid("aktif", "nonaktif").default("aktif"),
 });
 

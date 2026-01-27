@@ -19,6 +19,7 @@
     "dotenv": "^16.4.7",
     "flowbite-react": "^0.10.2",
     "framer-motion": "^12.6.3",
+    "html2pdf.js": "^0.14.0",
     "jwt-decode": "^4.0.0",
     "lucide-react": "^0.483.0",
     "papaparse": "^5.5.2",

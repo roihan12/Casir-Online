@@ -114,7 +114,7 @@ app.use("/api/supplier", supplierRoutes);
 app.use("/api/pelanggan", pelangganRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/stock-transfers", stockTransferRoutes);
-app.use("/api/shift", shiftRoutes);
+app.use("/api/shifts", shiftRoutes);
 app.use("/api/transaksi", transaksiRoutes);
 app.use("/api/receipt", receiptRoutes);
 app.use("/api/qris", qrisRoutes);

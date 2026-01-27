@@ -23,6 +23,27 @@ const getAllProdukRequests = async ({
 
   if (search) {
     where.OR = [
+      // Search in request ID
+      {
+        id: { contains: search, mode: "insensitive" },
+      },
+      // Search in branch name
+      {
+        cabang: {
+          namaCabang: { contains: search, mode: "insensitive" },
+        },
+      },
+      // Search in requester name
+      {
+        createdByUser: {
+          namaLengkap: { contains: search, mode: "insensitive" },
+        },
+      },
+      // Search in reason (alasan)
+      {
+        alasan: { contains: search, mode: "insensitive" },
+      },
+      // Search in product names (for restock requests)
       {
         items: {
           some: {
@@ -32,6 +53,7 @@ const getAllProdukRequests = async ({
           },
         },
       },
+      // Search in product names (for new product requests)
       {
         items: {
           some: {
@@ -64,7 +86,7 @@ const getAllProdukRequests = async ({
       where,
       include: {
         cabang: true,
-        requestBy: {
+        createdByUser: {
           select: {
             id: true,
             namaLengkap: true,
@@ -130,7 +152,7 @@ const getProdukRequestById = async (id) => {
     },
     include: {
       cabang: true,
-      requestBy: {
+      createdByUser: {
         select: {
           id: true,
           namaLengkap: true,
@@ -188,7 +210,7 @@ const createProdukRequest = async (
     const newRequest = await tx.produkRequest.create({
       data: {
         ...requestData,
-        requestById: userId,
+        created_by_user_Id: userId,
         status: "draft", // Start as draft
       },
     });
@@ -540,7 +562,7 @@ const processRequest = async (
               hargaBaru: item.hargaBeli,
               tanggalPerubahan: new Date(),
               alasanPerubahan: "Initial price from product request",
-              userId: userId,
+            created_by_user_Id: userId,
             },
           });
 
@@ -553,7 +575,7 @@ const processRequest = async (
               hargaBaru: item.hargaJual,
               tanggalPerubahan: new Date(),
               alasanPerubahan: "Initial price from product request",
-              userId: userId,
+              created_by_user_Id: userId,
             },
           });
 
@@ -567,7 +589,7 @@ const processRequest = async (
                 hargaBaru: item.hargaGrosir,
                 tanggalPerubahan: new Date(),
                 alasanPerubahan: "Initial price from product request",
-                userId: userId,
+                created_by_user_Id: userId,
               },
             });
           }
@@ -626,7 +648,7 @@ const processRequest = async (
                 referenceType: "REQUEST",
                 quantity: item.jumlahDiminta,
                 keterangan: "Restock from product request",
-                userId: userId,
+              userId: userId,
               },
             });
           } else {
@@ -667,7 +689,7 @@ const processRequest = async (
                 hargaBaru: item.hargaJual,
                 tanggalPerubahan: new Date(),
                 alasanPerubahan: "Initial price from product request",
-                userId: userId,
+                created_by_user_Id: userId,
               },
             });
 
@@ -681,7 +703,7 @@ const processRequest = async (
                   hargaBaru: item.hargaGrosir,
                   tanggalPerubahan: new Date(),
                   alasanPerubahan: "Initial price from product request",
-                  userId: userId,
+                  created_by_user_Id: userId,
                 },
               });
             }

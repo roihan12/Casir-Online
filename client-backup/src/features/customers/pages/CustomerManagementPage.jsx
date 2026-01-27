@@ -57,8 +57,9 @@ const CustomerManagementPage = () => {
       );
 
       // Ensure data is an array
-      const customerData = Array.isArray(response.data) ? response.data : [];
+      const customerData = Array.isArray(response.data.data) ? response.data.data : [];
 
+      console.log("customerData", customerData);
       setCustomers(customerData);
       setFilteredCustomers(customerData);
       setTotalItems(response.total || customerData.length);
@@ -108,17 +109,17 @@ const CustomerManagementPage = () => {
 
   // Handle add new customer
   const handleAddCustomer = () => {
-    navigate("/superadmin/customers/create");
+    navigate("/customers/create");
   };
 
   // Handle edit customer
   const handleEditCustomer = (customer) => {
-    navigate(`/superadmin/customers/edit/${customer.id}`);
+    navigate(`/customers/edit/${customer.id}`);
   };
 
   // Handle view customer details
   const handleViewCustomer = (customer) => {
-    navigate(`/superadmin/customers/${customer.id}`);
+    navigate(`/customers/${customer.id}`);
   };
 
   // Handle delete customer
@@ -501,7 +502,7 @@ const CustomerManagementPage = () => {
             </button>
 
             <button
-              onClick={() => navigate("/superadmin/customers/segments")}
+              onClick={() => navigate("/customers/segments")}
               className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               <Filter className="h-4 w-4 mr-2" />
@@ -509,7 +510,7 @@ const CustomerManagementPage = () => {
             </button>
 
             <button
-              onClick={() => navigate("/superadmin/customers/loyalty")}
+              onClick={() => navigate("/customers/loyalty")}
               className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               <Heart className="h-4 w-4 mr-2" />

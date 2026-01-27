@@ -66,7 +66,7 @@ const CustomerDetail = () => {
     } catch (error) {
       console.error("Error loading customer details:", error);
       toast.error("Gagal memuat data pelanggan");
-      navigate("/superadmin/customers");
+      navigate("/customers");
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -81,7 +81,7 @@ const CustomerDetail = () => {
 
   // Handle edit customer
   const handleEditCustomer = () => {
-    navigate(`/superadmin/customers/edit/${id}`);
+    navigate(`/customers/edit/${id}`);
   };
 
   // Handle delete customer
@@ -95,7 +95,7 @@ const CustomerDetail = () => {
       await pelangganService.deletePelanggan(id);
       setShowDeleteModal(false);
       toast.success("Pelanggan berhasil dihapus");
-      navigate("/superadmin/customers");
+      navigate("/customers");
     } catch (error) {
       console.error("Error deleting customer:", error);
       toast.error("Gagal menghapus pelanggan");
@@ -332,7 +332,7 @@ const CustomerDetail = () => {
           </div>
         </div>
         <button
-          onClick={() => navigate("/superadmin/customers")}
+          onClick={() => navigate("/customers")}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -347,7 +347,7 @@ const CustomerDetail = () => {
       <div className="mb-6 flex justify-between items-center">
         <div className="flex items-center">
           <button
-            onClick={() => navigate("/superadmin/customers")}
+            onClick={() => navigate("/customers")}
             className="mr-4 p-2 rounded-full hover:bg-gray-100"
           >
             <ArrowLeft className="h-5 w-5 text-gray-600" />

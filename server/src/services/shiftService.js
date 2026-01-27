@@ -507,12 +507,20 @@ const getShifts = async (filters) => {
 
 // Service untuk mendapatkan laporan shift
 const getShiftReport = async (filters) => {
-  const { cabangId, startDate, endDate } = filters;
+  const { 
+    cabangId, 
+    startDate, 
+    endDate, 
+    status, 
+    search, 
+    page = 1, 
+    limit = 10 
+  } = filters;
 
   // Buat cache key berdasarkan filter
   const cacheKey = createCacheKey(
     "shift-report",
-    `cabang:${cabangId}-start:${startDate}-end:${endDate}`
+    `cabang:${cabangId}-start:${startDate || "-"}-end:${endDate || "-"}-status:${status || "-"}-search:${search || "-"}-page:${page}-limit:${limit}`
   );
 
   return await cacheOrFetch(
@@ -523,26 +531,66 @@ const getShiftReport = async (filters) => {
         throw new ResponseError(400, "cabangId diperlukan");
       }
 
-      if (!startDate || !endDate) {
-        throw new ResponseError(400, "startDate dan endDate diperlukan");
+      const where = { cabangId };
+
+      // Filter tanggal
+      if (startDate || endDate) {
+        where.waktuMulai = {};
+        if (startDate) {
+          const start = new Date(startDate);
+          start.setHours(0, 0, 0, 0);
+          where.waktuMulai.gte = start;
+        }
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          where.waktuMulai.lte = end;
+        }
       }
 
-      // Parse tanggal
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
+      // Filter status
+      if (status) {
+        where.status = status;
+      }
 
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-
-      // Ambil data shift dalam periode
-      const shifts = await prisma.shift.findMany({
-        where: {
-          cabangId,
-          waktuMulai: {
-            gte: start,
-            lte: end,
+      // Filter pencarian (Nama Kasir)
+      if (search) {
+        where.user = {
+          namaLengkap: {
+            contains: search,
+            mode: "insensitive",
           },
-        },
+        };
+      }
+
+      // Ambil SEMUA data shift untuk ringkasan (tanpa paginasi)
+      const allMatchingShifts = await prisma.shift.findMany({
+        where,
+        select: {
+          kasAwal: true,
+          kasAkhir: true,
+          totalPendapatan: true,
+          totalTransaksi: true,
+          status: true,
+        }
+      });
+
+      // Hitung ringkasan
+      const summary = {
+        totalShifts: allMatchingShifts.length,
+        totalRevenue: allMatchingShifts.reduce((sum, s) => sum + Number(s.totalPendapatan || 0), 0),
+        totalTransactions: allMatchingShifts.reduce((sum, s) => sum + (s.totalTransaksi || 0), 0),
+        statusBreakdown: {
+          dibuka: allMatchingShifts.filter(s => s.status === "dibuka").length,
+          ditutup: allMatchingShifts.filter(s => s.status === "ditutup").length,
+          disesuaikan: allMatchingShifts.filter(s => s.status === "disesuaikan").length,
+        }
+      };
+
+      // Ambil data shift dengan paginasi untuk tabel
+      const skip = (page - 1) * limit;
+      const shifts = await prisma.shift.findMany({
+        where,
         include: {
           user: {
             select: {
@@ -550,83 +598,32 @@ const getShiftReport = async (filters) => {
               namaLengkap: true,
             },
           },
-          _count: {
-            select: {
-              transaksi: true,
-            },
-          },
         },
         orderBy: {
-          waktuMulai: "asc",
+          waktuMulai: "desc",
         },
+        skip,
+        take: limit,
       });
 
-      // Hitung ringkasan
-      const totalShifts = shifts.length;
-      const openedShifts = shifts.filter((s) => s.status === "dibuka").length;
-      const closedShifts = shifts.filter((s) => s.status === "ditutup").length;
-      const adjustedShifts = shifts.filter(
-        (s) => s.status === "disesuaikan"
-      ).length;
-
-      let totalCashIn = 0;
-      let totalCashOut = 0;
-      let totalRevenue = 0;
-      let totalTransactions = 0;
-
-      shifts.forEach((shift) => {
-        if (shift.kasAwal) totalCashIn += Number(shift.kasAwal);
-        if (shift.kasAkhir) totalCashOut += Number(shift.kasAkhir);
-        if (shift.totalPendapatan)
-          totalRevenue += Number(shift.totalPendapatan);
-        if (shift.totalTransaksi) totalTransactions += shift.totalTransaksi;
-      });
-
-      // Ringkasan per kasir
-      const userSummary = {};
-      shifts.forEach((shift) => {
-        const userId = shift.user.id;
-        const userName = shift.user.namaLengkap;
-
-        if (!userSummary[userId]) {
-          userSummary[userId] = {
-            userId,
-            userName,
-            totalShifts: 0,
-            totalRevenue: 0,
-            totalTransactions: 0,
-          };
-        }
-
-        userSummary[userId].totalShifts += 1;
-        if (shift.totalPendapatan)
-          userSummary[userId].totalRevenue += Number(shift.totalPendapatan);
-        if (shift.totalTransaksi)
-          userSummary[userId].totalTransactions += shift.totalTransaksi;
-      });
+      const totalCount = summary.totalShifts;
+      const totalPages = Math.ceil(totalCount / limit);
 
       return {
-        period: {
-          startDate: start,
-          endDate: end,
+        data: shifts,
+        meta: {
+          totalItems: totalCount,
+          totalPages,
+          currentPage: page,
+          itemsPerPage: limit,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
         },
-        summary: {
-          totalShifts,
-          openedShifts,
-          closedShifts,
-          adjustedShifts,
-          totalCashIn,
-          totalCashOut,
-          totalRevenue,
-          totalTransactions,
-          cashDifference: totalCashOut - (totalCashIn + totalRevenue),
-        },
-        userSummary: Object.values(userSummary),
-        shifts,
+        summary
       };
     },
-    1800
-  ); // Cache 30 menit untuk laporan
+    300
+  ); // Cache 5 menit
 };
 
 // Helper untuk mengecek apakah user adalah admin

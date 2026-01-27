@@ -152,6 +152,10 @@ const getShiftReport = async (req, res, next) => {
       cabangId: req.query.cabangId,
       startDate: req.query.startDate,
       endDate: req.query.endDate,
+      status: req.query.status,
+      search: req.query.search,
+      page: parseInt(req.query.page) || 1,
+      limit: parseInt(req.query.limit) || 10,
     };
 
     const result = await shiftService.getShiftReport(filters);
@@ -159,7 +163,9 @@ const getShiftReport = async (req, res, next) => {
     res.status(200).json({
       status: true,
       message: "Laporan shift berhasil diambil",
-      data: result,
+      data: result.data,
+      meta: result.meta,
+      summary: result.summary,
     });
   } catch (error) {
     next(error);

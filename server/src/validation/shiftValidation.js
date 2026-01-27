@@ -5,6 +5,7 @@ const openShiftValidation = Joi.object({
   cabangId: Joi.string().required(),
   kasAwal: Joi.number().precision(2).min(0).required(),
   keterangan: Joi.string().allow(null, ""),
+  userId: Joi.string().allow(null, ""),
 });
 
 // Validasi untuk menutup shift
