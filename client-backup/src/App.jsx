@@ -54,6 +54,8 @@ import CustomerDetail from "./features/customers/pages/CustomerDetail";
 import CustomerForm from "./features/customers/components/CustomerForm";
 import CustomerSegmentation from "./features/customers/pages/CustomerSegmentation";
 import LoyaltyProgram from "./features/loyalty/pages/LoyaltyProgramPage";
+import HutangManagementPage from "./features/hutang/pages/HutangManagementPage";
+import HutangDetailPage from "./features/hutang/pages/HutangDetailPage";
 
 // Other Components
 import NotFoundPage from "./features/common/pages/NotFoundPage";
@@ -421,6 +423,19 @@ function App() {
             >
               <Route index element={<KreditNotifikasiPage />} />
               <Route path=":id" element={<KreditNotifikasiDetailPage />} />
+            </Route>
+
+            {/* Hutang Management */}
+            <Route
+              path="/hutang"
+              element={
+                <ProtectedRoute requiredPermission="hutang:read">
+                  <DynamicLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<HutangManagementPage />} />
+              <Route path=":id" element={<HutangDetailPage />} />
             </Route>
 
             {/* Reports */}

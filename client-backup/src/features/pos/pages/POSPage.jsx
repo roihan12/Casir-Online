@@ -548,9 +548,15 @@ const POSPage = () => {
         };
         response = await addPayment(finalPaymentData);
       } else if (isTempoPayment) {
-        // For TEMPO/KREDIT_PELANGGAN: create transaction WITHOUT payment
-        // Transaction status will be BELUM_LUNAS automatically
+        // For TEMPO/KREDIT_PELANGGAN:
+        // - postPayAmount is the remaining hutang
+        // - DP (down payment) = total - postPayAmount
+        // - If postPayAmount < totalAmount, there's a DP
+        // - If postPayAmount = totalAmount, no DP (full hutang)
+        const dpAmount = totalAmount - actualPostPayAmount;
+
         let transactionData;
+        let paymentDataForComplete = null;
 
         if (lastTransactionId && lastTransactionData) {
           transactionData = lastTransactionData;
@@ -590,8 +596,22 @@ const POSPage = () => {
           setLastTransactionData(transactionData);
         }
 
-        // Call completeTransaction without payment data for TEMPO
-        response = await completeTransaction(transactionData, null);
+        // If there's a down payment (DP > 0), prepare payment data
+        // DP = totalAmount - actualPostPayAmount (sisa hutang yang diinput user)
+        if (dpAmount > 0) {
+          paymentDataForComplete = {
+            metode_pembayaran: paymentMethodEnum,
+            status_pembayaran: "BELUM_LUNAS", // Still BELUM_LUNAS because it's only DP
+            jumlah_bayar: Math.round(dpAmount),
+            jumlah_kembali: 0,
+            tanggal_pembayaran: new Date().toISOString(),
+            keterangan: `DP Pembayaran ${actualPaymentMethod}`,
+            generate_receipt: true,
+          };
+        }
+
+        // Call completeTransaction with payment data (null if no DP)
+        response = await completeTransaction(transactionData, paymentDataForComplete);
       } else {
         // Normal flow: create transaction and add payment
         // Validate payment amount
@@ -681,8 +701,8 @@ const POSPage = () => {
 
       const receiptData = {
         transaction: {
-          id: transactionId || response?.data?.id || paymentData?.transactionId || "TRX" + new Date().getTime(),
-          nomor_transaksi: paymentData?.transactionNumber || response?.data?.nomor_transaksi,
+          id: transactionId || response?.transactionData?.transaction?.transaksi_id || response?.transaction?.transaksi_id || paymentData?.transactionId || "TRX" + new Date().getTime(),
+          nomor_transaksi: paymentData?.transactionNumber || response?.transactionData?.transaction?.nomor_transaksi || response?.transaction?.nomor_transaksi,
           tanggal: new Date().toISOString(),
           subtotal: subtotal,
           discount_amount: discountAmount,
@@ -696,6 +716,9 @@ const POSPage = () => {
           jumlah_bayar: Math.round(actualAmountPaid),
           jumlah_kembali: Math.round(actualAmountPaid - totalAmount),
         },
+        // Add hutang info from response - transactionData now at top level
+        hutang: response?.transactionData?.detail_kredit_hutang || null,
+        paymentInfo: response?.transactionData?.payment_info || null,
         items: receiptItems,
         customer: customer || { name: "Umum" },
         branch: currentBranch,

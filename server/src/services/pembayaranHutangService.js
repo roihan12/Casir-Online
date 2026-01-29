@@ -108,7 +108,7 @@ const createPembayaranHutang = async (data, auditInfo) => {
     });
 
     // Invalidate cache
-    await cacheDeletePattern(`hutang:${hutang.cabangId}:*`);
+    await cacheDeletePattern(`hutang:*`);
     await cacheDeletePattern(`hutang-list:*`);
     if (hutang.transaksiId) {
       await invalidateTransaksiCache(hutang.transaksiId);

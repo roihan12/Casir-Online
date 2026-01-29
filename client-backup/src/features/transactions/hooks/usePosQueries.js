@@ -171,15 +171,19 @@ export const useCompleteTransaction = () => {
       );
 
       // Step 2: Add payment using transaction ID
-      // If payment method is TEMPO, we skip the add payment step as it's automatically "BELUM_LUNAS"
-      if (transactionData?.metode_pembayaran === 'TEMPO' || paymentData?.metode_pembayaran === 'TEMPO') {
-        return { 
-          transaction, 
+      // Skip payment if method is TEMPO/KREDIT_PELANGGAN and no paymentData (no DP)
+      const isTempoMethod = transactionData?.metode_pembayaran === 'TEMPO' ||
+                           transactionData?.metode_pembayaran === 'KREDIT_PELANGGAN';
+
+      if (isTempoMethod && !paymentData) {
+        return {
+          transaction,
           payment: {
             status_pembayaran: 'BELUM_LUNAS',
-            metode_pembayaran: 'TEMPO',
+            metode_pembayaran: transactionData?.metode_pembayaran,
             skipped: true
-          } 
+          },
+          transactionData: null
         };
       }
 
@@ -188,9 +192,14 @@ export const useCompleteTransaction = () => {
         transaksi_id: transaction.transaksi_id,
       };
 
-      const payment = await addPaymentMutation.mutateAsync(updatedPaymentData);
+      const paymentResponse = await addPaymentMutation.mutateAsync(updatedPaymentData);
 
-      return { transaction, payment };
+      // Return full response including transactionData with hutang info
+      return {
+        transaction,
+        payment: paymentResponse,
+        transactionData: paymentResponse?.transactionData || null
+      };
     } catch (error) {
       throw error;
     }

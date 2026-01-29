@@ -41,13 +41,15 @@ const PaymentModal = ({
   }, [totalAmount]);
 
   const remaining = totalAmount - paymentReceived - postPayAmount;
-  const isPaymentComplete = paymentReceived + postPayAmount >= totalAmount;
+  // For TEMPO/KREDIT_PELANGGAN, payment is always "complete" because remaining becomes hutang
+  const isTempoMethod = paymentMethod === "KREDIT_PELANGGAN" || paymentMethod === "TEMPO";
+  const isPaymentComplete = isTempoMethod || (paymentReceived + postPayAmount >= totalAmount);
 
   const handlePaymentMethodChange = (method) => {
     setPaymentMethod(method);
-    
+
     // Auto-fill amount based on method
-    if (method === "KREDIT_PELANGGAN") {
+    if (method === "KREDIT_PELANGGAN" || method === "TEMPO") {
       setPostPayAmount(totalAmount);
       setPaymentReceived(0);
       setAmountPaid(0);

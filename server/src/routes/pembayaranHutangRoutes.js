@@ -12,7 +12,7 @@ router.use(authenticate);
 // POST - Create pembayaran hutang (cicilan / pelunasan)
 router.post(
   "/",
-  hasPermission(["hutang:write"]),
+  hasPermission(["hutang:create"]),
   pembayaranHutangController.createPembayaranHutang
 );
 

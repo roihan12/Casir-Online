@@ -1048,7 +1048,7 @@ model Hutang {
   jumlahBayar        Decimal            @map("jumlah_bayar") @db.Decimal(15, 2)
   sisaHutang         Decimal            @map("sisa_hutang") @db.Decimal(15, 2)
   jenisHutang        JenisHutang        @map("jenis_hutang")
-  statusHutang       StatusHutang       @default(aktif) @map("status_hutang")
+  statusHutang       String        @default("aktif") @map("status_hutang")
   keterangan         String?
   cabangId           String             @map("cabang_id")
   supplierId         String?            @map("supplier_id")
@@ -1078,7 +1078,7 @@ model PembayaranHutang {
   hutangId           String           @map("hutang_id")
   tanggalBayar       DateTime         @map("tanggal_bayar")
   jumlahBayar        Decimal          @map("jumlah_bayar") @db.Decimal(15, 2)
-  metodePembayaran   MetodePembayaran
+  metodePembayaran   String @map("metode_pembayaran")
   nomorReferensi     String?          @map("nomor_referensi") @db.VarChar(50)
   buktiUrl           String?          @map("bukti_url")
   keterangan         String?
@@ -1167,7 +1167,7 @@ model PembayaranKredit {
   angsuranKe         Int              @map("angsuran_ke")
   jumlahBayar        Decimal          @map("jumlah_bayar") @db.Decimal(15, 2)
   tanggalBayar       DateTime         @map("tanggal_bayar")
-  metodePembayaran   MetodePembayaran
+  metodePembayaran   String @map("metode_pembayaran")
   nomorReferensi     String?          @map("nomor_referensi") @db.VarChar(50)
   buktiUrl           String?          @map("bukti_url")
   denda              Decimal?         @db.Decimal(15, 2)

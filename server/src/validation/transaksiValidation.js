@@ -164,18 +164,18 @@ const createPembayaranHutangValidation = Joi.object({
 
 // Validasi untuk filter daftar hutang
 const getHutangListValidation = Joi.object({
-  cabang_id: Joi.string(),
-  jenis_hutang: Joi.string().valid("pelanggan", "supplier"),
-  status_hutang: Joi.string().valid("aktif", "lunas", "cancel"),
-  pelanggan_id: Joi.string(),
-  supplier_id: Joi.string(),
-  tanggal_mulai: Joi.date(),
-  tanggal_akhir: Joi.date(),
-  jatuh_tempo_mulai: Joi.date(),
-  jatuh_tempo_akhir: Joi.date(),
-  search: Joi.string(),
-  page: Joi.number().min(1),
-  limit: Joi.number().min(1).max(100),
+  cabang_id: Joi.string().allow(null, ""),
+  jenis_hutang: Joi.string().valid("pelanggan", "supplier").allow(null, ""),
+  status_hutang: Joi.string().valid("aktif", "lunas", "cancel").allow(null, ""),
+  pelanggan_id: Joi.string().allow(null, ""),
+  supplier_id: Joi.string().allow(null, ""),
+  tanggal_mulai: Joi.date().allow(null),
+  tanggal_akhir: Joi.date().allow(null),
+  jatuh_tempo_mulai: Joi.date().allow(null),
+  jatuh_tempo_akhir: Joi.date().allow(null),
+  search: Joi.string().allow(null, ""),
+  page: Joi.number().min(1).default(1),
+  limit: Joi.number().min(1).max(100).default(10),
 });
 
 module.exports = {

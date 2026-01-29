@@ -1,5 +1,5 @@
 import React from "react";
-import { FileText, X, Printer } from "lucide-react";
+import { FileText, X, Printer, Calendar, Clock } from "lucide-react";
 import { useAuth } from "@features/auth/hooks/useAuth.js";
 
 // Utility function to format currency
@@ -15,7 +15,11 @@ const ReceiptModal = ({ show, onClose, data, onPrint }) => {
   if (!show || !data) return null;
 
   const { user } = useAuth();
-  const { transaction, payment, items, customer, branch } = data;
+
+  console.log("user", user);
+  console.log("data", data);
+
+  const { transaction, payment, items, customer, branch, hutang, paymentInfo } = data;
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -25,6 +29,15 @@ const ReceiptModal = ({ show, onClose, data, onPrint }) => {
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+    }).format(date);
+  };
+
+  const formatDateOnly = (dateString) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
     }).format(date);
   };
 
@@ -48,6 +61,7 @@ const ReceiptModal = ({ show, onClose, data, onPrint }) => {
           <div id="receipt-content" className="bg-white p-6 shadow-[0_0_40px_rgba(0,0,0,0.05)] border border-gray-100 rounded-lg mx-auto max-w-[320px] text-gray-800 font-mono text-[13px]">
             {/* Header */}
             <div className="text-center mb-6 space-y-1">
+              <h2 className="font-black text-lg uppercase tracking-wider">CASIR Online</h2>
               <h3 className="font-black text-lg uppercase tracking-wider">{branch?.namaCabang || "CASIR Online"}</h3>
               {branch?.alamat && <p className="leading-tight">{branch.alamat}</p>}
               {branch?.telepon && <p>Telp: {branch.telepon}</p>}
@@ -64,7 +78,8 @@ const ReceiptModal = ({ show, onClose, data, onPrint }) => {
               </div>
               <div className="flex justify-between">
                 <span>KASIR:</span>
-                <span className="uppercase">{user?.name?.split(' ')[0] || "ADMIN"}</span>
+                <span className="uppercase">{user?.namaLengkap
+?.split(' ')[0] || "ADMIN"}</span>
               </div>
               <div className="flex justify-between">
                 <span>MEMBER:</span>
@@ -113,12 +128,24 @@ const ReceiptModal = ({ show, onClose, data, onPrint }) => {
             <div className="border-t border-dashed border-gray-300 py-3 space-y-1">
               <div className="flex justify-between">
                 <span>METODE:</span>
-                <span className="font-bold uppercase">{payment?.metode_pembayaran || "TUNAI"}</span>
+                <span className="font-bold uppercase">{payment?.metode_pembayaran || paymentInfo?.tipe_pembayaran || "TUNAI"}</span>
               </div>
-              <div className="flex justify-between">
-                <span>BAYAR:</span>
-                <span>{formatCurrency(payment?.jumlah_bayar || 0)}</span>
-              </div>
+              {(paymentInfo?.jumlah_bayar > 0 || paymentInfo?.jumlah_bayar > 0) && (
+                <>
+                  <div className="flex justify-between">
+                    <span>DIBAYAR:</span>
+                    <span className="text-green-600 font-semibold">
+                      {formatCurrency(payment?.jumlah_bayar || paymentInfo?.jumlah_bayar || 0)}
+                    </span>
+                  </div>
+                  {(hutang?.jumlah_total > 0 || paymentInfo) && (
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>DP dari Total: </span>
+                      <span>{Math.round((payment?.jumlah_bayar || paymentInfo?.jumlah_bayar || 0) / (hutang?.jumlah_total || transaction?.total_amount || 1) * 100)}%</span>
+                    </div>
+                  )}
+                </>
+              )}
               {payment?.jumlah_kembali > 0 && (
                 <div className="flex justify-between">
                   <span>KEMBALI:</span>
@@ -126,6 +153,48 @@ const ReceiptModal = ({ show, onClose, data, onPrint }) => {
                 </div>
               )}
             </div>
+
+            {/* Hutang Info (if exists) */}
+            {(hutang || paymentInfo?.sisa_pembayaran > 0) && (
+              <div className="border-t-2 border-dashed border-orange-300 bg-orange-50 py-3 space-y-1">
+                <div className="text-center text-xs font-bold text-orange-600 uppercase mb-2">
+                  Info Hutang
+                </div>
+                {hutang?.jatuh_tempo && (
+                  <div className="flex justify-between items-center">
+                    <span className="flex items-center gap-1">
+                      <Calendar size={10} />
+                      JATUH TEMPO:
+                    </span>
+                    <span className="font-bold text-orange-700">{formatDateOnly(hutang.jatuh_tempo)}</span>
+                  </div>
+                )}
+                {hutang && (
+                  <div className="flex justify-between">
+                    <span>NO. HUTANG:</span>
+                    <span className="font-semibold">{hutang.nomor_referensi}</span>
+                  </div>
+                )}
+                {(hutang?.sisa_hutang > 0 || paymentInfo?.sisa_pembayaran > 0) && (
+                  <div className="flex justify-between">
+                    <span>SISA HUTANG:</span>
+                    <span className="font-bold text-red-600">
+                      {formatCurrency(hutang?.sisa_hutang || paymentInfo?.sisa_pembayaran || 0)}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span>STATUS:</span>
+                  <span className={`font-semibold ${
+                    hutang?.status_hutang === 'lunas' || paymentInfo?.is_fully_paid
+                      ? 'text-green-600'
+                      : 'text-orange-600'
+                  }`}>
+                    {hutang?.status_hutang === 'lunas' || paymentInfo?.is_fully_paid ? 'LUNAS' : 'AKTIF'}
+                  </span>
+                </div>
+              </div>
+            )}
 
             <div className="text-center mt-8 pt-4 border-t border-dashed border-gray-300">
               <p className="font-bold mb-1 uppercase tracking-widest text-[11px]">Terima Kasih</p>
