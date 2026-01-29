@@ -1,8 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
-
-// Base API URL
-const API_URL = '/api';
+import api from "@services/api"
 
 /**
  * Hook untuk mengambil daftar invoice dengan filter
@@ -21,7 +18,7 @@ export const useInvoiceList = (filters = {}, page = 0, rowsPerPage = 10) => {
         limit: rowsPerPage,
       };
 
-      const response = await axios.get(`${API_URL}/invoices`, { params });
+      const response = await api.get(`/invoices`, { params });
       return response.data;
     },
     keepPreviousData: true,
@@ -36,7 +33,7 @@ export const useInvoiceDetail = (id) => {
     queryKey: ['invoice', id],
     queryFn: async () => {
       if (!id) return null;
-      const response = await axios.get(`${API_URL}/invoices/${id}`);
+      const response = await api.get(`/invoices/${id}`);
       return response.data;
     },
     enabled: !!id, // Hanya jalankan query jika ID tersedia
@@ -51,7 +48,7 @@ export const useCreateInvoice = () => {
 
   return useMutation({
     mutationFn: async (invoiceData) => {
-      const response = await axios.post(`${API_URL}/invoices`, invoiceData);
+      const response = await api.post(`/invoices`, invoiceData);
       return response.data;
     },
     onSuccess: () => {
@@ -69,7 +66,7 @@ export const useUpdateInvoice = () => {
 
   return useMutation({
     mutationFn: async ({ id, data }) => {
-      const response = await axios.put(`${API_URL}/invoices/${id}`, data);
+      const response = await api.put(`/invoices/${id}`, data);
       return response.data;
     },
     onSuccess: (data, variables) => {
@@ -88,7 +85,7 @@ export const useDeleteInvoice = () => {
 
   return useMutation({
     mutationFn: async (id) => {
-      const response = await axios.delete(`${API_URL}/invoices/${id}`);
+      const response = await api.delete(`/invoices/${id}`);
       return response.data;
     },
     onSuccess: () => {
@@ -104,7 +101,7 @@ export const useDeleteInvoice = () => {
 export const useSendInvoice = () => {
   return useMutation({
     mutationFn: async ({ id, email, message }) => {
-      const response = await axios.post(`${API_URL}/invoices/${id}/send`, { email, message });
+      const response = await api.post(`/invoices/${id}/send`, { email, message });
       return response.data;
     },
   });
@@ -118,7 +115,7 @@ export const useGenerateInvoicePdf = (id) => {
     queryKey: ['invoicePdf', id],
     queryFn: async () => {
       if (!id) return null;
-      const response = await axios.get(`${API_URL}/invoices/${id}/pdf`, {
+      const response = await api.get(`/invoices/${id}/pdf`, {
         responseType: 'blob',
       });
       return response.data;

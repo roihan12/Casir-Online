@@ -59,7 +59,8 @@ const createTransaksi = async (data, auditInfo) => {
         }::JSONB,
         ${auditInfo.userId}::VARCHAR, 
         ${auditInfo.ipAddress}::VARCHAR,
-        ${auditInfo.userName}::VARCHAR
+        ${auditInfo.userName}::VARCHAR,
+        ${data.metode_pembayaran}::VARCHAR
       )
     `;
 
@@ -363,7 +364,16 @@ const createQrisPayment = async (data, auditInfo) => {
   const transaksi = await prisma.transaksi.findUnique({
     where: { transaksi_id },
     include: {
-      pembayaran: true,
+      pembayaran: {
+        where: {
+          metode_pembayaran: "QRIS",
+          status: "PENDING",
+        },
+        orderBy: {
+          created_at: "desc",
+        },
+        take: 1,
+      },
       cabang: true,
       transaksi_detail: {
         include: {
@@ -395,6 +405,26 @@ const createQrisPayment = async (data, auditInfo) => {
 
   console.log(transaksi.transaksi_detail);
 
+  // Check if there's already a pending QRIS payment for this transaction
+  if (transaksi.pembayaran && transaksi.pembayaran.length > 0) {
+    const existingPayment = transaksi.pembayaran[0];
+
+    // If the payment was created recently (within 15 minutes), return it instead of creating a new one
+    const paymentAge = Date.now() - new Date(existingPayment.created_at).getTime();
+    if (paymentAge < 15 * 60 * 1000 && existingPayment.bukti_bayar_url) {
+      console.log("Returning existing QRIS payment for transaction:", transaksi.nomor_transaksi);
+      return {
+        pembayaran: existingPayment,
+        qris_data: {
+          qris_url: existingPayment.bukti_bayar_url,
+          qris_code: existingPayment.nomor_referensi,
+          reference_id: existingPayment.nomor_referensi,
+          expiry_time: new Date(new Date(existingPayment.created_at).getTime() + 15 * 60 * 1000),
+        },
+      };
+    }
+  }
+
   // Generate QRIS code from payment gateway
   const qrisResponse = await qrisService.generateQrisCode({
     amount,
@@ -405,6 +435,7 @@ const createQrisPayment = async (data, auditInfo) => {
     customer_email: transaksi.pelanggan?.email || "n9K3M@example.com",
     customer_phone: transaksi.pelanggan?.telepon || "081234567890",
     order_items: transaksi.transaksi_detail.map((detail) => ({
+      id: detail.produk_id.toString(),
       name: detail.produk.produkMaster.namaProduk,
       quantity: detail.jumlah,
       price: detail.harga_satuan,
@@ -454,6 +485,7 @@ const createQrisPayment = async (data, auditInfo) => {
       qris_url: qrisResponse.qris_url,
       qris_code: qrisResponse.qris_code,
       reference_id: qrisResponse.reference_id,
+      qr_string: qrisResponse.qr_string,
       expiry_time: qrisResponse.expiry_time,
     },
   };

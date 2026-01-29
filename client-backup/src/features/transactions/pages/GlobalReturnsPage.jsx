@@ -139,7 +139,7 @@ const GlobalReturns = () => {
 
   // View return detail
   const viewReturnDetail = (returnId) => {
-    navigate(`/superadmin/transactions/returns/${returnId}`);
+    navigate(`/transactions/returns/${returnId}`);
   };
 
   // Status badge component
@@ -457,7 +457,7 @@ const GlobalReturns = () => {
       {/* Create Return Button */}
       <div className="mb-6">
         <button
-          onClick={() => navigate("/superadmin/transactions/returns/create")}
+          onClick={() => navigate("/transactions/returns/create")}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
           <RefreshCcw className="mr-2 h-4 w-4" />

@@ -124,7 +124,7 @@ const GlobalTransactionDetail = () => {
 
   // Go back to transactions list
   const handleBack = () => {
-    navigate("/superadmin/transactions");
+    navigate("/transactions");
   };
 
   // Print receipt

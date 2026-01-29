@@ -117,8 +117,9 @@ export const useCreateTransaction = () => {
       queryClient.invalidateQueries({ queryKey: ["products", "popular"] });
     },
     onError: (error) => {
+      console.log(error);
       const message =
-        error.response?.data?.message || "Gagal membuat transaksi";
+        error.response?.data?.errors || "Gagal membuat transaksi";
       toast.error(message);
     },
   });
@@ -170,6 +171,18 @@ export const useCompleteTransaction = () => {
       );
 
       // Step 2: Add payment using transaction ID
+      // If payment method is TEMPO, we skip the add payment step as it's automatically "BELUM_LUNAS"
+      if (transactionData?.metode_pembayaran === 'TEMPO' || paymentData?.metode_pembayaran === 'TEMPO') {
+        return { 
+          transaction, 
+          payment: {
+            status_pembayaran: 'BELUM_LUNAS',
+            metode_pembayaran: 'TEMPO',
+            skipped: true
+          } 
+        };
+      }
+
       const updatedPaymentData = {
         ...paymentData,
         transaksi_id: transaction.transaksi_id,

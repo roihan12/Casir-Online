@@ -1,6 +1,7 @@
 const prisma = require("../config/db");
 const { ResponseError } = require("../error/responseError");
 const { generateTransferNumber } = require("../utils/generateTransferNumber");
+const notificationService = require("./notificationService");
 
 // Mendapatkan daftar transfer stok dengan filter
 const getStockTransfers = async (filters) => {
@@ -579,7 +580,27 @@ const submitForApproval = async (transferId, data, auditInfo) => {
     },
   });
 
-  // TODO: Buat notifikasi untuk admin yang bisa approve
+  // Send notification to admins for approval
+  try {
+    const transferWithItems = await prisma.stockTransfer.findUnique({
+      where: { id: updatedTransfer.id },
+      include: {
+        transferDetails: {
+          include: {
+            produk: {
+              include: {
+                produkMaster: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    await notificationService.sendStockTransferRequestNotification(transferWithItems);
+  } catch (notifError) {
+    console.error("Failed to send stock transfer request notification:", notifError);
+    // Continue execution even if notification fails
+  }
 
   return updatedTransfer;
 };
@@ -671,7 +692,27 @@ const approveStockTransfer = async (transferId, data, auditInfo) => {
     },
   });
 
-  // TODO: Buat notifikasi untuk cabang asal bahwa transfer sudah diapprove
+  // Send notification that transfer has been approved
+  try {
+    const transferWithItems = await prisma.stockTransfer.findUnique({
+      where: { id: updatedTransfer.id },
+      include: {
+        transferDetails: {
+          include: {
+            produk: {
+              include: {
+                produkMaster: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    await notificationService.sendStockTransferApprovedNotification(transferWithItems);
+  } catch (notifError) {
+    console.error("Failed to send stock transfer approved notification:", notifError);
+    // Continue execution even if notification fails
+  }
 
   return updatedTransfer;
 };
@@ -763,7 +804,27 @@ const rejectStockTransfer = async (transferId, data, auditInfo) => {
     },
   });
 
-  // TODO: Buat notifikasi untuk cabang asal bahwa transfer ditolak
+  // Send notification that transfer has been rejected
+  try {
+    const transferWithItems = await prisma.stockTransfer.findUnique({
+      where: { id: updatedTransfer.id },
+      include: {
+        transferDetails: {
+          include: {
+            produk: {
+              include: {
+                produkMaster: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    await notificationService.sendStockTransferRejectedNotification(transferWithItems);
+  } catch (notifError) {
+    console.error("Failed to send stock transfer rejected notification:", notifError);
+    // Continue execution even if notification fails
+  }
 
   return updatedTransfer;
 };

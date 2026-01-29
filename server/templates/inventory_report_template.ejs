@@ -1,0 +1,445 @@
+<!-- File: src/templates/inventory_report_template.ejs -->
+<!DOCTYPE html>
+<html lang="<%= language || 'id' %>">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory Report</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 11px;
+      width: 210mm;
+      margin: 0 auto;
+      padding: 8mm;
+      box-sizing: border-box;
+      line-height: 1.3;
+      color: #333;
+    }
+
+    .report-container {
+      width: 100%;
+      max-width: 194mm;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #4f46e5;
+    }
+
+    .report-title {
+      font-size: 1.8em;
+      font-weight: bold;
+      margin: 5px 0;
+      color: #1f2937;
+    }
+
+    .report-subtitle {
+      font-size: 1.1em;
+      color: #6b7280;
+      margin: 5px 0;
+    }
+
+    .company-name {
+      font-size: 1.3em;
+      font-weight: bold;
+      margin: 10px 0 5px 0;
+      color: #4f46e5;
+    }
+
+    .report-info {
+      display: flex;
+      justify-content: space-between;
+      margin: 15px 0;
+      padding: 10px;
+      background-color: #f9fafb;
+      border-radius: 6px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .info-item {
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .info-label {
+      font-weight: 600;
+      color: #6b7280;
+      font-size: 0.85em;
+    }
+
+    .info-value {
+      color: #1f2937;
+      font-weight: 500;
+    }
+
+    .summary-cards {
+      display: flex;
+      gap: 15px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+
+    .summary-card {
+      flex: 1;
+      min-width: 140px;
+      padding: 15px;
+      background-color: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .summary-card-title {
+      font-size: 0.8em;
+      color: #6b7280;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .summary-card-value {
+      font-size: 1.8em;
+      font-weight: bold;
+      color: #4f46e5;
+    }
+
+    .summary-card.inflow {
+      background-color: #ecfdf5;
+      border-color: #10b981;
+    }
+
+    .summary-card.inflow .summary-card-value {
+      color: #059669;
+    }
+
+    .summary-card.outflow {
+      background-color: #fef2f2;
+      border-color: #ef4444;
+    }
+
+    .summary-card.outflow .summary-card-value {
+      color: #dc2626;
+    }
+
+    .divider {
+      border-top: 1px solid #e5e7eb;
+      margin: 15px 0;
+    }
+
+    .section-title {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin: 20px 0 10px 0;
+      color: #374151;
+      padding-bottom: 5px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 0.9em;
+    }
+
+    .data-table th {
+      padding: 8px 6px;
+      text-align: left;
+      border-bottom: 2px solid #4f46e5;
+      background-color: #f3f4f6;
+      font-weight: bold;
+      color: #374151;
+      font-size: 0.8em;
+      text-transform: uppercase;
+    }
+
+    .data-table td {
+      padding: 8px 6px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .data-table tbody tr:nth-child(even) {
+      background-color: #f9fafb;
+    }
+
+    .data-table tbody tr:hover {
+      background-color: #f3f4f6;
+    }
+
+    .amount-column {
+      text-align: right;
+    }
+
+    .quantity-column {
+      text-align: center;
+    }
+
+    .positive {
+      color: #059669;
+      font-weight: 600;
+    }
+
+    .negative {
+      color: #dc2626;
+      font-weight: 600;
+    }
+
+    .batch-section {
+      margin: 15px 0;
+      padding: 12px;
+      background-color: #fefce8;
+      border-left: 3px solid #f59e0b;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .batch-header {
+      font-weight: bold;
+      color: #92400e;
+      margin-bottom: 8px;
+    }
+
+    .footer {
+      margin-top: 30px;
+      padding-top: 15px;
+      border-top: 1px solid #e5e7eb;
+      text-align: center;
+    }
+
+    .footer-text {
+      font-size: 0.85em;
+      color: #9ca3af;
+    }
+
+    .page-number {
+      text-align: right;
+      font-size: 0.8em;
+      color: #9ca3af;
+      margin-top: 10px;
+    }
+
+    @media print {
+      body {
+        margin: 0;
+        padding: 5mm;
+      }
+
+      .summary-cards {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="report-container">
+    <!-- Header -->
+    <div class="header">
+      <div class="company-name"><%= branchName || 'Inventory Management System' %></div>
+      <div class="report-title">Inventory Report</div>
+      <div class="report-subtitle"><%= reportTitle || 'Stock Movement Report' %></div>
+    </div>
+
+    <!-- Report Info -->
+    <div class="report-info">
+      <% if (filters.startDate) { %>
+      <div class="info-item">
+        <div class="info-label">Start Date</div>
+        <div class="info-value"><%= formatDate(filters.startDate) %></div>
+      </div>
+      <% } %>
+      <% if (filters.endDate) { %>
+      <div class="info-item">
+        <div class="info-label">End Date</div>
+        <div class="info-value"><%= formatDate(filters.endDate) %></div>
+      </div>
+      <% } %>
+      <% if (filters.branchName) { %>
+      <div class="info-item">
+        <div class="info-label">Branch</div>
+        <div class="info-value"><%= filters.branchName %></div>
+      </div>
+      <% } %>
+      <% if (filters.category) { %>
+      <div class="info-item">
+        <div class="info-label">Category</div>
+        <div class="info-value"><%= filters.category %></div>
+      </div>
+      <% } %>
+      <div class="info-item">
+        <div class="info-label">Report Type</div>
+        <div class="info-value"><%= reportFormat.toUpperCase() %></div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Generated</div>
+        <div class="info-value"><%= formatDateTime(new Date()) %></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Summary Section (for summary format) -->
+    <% if (reportFormat === 'summary' && summary) { %>
+    <div class="summary-cards">
+      <div class="summary-card">
+        <div class="summary-card-title">Total Products</div>
+        <div class="summary-card-value"><%= summary.totalProducts || 0 %></div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-title">Total Movements</div>
+        <div class="summary-card-value"><%= summary.totalMovements || 0 %></div>
+      </div>
+      <div class="summary-card inflow">
+        <div class="summary-card-title">Total Inflow</div>
+        <div class="summary-card-value"><%= summary.totalInflow ? formatQuantity(summary.totalInflow) : '0' %></div>
+      </div>
+      <div class="summary-card outflow">
+        <div class="summary-card-title">Total Outflow</div>
+        <div class="summary-card-value"><%= summary.totalOutflow ? formatQuantity(summary.totalOutflow) : '0' %></div>
+      </div>
+    </div>
+
+    <div class="section-title">Product Summary</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th width="5%">No</th>
+          <th width="35%">Product Name</th>
+          <th width="15%" class="quantity-column">Inflow</th>
+          <th width="15%" class="quantity-column">Outflow</th>
+          <th width="15%" class="quantity-column">Net Change</th>
+          <th width="15%" class="quantity-column">Movements</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% products.forEach((product, index) => { %>
+        <tr>
+          <td><%= index + 1 %></td>
+          <td><%= product.productName %></td>
+          <td class="quantity-column positive"><%= product.totalInflow %></td>
+          <td class="quantity-column negative"><%= product.totalOutflow %></td>
+          <td class="quantity-column <%= product.netChange >= 0 ? 'positive' : 'negative' %>"><%= product.netChange %></td>
+          <td class="quantity-column"><%= product.movements %></td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    <% } %>
+
+    <!-- Batch Section (for batch format) -->
+    <% if (reportFormat === 'batch' && batches) { %>
+    <div class="summary-cards">
+      <div class="summary-card">
+        <div class="summary-card-title">Total Batches</div>
+        <div class="summary-card-value"><%= summary.totalBatches || 0 %></div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-title">Total Movements</div>
+        <div class="summary-card-value"><%= summary.totalMovements || 0 %></div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-title">Total Quantity</div>
+        <div class="summary-card-value"><%= summary.totalQuantity ? formatQuantity(summary.totalQuantity) : '0' %></div>
+      </div>
+    </div>
+
+    <div class="section-title">Batch Summary</div>
+    <% batches.forEach((batch, index) => { %>
+    <div class="batch-section">
+      <div class="batch-header">Batch #<%= index + 1 %>: <%= batch.batchNumber %></div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th width="5%">No</th>
+            <th width="40%">Product</th>
+            <th width="15%" class="quantity-column">Quantity</th>
+            <th width="20%">First Movement</th>
+            <th width="20%">Last Movement</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% batch.products.forEach((product, pIndex) => { %>
+          <tr>
+            <td><%= pIndex + 1 %></td>
+            <td><%= product.productName %></td>
+            <td class="quantity-column <%= product.quantity >= 0 ? 'positive' : 'negative' %>"><%= product.quantity %></td>
+            <td><%= formatDate(batch.firstMovement) %></td>
+            <td><%= formatDate(batch.lastMovement) %></td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <% }); %>
+    <% } %>
+
+    <!-- Detailed Section (for detailed format) -->
+    <% if (reportFormat === 'detailed' && movements) { %>
+    <div class="summary-cards">
+      <div class="summary-card">
+        <div class="summary-card-title">Total Records</div>
+        <div class="summary-card-value"><%= movements.length || 0 %></div>
+      </div>
+      <div class="summary-card inflow">
+        <div class="summary-card-title">Total Inflow</div>
+        <div class="summary-card-value"><%= totalInflow ? formatQuantity(totalInflow) : '0' %></div>
+      </div>
+      <div class="summary-card outflow">
+        <div class="summary-card-title">Total Outflow</div>
+        <div class="summary-card-value"><%= totalOutflow ? formatQuantity(Math.abs(totalOutflow)) : '0' %></div>
+      </div>
+    </div>
+
+    <div class="section-title">Detailed Movements</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th width="4%">No</th>
+          <th width="13%">Date</th>
+          <th width="28%">Product</th>
+          <th width="10%">Type</th>
+          <th width="10%" class="quantity-column">Qty</th>
+          <th width="12%">Reference</th>
+          <th width="12%">Batch</th>
+          <th width="11%">User</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% movements.forEach((movement, index) => { %>
+        <tr>
+          <td><%= index + 1 %></td>
+          <td><%= formatDateTime(movement.createdAt) %></td>
+          <td>
+            <strong><%= movement.produk?.produkMaster?.namaProduk || 'N/A' %></strong>
+            <% if (movement.produk?.produkMaster?.sku) { %>
+            <div style="font-size: 0.85em; color: #6b7280;">SKU: <%= movement.produk.produkMaster.sku %></div>
+            <% } %>
+          </td>
+          <td><%= movement.referenceType || '-' %></td>
+          <td class="quantity-column <%= movement.quantity >= 0 ? 'positive' : 'negative' %>"><%= movement.quantity %></td>
+          <td><%= movement.referenceId || '-' %></td>
+          <td><%= movement.batchNumber || '-' %></td>
+          <td><%= movement.user?.namaLengkap || '-' %></td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    <% } %>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-text">
+        Generated by Inventory Management System<br>
+        Report Date: <%= formatDateTime(new Date()) %><br>
+        <% if (summary && summary.dateRange) { %>
+        Period: <%= summary.dateRange.start %> to <%= summary.dateRange.end %>
+        <% } %>
+      </div>
+      <div class="page-number">Page 1 of 1</div>
+    </div>
+  </div>
+</body>
+</html>

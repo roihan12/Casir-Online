@@ -27,6 +27,18 @@ const createTransaksiValidation = Joi.object({
     .required(),
   biaya_tambahan: Joi.number().precision(2).min(0).default(0),
   keterangan: Joi.string().allow(null, ""),
+  metode_pembayaran: Joi.string()
+    .valid(
+      "TUNAI",
+      "KARTU_DEBIT",
+      "KARTU_KREDIT",
+      "TRANSFER",
+      "QRIS",
+      "E_WALLET",
+      "KREDIT_PELANGGAN",
+      "TEMPO"
+    )
+    .required(),
 });
 
 // Validasi untuk tambah pembayaran
@@ -39,13 +51,15 @@ const createPembayaranValidation = Joi.object({
       "KARTU_KREDIT",
       "TRANSFER",
       "QRIS",
-      "E_WALLET"
+      "E_WALLET",
+      "KREDIT_PELANGGAN"
     )
     .required(),
+  status_pembayaran: Joi.string().valid("LUNAS", "BELUM_LUNAS", "DIBATALKAN").required(),
   provider: Joi.string().allow(null, ""),
   nomor_referensi: Joi.string().allow(null, ""),
   jumlah_bayar: Joi.number().precision(2).min(0).required(),
-  jumlah_kembali: Joi.number().precision(2).min(0).default(0),
+  jumlah_kembali: Joi.number().precision(2).min(0).allow(null),
   tanggal_pembayaran: Joi.date().default(new Date()),
   bukti_bayar_url: Joi.string().allow(null, ""),
   keterangan: Joi.string().allow(null, ""),
@@ -136,6 +150,34 @@ const createKreditTransaksiValidation = Joi.object({
   keterangan: Joi.string().allow(null, ""),
 });
 
+// Validasi untuk pembayaran hutang
+const createPembayaranHutangValidation = Joi.object({
+  hutang_id: Joi.string().required(),
+  jumlah_bayar: Joi.number().precision(2).min(0.01).required(),
+  metode_pembayaran: Joi.string()
+    .valid("TUNAI", "KARTU_DEBIT", "KARTU_KREDIT", "TRANSFER", "QRIS", "E_WALLET")
+    .required(),
+  nomor_referensi: Joi.string().allow(null, ""),
+  keterangan: Joi.string().allow(null, ""),
+  bukti_url: Joi.string().allow(null, ""),
+});
+
+// Validasi untuk filter daftar hutang
+const getHutangListValidation = Joi.object({
+  cabang_id: Joi.string(),
+  jenis_hutang: Joi.string().valid("pelanggan", "supplier"),
+  status_hutang: Joi.string().valid("aktif", "lunas", "cancel"),
+  pelanggan_id: Joi.string(),
+  supplier_id: Joi.string(),
+  tanggal_mulai: Joi.date(),
+  tanggal_akhir: Joi.date(),
+  jatuh_tempo_mulai: Joi.date(),
+  jatuh_tempo_akhir: Joi.date(),
+  search: Joi.string(),
+  page: Joi.number().min(1),
+  limit: Joi.number().min(1).max(100),
+});
+
 module.exports = {
   createTransaksiValidation,
   createPembayaranValidation,
@@ -146,4 +188,6 @@ module.exports = {
   addLoyaltyPointsValidation,
   redeemLoyaltyPointsValidation,
   createKreditTransaksiValidation,
+  createPembayaranHutangValidation,
+  getHutangListValidation,
 };

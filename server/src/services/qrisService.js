@@ -46,6 +46,7 @@ const generateQrisCode = async (data) => {
     store_name,
     qris_code: qrisData.qris_id,
     qris_url: qrisData.qris_url,
+    qr_string: qrisData.qr_string, // QR code string for frontend rendering
     expiry_time: qrisData.expiry_time,
   };
 };
@@ -147,21 +148,23 @@ const handleQrisCallback = async (notificationData) => {
       }
     }
 
-    // Add audit log
-    await prisma.auditLog.create({
-      data: {
-        user_id: "SYSTEM", // System update from Midtrans
-        ip_address: "0.0.0.0",
-        action: "MIDTRANS_CALLBACK",
-        table_name: "pembayaran",
-        record_id: pembayaran.pembayaran_id,
-        old_values: JSON.stringify({ status: pembayaran.status }),
-        new_values: JSON.stringify({
-          status: paymentData.status,
-          midtrans_data: paymentData,
-        }),
-      },
-    });
+    // Add audit log - use the user who created the payment, or skip if not available
+    if (pembayaran.created_by_user_Id) {
+      await prisma.auditLog.create({
+        data: {
+          user_id: pembayaran.created_by_user_Id,
+          ip_address: "0.0.0.0",
+          action: "MIDTRANS_CALLBACK",
+          table_name: "pembayaran",
+          record_id: pembayaran.pembayaran_id,
+          old_values: JSON.stringify({ status: pembayaran.status }),
+          new_values: JSON.stringify({
+            status: paymentData.status,
+            midtrans_data: paymentData,
+          }),
+        },
+      });
+    }
 
     return {
       success: true,

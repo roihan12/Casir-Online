@@ -1047,8 +1047,8 @@ model Hutang {
   jumlahTotal        Decimal            @map("jumlah_total") @db.Decimal(15, 2)
   jumlahBayar        Decimal            @map("jumlah_bayar") @db.Decimal(15, 2)
   sisaHutang         Decimal            @map("sisa_hutang") @db.Decimal(15, 2)
-  jenisHutang        JenisHutang
-  statusHutang       StatusHutang       @default(aktif)
+  jenisHutang        JenisHutang        @map("jenis_hutang")
+  statusHutang       StatusHutang       @default(aktif) @map("status_hutang")
   keterangan         String?
   cabangId           String             @map("cabang_id")
   supplierId         String?            @map("supplier_id")

@@ -13,19 +13,22 @@ import formatCurrency from "@common/utils/formatCurrency";
 const SalesTrendChart = ({ isGlobalView, cabang, revenueTimeSeries }) => {
   const salesData = revenueTimeSeries || [];
 
+  console.log("salesData", salesData);
+  console.log("cabang", cabang);
+
   // Calculate max revenue for chart scaling
-  const maxRevenue = Math.max(...salesData.map((item) => item.revenue), 0);
+  const maxRevenue = Math.max(...salesData.map((item) => item.total), 0);
 
   // Calculate total and average revenue
-  const totalRevenue = salesData.reduce((sum, item) => sum + item.revenue, 0);
+  const totalRevenue = salesData.reduce((sum, item) => sum + item.total, 0);
   const averageRevenue = salesData.length ? totalRevenue / salesData.length : 0;
 
   // Calculate percent change from first to last day
   const percentChange =
     salesData.length >= 2
       ? (
-          ((salesData[salesData.length - 1].revenue - salesData[0].revenue) /
-            salesData[0].revenue) *
+          ((salesData[salesData.length - 1].total - salesData[0].total) /
+            salesData[0].total) *
           100
         ).toFixed(1)
       : 0;
@@ -76,13 +79,13 @@ const SalesTrendChart = ({ isGlobalView, cabang, revenueTimeSeries }) => {
               <Tooltip
                 formatter={(value, name, props) => [
                   formatCurrency(value),
-                  `Pendapatan ${props.payload.branchName} (${props.payload.branchId}`,
+                  `Pendapatan ${cabang}`,
                 ]}
                 labelFormatter={formatDate}
               />
               <Line
                 type="monotone"
-                dataKey="revenue"
+                dataKey="total"
                 stroke="#6366f1"
                 strokeWidth={2}
                 dot={{ r: 4 }}

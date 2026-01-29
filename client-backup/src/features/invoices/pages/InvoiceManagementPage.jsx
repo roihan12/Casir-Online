@@ -36,6 +36,8 @@ const InvoiceManagement = () => {
   const navigate = useNavigate();
   const { selectedCabang, cabangList = [] } = useCabang();
 
+console.log("cabangList",cabangList);
+
   // Filter state
   const [filters, setFilters] = useState({
     startDate: dayjs().subtract(30, "day"),
@@ -101,7 +103,7 @@ const InvoiceManagement = () => {
 
   // View invoice detail
   const viewInvoiceDetail = (invoiceId) => {
-    navigate(`/superadmin/invoices/${invoiceId}`);
+    navigate(`/invoices/${invoiceId}`);
   };
 
   // Status badge component
@@ -288,7 +290,7 @@ const InvoiceManagement = () => {
       <div className="mb-6 flex justify-between">
         <div className="flex gap-2">
           <button
-            onClick={() => navigate("/superadmin/invoices/create")}
+            onClick={() => navigate("/invoices/create")}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -414,14 +416,14 @@ const InvoiceManagement = () => {
                           <Eye className="h-5 w-5" />
                         </button>
                         <button
-                          onClick={() => navigate(`/superadmin/invoices/${invoice.id}/pdf`)}
+                          onClick={() => navigate(`/invoices/${invoice.id}/pdf`)}
                           className="text-green-600 hover:text-green-900"
                           title="Download PDF"
                         >
                           <Download className="h-5 w-5" />
                         </button>
                         <button
-                          onClick={() => navigate(`/superadmin/invoices/${invoice.id}/send`)}
+                          onClick={() => navigate(`/invoices/${invoice.id}/send`)}
                           className="text-blue-600 hover:text-blue-900"
                           title="Kirim Email"
                         >

@@ -198,13 +198,13 @@ const GlobalReturnCreate = () => {
     setTimeout(() => {
       setLoading(false);
       toast.success("Retur berhasil dibuat");
-      navigate("/superadmin/transactions/returns");
+      navigate("/transactions/returns");
     }, 1500);
   };
 
   // Go back
   const handleBack = () => {
-    navigate("/superadmin/transactions/returns");
+    navigate("/transactions/returns");
   };
 
   return (

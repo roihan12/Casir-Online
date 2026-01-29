@@ -1,0 +1,500 @@
+<!-- File: src/templates/invoice_template.ejs -->
+<!DOCTYPE html>
+<html lang="<%= language || 'id' %>">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoice <%= invoice.nomorInvoice %></title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      width: 210mm;
+      margin: 0 auto;
+      padding: 10mm;
+      box-sizing: border-box;
+      line-height: 1.4;
+      color: #333;
+    }
+
+    .invoice-container {
+      width: 100%;
+      max-width: 190mm;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #4f46e5;
+    }
+
+    .company-info {
+      flex: 1;
+    }
+
+    .logo-container {
+      text-align: right;
+      flex: 1;
+    }
+
+    .logo {
+      max-width: 150px;
+      max-height: 80px;
+    }
+
+    .company-name {
+      font-size: 1.6em;
+      font-weight: bold;
+      margin: 5px 0;
+      color: #1f2937;
+    }
+
+    .contact-info {
+      margin-bottom: 3px;
+      color: #6b7280;
+    }
+
+    .invoice-title {
+      text-align: right;
+      font-size: 2em;
+      font-weight: bold;
+      margin: 10px 0;
+      color: #4f46e5;
+      text-transform: uppercase;
+    }
+
+    .invoice-number {
+      font-size: 1.1em;
+      color: #6b7280;
+      text-align: right;
+    }
+
+    .info-section {
+      display: flex;
+      justify-content: space-between;
+      margin: 25px 0;
+    }
+
+    .bill-to, .invoice-details {
+      flex: 1;
+    }
+
+    .bill-to h3, .invoice-details h3 {
+      font-size: 1em;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #374151;
+      text-transform: uppercase;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 5px;
+    }
+
+    .info-row {
+      margin-bottom: 5px;
+    }
+
+    .info-label {
+      font-weight: 600;
+      color: #6b7280;
+    }
+
+    .divider {
+      border-top: 1px solid #e5e7eb;
+      margin: 15px 0;
+    }
+
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+
+    .items-table th {
+      padding: 10px 8px;
+      text-align: left;
+      border-bottom: 2px solid #4f46e5;
+      background-color: #f9fafb;
+      font-weight: bold;
+      color: #374151;
+      font-size: 0.9em;
+      text-transform: uppercase;
+    }
+
+    .items-table td {
+      padding: 10px 8px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .items-table tbody tr:hover {
+      background-color: #f9fafb;
+    }
+
+    .amount-column {
+      text-align: right;
+    }
+
+    .quantity-column {
+      text-align: center;
+    }
+
+    .summary {
+      width: 50%;
+      margin-left: auto;
+      margin-top: 25px;
+      border-collapse: collapse;
+    }
+
+    .summary td {
+      padding: 8px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .summary-label {
+      text-align: left;
+      color: #6b7280;
+    }
+
+    .summary-value {
+      text-align: right;
+      font-weight: 600;
+    }
+
+    .summary-total {
+      font-weight: bold;
+      border-top: 2px solid #4f46e5;
+      border-bottom: 2px solid #4f46e5;
+      font-size: 1.1em;
+      padding: 12px 8px;
+      color: #4f46e5;
+    }
+
+    .payment-info {
+      margin: 25px 0;
+      padding: 15px;
+      background-color: #f9fafb;
+      border-radius: 6px;
+    }
+
+    .payment-info h3 {
+      font-size: 1em;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #374151;
+    }
+
+    .payment-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .payment-table td {
+      padding: 5px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.85em;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .status-paid {
+      background-color: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-unpaid {
+      background-color: #fee2e2;
+      color: #991b1b;
+    }
+
+    .status-partial {
+      background-color: #fef3c7;
+      color: #92400e;
+    }
+
+    .footer {
+      margin-top: 40px;
+      padding-top: 15px;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .terms {
+      margin: 15px 0;
+      padding: 12px;
+      border: 1px solid #e5e7eb;
+      background-color: #f9fafb;
+      border-radius: 6px;
+    }
+
+    .terms h4 {
+      margin: 0 0 8px 0;
+      font-size: 0.9em;
+      color: #374151;
+    }
+
+    .terms p {
+      margin: 3px 0;
+      font-size: 0.85em;
+      color: #6b7280;
+    }
+
+    .notes {
+      margin: 15px 0;
+      padding: 12px;
+      border-left: 3px solid #f59e0b;
+      background-color: #fffbeb;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .notes p {
+      margin: 3px 0;
+      font-size: 0.85em;
+      color: #92400e;
+    }
+
+    .thank-you {
+      text-align: center;
+      margin: 25px 0;
+      padding: 15px;
+      background-color: #f0fdf4;
+      border-radius: 8px;
+      color: #166534;
+      font-weight: 600;
+      font-size: 1.1em;
+    }
+
+    .barcode-section {
+      display: flex;
+      justify-content: center;
+      margin: 20px 0;
+    }
+
+    .footer-text {
+      text-align: center;
+      font-size: 0.8em;
+      color: #9ca3af;
+      margin-top: 10px;
+    }
+
+    @media print {
+      body {
+        margin: 0;
+        padding: 5mm;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="invoice-container">
+    <!-- Header Section -->
+    <div class="header">
+      <div class="company-info">
+        <h1 class="company-name"><%= branch.namaCabang %></h1>
+        <% if (branch.alamat) { %>
+        <div class="contact-info"><%= branch.alamat %></div>
+        <% } %>
+        <% if (branch.telepon) { %>
+        <div class="contact-info">Tel: <%= branch.telepon %></div>
+        <% } %>
+        <% if (branch.email) { %>
+        <div class="contact-info"><%= branch.email %></div>
+        <% } %>
+      </div>
+      <div class="logo-container">
+        <div class="invoice-title">INVOICE</div>
+        <div class="invoice-number">No: <%= invoice.nomorInvoice %></div>
+      </div>
+    </div>
+
+    <!-- Bill To & Invoice Details -->
+    <div class="info-section">
+      <div class="bill-to">
+        <h3>Bill To</h3>
+        <% if (customer) { %>
+        <div class="info-row">
+          <span class="info-label">Customer:</span> <%= customer.namaPelanggan %>
+        </div>
+        <% if (customer.alamat) { %>
+        <div class="info-row">
+          <span class="info-label">Address:</span> <%= customer.alamat %>
+        </div>
+        <% } %>
+        <% if (customer.telepon) { %>
+        <div class="info-row">
+          <span class="info-label">Phone:</span> <%= customer.telepon %>
+        </div>
+        <% } %>
+        <% if (customer.email) { %>
+        <div class="info-row">
+          <span class="info-label">Email:</span> <%= customer.email %>
+        </div>
+        <% } %>
+        <% } else { %>
+        <div class="info-row">
+          <span class="info-label">Customer:</span> Walk-in Customer
+        </div>
+        <% } %>
+      </div>
+      <div class="invoice-details">
+        <h3>Invoice Details</h3>
+        <div class="info-row">
+          <span class="info-label">Invoice Date:</span> <%= formatDate(invoice.tanggalInvoice) %>
+        </div>
+        <% if (invoice.tanggalJatuhTempo) { %>
+        <div class="info-row">
+          <span class="info-label">Due Date:</span> <%= formatDate(invoice.tanggalJatuhTempo) %>
+        </div>
+        <% } %>
+        <div class="info-row">
+          <span class="info-label">Transaction No:</span> <%= transaksi.nomorTransaksi %>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Transaction Date:</span> <%= formatDate(transaksi.tanggal) %>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Items Table -->
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th width="5%">No</th>
+          <th width="40%">Item Description</th>
+          <th width="10%" class="quantity-column">Qty</th>
+          <th width="15%" class="amount-column">Unit Price</th>
+          <th width="10%" class="amount-column">Discount</th>
+          <th width="20%" class="amount-column">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% items.forEach((item, index) => { %>
+        <tr>
+          <td><%= index + 1 %></td>
+          <td>
+            <strong><%= item.namaProduk %></strong>
+            <% if (item.sku) { %>
+            <div style="font-size: 0.85em; color: #6b7280;">SKU: <%= item.sku %></div>
+            <% } %>
+          </td>
+          <td class="quantity-column"><%= item.jumlah %></td>
+          <td class="amount-column"><%= formatCurrency(item.hargaSatuan) %></td>
+          <td class="amount-column"><%= item.diskonNominal > 0 ? formatCurrency(item.diskonNominal) : '-' %></td>
+          <td class="amount-column"><%= formatCurrency(item.subtotal) %></td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+
+    <!-- Summary Section -->
+    <table class="summary">
+      <tr>
+        <td class="summary-label">Subtotal:</td>
+        <td class="summary-value"><%= formatCurrency(transaksi.subtotal) %></td>
+      </tr>
+      <% if (transaksi.diskon > 0) { %>
+      <tr>
+        <td class="summary-label">Discount:</td>
+        <td class="summary-value" style="color: #dc2626;">-<%= formatCurrency(transaksi.diskon) %></td>
+      </tr>
+      <% } %>
+      <% if (transaksi.pajak > 0) { %>
+      <tr>
+        <td class="summary-label">Tax (10%):</td>
+        <td class="summary-value"><%= formatCurrency(transaksi.pajak) %></td>
+      </tr>
+      <% } %>
+      <% if (transaksi.biayaTambahan > 0) { %>
+      <tr>
+        <td class="summary-label">Additional Fee:</td>
+        <td class="summary-value"><%= formatCurrency(transaksi.biayaTambahan) %></td>
+      </tr>
+      <% } %>
+      <tr class="summary-total">
+        <td class="summary-label"><strong>Total:</strong></td>
+        <td class="summary-value"><strong><%= formatCurrency(transaksi.total) %></strong></td>
+      </tr>
+    </table>
+
+    <!-- Payment Information -->
+    <div class="payment-info">
+      <h3>Payment Information</h3>
+      <table class="payment-table">
+        <tr>
+          <td class="summary-label">Payment Status:</td>
+          <td>
+            <% if (invoice.status === 'LUNAS') { %>
+            <span class="status-badge status-paid">PAID</span>
+            <% } else if (invoice.status === 'BELUM_LUNAS') { %>
+            <span class="status-badge status-unpaid">UNPAID</span>
+            <% } else { %>
+            <span class="status-badge status-partial">PARTIAL</span>
+            <% } %>
+          </td>
+        </tr>
+        <% payments.forEach(payment => { %>
+        <tr>
+          <td class="summary-label"><%= payment.metodePembayaran %><%= payment.provider ? ' (' + payment.provider + ')' : '' %>:</td>
+          <td class="summary-value"><%= formatCurrency(payment.jumlahBayar) %></td>
+        </tr>
+        <% if (payment.jumlahKembali > 0) { %>
+        <tr>
+          <td class="summary-label">Change:</td>
+          <td class="summary-value"><%= formatCurrency(payment.jumlahKembali) %></td>
+        </tr>
+        <% } %>
+        <% if (payment.nomorReferensi) { %>
+        <tr>
+          <td class="summary-label">Reference:</td>
+          <td><%= payment.nomorReferensi %></td>
+        </tr>
+        <% } %>
+        <% }); %>
+      </table>
+    </div>
+
+    <!-- Notes -->
+    <% if (transaksi.keterangan) { %>
+    <div class="notes">
+      <strong>Note:</strong>
+      <p><%= transaksi.keterangan %></p>
+    </div>
+    <% } %>
+
+    <% if (invoice.catatan) { %>
+    <div class="notes">
+      <strong>Invoice Note:</strong>
+      <p><%= invoice.catatan %></p>
+    </div>
+    <% } %>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="thank-you">
+        Thank you for your business!
+      </div>
+
+      <div class="terms">
+        <h4>Terms & Conditions</h4>
+        <p>1. Payment is due within the specified due date.</p>
+        <p>2. Late payments may incur additional charges.</p>
+        <p>3. Please quote invoice number in all correspondence.</p>
+        <p>4. Goods remain our property until paid in full.</p>
+      </div>
+
+      <div class="footer-text">
+        This is a computer-generated invoice. No signature required.<br>
+        For inquiries, please contact us at <%= branch.email || branch.telepon %>.
+      </div>
+    </div>
+  </div>
+</body>
+</html>

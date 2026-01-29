@@ -50,7 +50,7 @@ BEGIN
     END IF;
     
     -- Set status pembayaran based on metode_pembayaran
-    IF p_metode_pembayaran = 'HUTANG' THEN
+    IF p_metode_pembayaran IN ('HUTANG', 'KREDIT_PELANGGAN', 'TEMPO') THEN
         v_status_pembayaran := 'BELUM_LUNAS';
     ELSIF p_metode_pembayaran IS NOT NULL THEN
         v_status_pembayaran := 'LUNAS';
@@ -286,12 +286,12 @@ BEGIN
         );
     END LOOP;
     
-    -- Create hutang record if applicable (for purchases with HUTANG payment method)
+    -- Create hutang record for PEMBELIAN with HUTANG payment method (supplier debt)
     IF p_jenis_transaksi = 'PEMBELIAN' AND p_metode_pembayaran = 'HUTANG' AND p_supplier_id IS NOT NULL THEN
         INSERT INTO hutang (
-            id, transaksi_id, nomor_referensi, tanggal_hutang, 
+            id, transaksi_id, nomor_referensi, tanggal_hutang,
             jatuh_tempo, jumlah_total, jumlah_bayar, sisa_hutang,
-            jenis_hutang, status_hutang, keterangan, 
+            jenis_hutang, status_hutang, keterangan,
             cabang_id, supplier_id, created_by_user_id, created_by
         ) VALUES (
             gen_random_uuid(), v_transaksi_id, v_nomor_transaksi, p_tanggal,
@@ -300,9 +300,24 @@ BEGIN
             p_cabang_id, p_supplier_id, p_user_id, p_user_name
         );
     END IF;
+
+    -- Create hutang record for PENJUALAN with KREDIT_PELANGGAN/TEMPO payment method (customer debt)
+    IF p_jenis_transaksi = 'PENJUALAN' AND p_metode_pembayaran IN ('KREDIT_PELANGGAN', 'TEMPO') AND p_pelanggan_id IS NOT NULL THEN
+        INSERT INTO hutang (
+            id, transaksi_id, nomor_referensi, tanggal_hutang,
+            jatuh_tempo, jumlah_total, jumlah_bayar, sisa_hutang,
+            jenis_hutang, status_hutang, keterangan,
+            cabang_id, pelanggan_id, created_by_user_id, created_by
+        ) VALUES (
+            gen_random_uuid(), v_transaksi_id, v_nomor_transaksi, p_tanggal,
+            p_tanggal + interval '30 day', v_total, 0, v_total,
+            'pelanggan', 'aktif', 'Hutang penjualan #' || v_nomor_transaksi,
+            p_cabang_id, p_pelanggan_id, p_user_id, p_user_name
+        );
+    END IF;
     
-    -- Create pembayaran record if fully paid
-    IF v_status_pembayaran = 'LUNAS' AND p_metode_pembayaran IS NOT NULL AND p_metode_pembayaran != 'HUTANG' THEN
+    -- Create pembayaran record if fully paid (not for HUTANG/KREDIT_PELANGGAN/TEMPO)
+    IF v_status_pembayaran = 'LUNAS' AND p_metode_pembayaran IS NOT NULL AND p_metode_pembayaran NOT IN ('HUTANG', 'KREDIT_PELANGGAN', 'TEMPO') THEN
         INSERT INTO pembayaran (
             pembayaran_id, transaksi_id, metode_pembayaran,
             jumlah_bayar, jumlah_kembali, tanggal_pembayaran,

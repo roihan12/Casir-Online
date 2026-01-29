@@ -129,7 +129,7 @@ const GlobalReturnDetail = () => {
 
   // Go back to returns list
   const handleBack = () => {
-    navigate("/superadmin/transactions/returns");
+    navigate("/transactions/returns");
   };
 
   // Print receipt

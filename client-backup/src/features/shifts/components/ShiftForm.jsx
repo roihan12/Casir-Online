@@ -30,6 +30,10 @@ import formatDate from "@common/utils/formatDate";
 const ShiftForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { id } = useParams();
+  const { user } = useAuth();
+  const { selectedCabang } = useCabang();
+
   const isClosingShift = !!id && location.pathname.includes("/close");
   const isAdjustingShift = !!id && location.pathname.includes("/adjust");
 

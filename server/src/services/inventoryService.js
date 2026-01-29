@@ -1,6 +1,11 @@
 const prisma = require("../config/db");
 const { ResponseError } = require("../error/responseError");
 const { cacheDeletePattern } = require("../utils/redisUtils");
+const ExcelJS = require("exceljs");
+const ejs = require("ejs");
+const puppeteer = require("puppeteer");
+const path = require("path");
+const fs = require("fs");
 
 
 // Service untuk pencatatan pergerakan stok
@@ -443,10 +448,192 @@ const generateBatchReport = (movements) => {
 };
 
 // Helper function to generate Excel report
-const generateExcelReport = (data, format) => {
-  // TODO: Implement actual Excel generation
-  // For now, return the same as CSV as placeholder
-  return generateCSVReport(data, format);
+const generateExcelReport = async (data, format) => {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Casir Online POS';
+  workbook.created = new Date();
+
+  // Helper for formatting currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  if (format === 'summary') {
+    // Summary Report Sheet
+    const summarySheet = workbook.addWorksheet('Summary', {
+      views: [{ state: 'frozen', xSplit: 0, ySplit: 1 }]
+    });
+
+    // Add header styling
+    summarySheet.columns = [
+      { header: 'Product ID', key: 'productId', width: 20 },
+      { header: 'Product Name', key: 'productName', width: 40 },
+      { header: 'Total Inflow', key: 'totalInflow', width: 15 },
+      { header: 'Total Outflow', key: 'totalOutflow', width: 15 },
+      { header: 'Net Change', key: 'netChange', width: 15 },
+      { header: 'Movements', key: 'movements', width: 12 },
+    ];
+
+    // Style the header row
+    summarySheet.getRow(1).font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+    summarySheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
+    summarySheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+    summarySheet.getRow(1).height = 25;
+
+    // Add summary statistics at the top
+    summarySheet.insertRow(1, ['SUMMARY STATISTICS']);
+    summarySheet.mergeCells('A1:F1');
+    summarySheet.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FF4F46E5' } };
+    summarySheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' };
+    summarySheet.getRow(1).height = 30;
+
+    summarySheet.insertRow(2, ['Total Products:', data.summary.totalProducts, '', '', '', '']);
+    summarySheet.insertRow(3, ['Total Movements:', data.summary.totalMovements, '', '', '', '']);
+    if (data.summary.dateRange) {
+      summarySheet.insertRow(4, ['Date Range:', `${data.summary.dateRange.start} - ${data.summary.dateRange.end}`, '', '', '', '']);
+    }
+
+    // Add data rows
+    data.products.forEach((product, index) => {
+      const rowNumber = index + 6; // +6 for the summary rows and header
+      summarySheet.addRow({
+        productId: product.productId,
+        productName: product.productName,
+        totalInflow: product.totalInflow,
+        totalOutflow: product.totalOutflow,
+        netChange: product.netChange,
+        movements: product.movements,
+      });
+
+      // Style net change column based on value
+      const netChangeCell = summarySheet.getCell(`E${rowNumber}`);
+      if (product.netChange < 0) {
+        netChangeCell.font = { color: { argb: 'FFDC2626' }, bold: true };
+      } else {
+        netChangeCell.font = { color: { argb: 'FF059669' }, bold: true };
+      }
+    });
+
+    // Auto-fit columns
+    summarySheet.columns.forEach(column => {
+      if (column.key === 'productName') {
+        column.width = 40;
+      }
+    });
+
+  } else if (format === 'batch') {
+    // Batch Report Sheet
+    const batchSheet = workbook.addWorksheet('Batch Summary', {
+      views: [{ state: 'frozen', xSplit: 0, ySplit: 1 }]
+    });
+
+    batchSheet.columns = [
+      { header: 'Batch Number', key: 'batchNumber', width: 25 },
+      { header: 'Product Name', key: 'productName', width: 35 },
+      { header: 'Quantity', key: 'quantity', width: 15 },
+      { header: 'First Movement', key: 'firstMovement', width: 18 },
+      { header: 'Last Movement', key: 'lastMovement', width: 18 },
+    ];
+
+    // Style the header row
+    batchSheet.getRow(1).font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+    batchSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
+    batchSheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+    batchSheet.getRow(1).height = 25;
+
+    // Add summary at the top
+    batchSheet.insertRow(1, ['BATCH SUMMARY REPORT']);
+    batchSheet.mergeCells('A1:E1');
+    batchSheet.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FF4F46E5' } };
+    batchSheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' };
+    batchSheet.getRow(1).height = 30;
+
+    batchSheet.insertRow(2, ['Total Batches:', data.summary.totalBatches, '', '', '']);
+    batchSheet.insertRow(3, ['Total Movements:', data.summary.totalMovements, '', '', '']);
+
+    let currentRow = 5;
+    data.batches.forEach((batch) => {
+      batch.products.forEach((product) => {
+        batchSheet.addRow({
+          batchNumber: batch.batchNumber,
+          productName: product.productName,
+          quantity: product.quantity,
+          firstMovement: formatDate(batch.firstMovement),
+          lastMovement: formatDate(batch.lastMovement),
+        });
+
+        // Style quantity based on value
+        const qtyCell = batchSheet.getCell(`C${currentRow}`);
+        if (product.quantity < 0) {
+          qtyCell.font = { color: { argb: 'FFDC2626' }, bold: true };
+        } else {
+          qtyCell.font = { color: { argb: 'FF059669' }, bold: true };
+        }
+
+        currentRow++;
+      });
+    });
+
+  } else {
+    // Detailed Report Sheet
+    const detailSheet = workbook.addWorksheet('Detailed Movements', {
+      views: [{ state: 'frozen', xSplit: 0, ySplit: 1 }]
+    });
+
+    detailSheet.columns = [
+      { header: 'ID', key: 'id', width: 25 },
+      { header: 'Date', key: 'date', width: 18 },
+      { header: 'Product', key: 'product', width: 35 },
+      { header: 'SKU', key: 'sku', width: 15 },
+      { header: 'Type', key: 'type', width: 15 },
+      { header: 'Quantity', key: 'quantity', width: 12 },
+      { header: 'Reason', key: 'reason', width: 25 },
+      { header: 'Reference', key: 'reference', width: 20 },
+      { header: 'Batch', key: 'batch', width: 18 },
+      { header: 'Branch', key: 'branch', width: 20 },
+      { header: 'User', key: 'user', width: 20 },
+    ];
+
+    // Style the header row
+    detailSheet.getRow(1).font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
+    detailSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
+    detailSheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+    detailSheet.getRow(1).height = 25;
+
+    // Add data rows
+    data.forEach((movement) => {
+      detailSheet.addRow({
+        id: movement.id,
+        date: formatDateTime(movement.createdAt),
+        product: movement.produk?.produkMaster?.namaProduk || 'N/A',
+        sku: movement.produk?.produkMaster?.sku || '',
+        type: movement.referenceType || movement.type || '',
+        quantity: movement.quantity,
+        reason: movement.keterangan || movement.reason || '',
+        reference: movement.referenceId || '',
+        batch: movement.batchNumber || '',
+        branch: movement.cabang?.namaCabang || '',
+        user: movement.user?.namaLengkap || '',
+      });
+
+      // Style quantity column based on value
+      const lastRow = detailSheet.lastRow.number;
+      const qtyCell = detailSheet.getCell(`F${lastRow}`);
+      if (movement.quantity < 0) {
+        qtyCell.font = { color: { argb: 'FFDC2626' }, bold: true };
+      } else {
+        qtyCell.font = { color: { argb: 'FF059669' }, bold: true };
+      }
+    });
+  }
+
+  // Generate buffer
+  const buffer = await workbook.xlsx.writeBuffer();
+  return buffer;
 };
 
 // Helper function to generate CSV report
@@ -510,17 +697,142 @@ const generateCSVReport = (data, format) => {
 };
 
 // Helper function to generate PDF report
-const generatePDFReport = (data, format) => {
-  // TODO: Implement actual PDF generation with a library like pdfkit
-  // For now, return a CSV as placeholder
-  return generateCSVReport(data, format);
+const generatePDFReport = async (data, format) => {
+  // Determine template path
+  const templatePath = path.join(__dirname, "../../templates/inventory_report_template.ejs");
+
+  // Ensure template exists
+  if (!fs.existsSync(templatePath)) {
+    throw new ResponseError(500, "Template laporan tidak ditemukan");
+  }
+
+  // Prepare template data based on format
+  let templateData = {
+    language: 'id',
+    reportTitle: 'Stock Movement Report',
+    reportFormat: format,
+    branchName: 'Casir Online',
+  };
+
+  // Calculate totals for detailed report
+  if (format === 'detailed' && Array.isArray(data)) {
+    const totalInflow = data.reduce((sum, m) => sum + (m.quantity > 0 ? m.quantity : 0), 0);
+    const totalOutflow = data.reduce((sum, m) => sum + (m.quantity < 0 ? Math.abs(m.quantity) : 0), 0);
+    templateData.movements = data;
+    templateData.totalInflow = totalInflow;
+    templateData.totalOutflow = totalOutflow;
+  } else if (format === 'summary' && data.products) {
+    templateData.summary = data.summary;
+    templateData.products = data.products;
+  } else if (format === 'batch' && data.batches) {
+    templateData.summary = data.summary;
+    templateData.batches = data.batches;
+  }
+
+  // Add helper functions to template data
+  templateData.formatCurrency = (amount) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  templateData.formatQuantity = (qty) => {
+    return new Intl.NumberFormat('id-ID').format(qty);
+  };
+
+  templateData.formatDate = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    return d.toLocaleDateString('id-ID', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  templateData.formatDateTime = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    return d.toLocaleString('id-ID', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  // Add filters
+  templateData.filters = {
+    branchName: 'All Branches',
+    category: 'All Categories',
+  };
+
+  // Render template to HTML
+  let html;
+  try {
+    html = await ejs.renderFile(templatePath, templateData);
+  } catch (error) {
+    console.error("Error rendering template:", error);
+    throw new ResponseError(500, `Error rendering template: ${error.message}`);
+  }
+
+  // Generate PDF from HTML
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+    const page = await browser.newPage();
+    await page.setContent(html);
+
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      margin: {
+        top: '10mm',
+        right: '10mm',
+        bottom: '10mm',
+        left: '10mm',
+      },
+      printBackground: true,
+    });
+
+    return pdfBuffer;
+  } catch (error) {
+    console.error("Error generating PDF:", error);
+    throw new ResponseError(500, `Error generating PDF: ${error.message}`);
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+  }
 };
 
 // Helper function to format dates
 const formatDate = (date) => {
   if (!date) return "";
   const d = new Date(date);
-  return d.toISOString().split("T")[0];
+  return d.toLocaleDateString('id-ID', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+};
+
+// Helper function to format dates and times
+const formatDateTime = (date) => {
+  if (!date) return "";
+  const d = new Date(date);
+  return d.toLocaleString('id-ID', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 };
 
 // Service untuk entry stok awal batch

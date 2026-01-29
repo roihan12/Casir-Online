@@ -45,7 +45,7 @@ const ShiftReports = () => {
 
   const { data: reportData, isLoading, isError } = useShiftReport({
     ...filters,
-    cabangId: selectedCabang?.id,
+    cabangId: selectedCabang?.id === "global" ? null : selectedCabang?.id,
   });
 
   console.log(reportData);

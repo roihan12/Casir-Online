@@ -187,7 +187,7 @@ const CustomerDetail = () => {
         <div className="flex items-center">
           {row.transaksiId ? (
             <Link
-              to={`/superadmin/transactions/${row.transaksiId}`}
+              to={`/transactions/${row.transaksiId}`}
               className="text-blue-600 hover:text-blue-800 flex items-center"
             >
               <ShoppingCart className="h-4 w-4 mr-1" />
@@ -261,7 +261,7 @@ const CustomerDetail = () => {
       accessor: "nomor_transaksi",
       cell: (row) => (
         <Link
-          to={`/superadmin/transactions/${row.transaksi_id}`}
+          to={`/transactions/${row.transaksi_id}`}
           className="text-blue-600 hover:text-blue-800"
         >
           {row.nomor_transaksi}

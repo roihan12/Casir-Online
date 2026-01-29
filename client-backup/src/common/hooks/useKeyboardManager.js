@@ -17,7 +17,6 @@ export default function useKeyboardManager(dependencies) {
     saleMode,
     handleModeChange,
     processPayment,
-    handleQrisPayment,
     setProductSearch,
     setShowCategoryList,
     modalManager,
@@ -35,19 +34,6 @@ export default function useKeyboardManager(dependencies) {
       processPayment();
     }
   }, [cart, isProcessingTransaction, processPayment, modalManager]);
-
-  /**
-   * Fungsi untuk menangani pembayaran QRIS
-   */
-  const handleQrisPaymentShortcut = useCallback(() => {
-    if (
-      cart.length > 0 &&
-      !isProcessingTransaction &&
-      !modalManager.isAnyModalOpen()
-    ) {
-      handleQrisPayment();
-    }
-  }, [cart, isProcessingTransaction, handleQrisPayment, modalManager]);
 
   /**
    * Fungsi untuk mengatur mode penjualan (retail/grosir)
@@ -135,10 +121,6 @@ export default function useKeyboardManager(dependencies) {
             e.preventDefault();
             handleCashPayment();
             break;
-          case "q":
-            e.preventDefault();
-            handleQrisPaymentShortcut();
-            break;
           case "m":
             e.preventDefault();
             toggleSaleMode();
@@ -179,14 +161,12 @@ export default function useKeyboardManager(dependencies) {
     toggleCategories,
     selectCategory,
     handleCashPayment,
-    handleQrisPaymentShortcut,
     toggleSaleMode,
     modalManager,
   ]);
 
   return {
     handleCashPayment,
-    handleQrisPaymentShortcut,
     toggleSaleMode,
     focusSearch,
     toggleCategories,

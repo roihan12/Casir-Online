@@ -121,7 +121,7 @@ const InvoiceDetail = () => {
 
   // Go back to invoices list
   const handleBack = () => {
-    navigate("/superadmin/invoices");
+    navigate("/invoices");
   };
 
   // Handle download PDF

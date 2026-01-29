@@ -57,14 +57,14 @@ const getTransaksiById = async (req, res, next) => {
 const getTransaksiList = async (req, res, next) => {
   try {
     const filters = validate(getTransaksiListValidation, {
-      cabang_id: req.query.cabang_id,
-      jenis_transaksi: req.query.jenis_transaksi,
-      status_pembayaran: req.query.status_pembayaran,
-      pelanggan_id: req.query.pelanggan_id,
-      supplier_id: req.query.supplier_id,
-      user_id: req.query.user_id,
-      tanggal_mulai: req.query.tanggal_mulai,
-      tanggal_akhir: req.query.tanggal_akhir,
+      cabang_id: req.query.cabangId,
+      jenis_transaksi: req.query.jenisTransaksi,
+      status_pembayaran: req.query.statusPembayaran,
+      pelanggan_id: req.query.pelangganId,
+      supplier_id: req.query.supplierId,
+      user_id: req.query.userId,
+      tanggal_mulai: req.query.startDate,
+      tanggal_akhir: req.query.endDate,
       search: req.query.search,
       page: parseInt(req.query.page) || 1,
       limit: parseInt(req.query.limit) || 10,

@@ -117,6 +117,7 @@ export const useCreateTransaction = () => {
       queryClient.invalidateQueries({ queryKey: ["products", "popular"] });
     },
     onError: (error) => {
+      console.log(error);
       const message =
         error.response?.data?.message || "Gagal membuat transaksi";
       toast.error(message);

@@ -7,18 +7,9 @@ import {
   Trash2,
   Tag,
   DollarSign,
-  CreditCard,
   ChevronDown,
 } from "lucide-react";
-
-// Utility function to format currency
-const formatCurrency = (amount) => {
-  const numAmount = parseFloat(amount) || 0;
-  return `Rp${numAmount.toLocaleString("id-ID", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  })}`;
-};
+import formatCurrency from "@common/utils/formatCurrency";
 
 const CartSection = ({
   cart,
@@ -35,7 +26,7 @@ const CartSection = ({
   discountType,
   setDiscountType,
   processPayment,
-  handleQrisPayment,
+  className = "",
 }) => {
   const subtotal = cart.reduce((sum, item) => {
     const price = saleMode === "wholesale" ? item.wholesale_price : item.retail_price;
@@ -43,7 +34,7 @@ const CartSection = ({
   }, 0);
 
   return (
-    <div className="flex flex-col h-full bg-white border-l border-gray-100 shadow-xl">
+    <div className={`flex flex-col h-full bg-white border-l border-gray-100 shadow-xl ${className}`}>
       {/* Cart header */}
       <div className="p-5 border-b border-gray-100 bg-gray-50/50">
         <div className="flex justify-between items-center mb-4">
@@ -214,25 +205,14 @@ const CartSection = ({
            </span>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            className="group py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm flex items-center justify-center transition-all shadow-lg shadow-indigo-200 disabled:opacity-50 active:scale-95"
-            onClick={processPayment}
-            disabled={cart.length === 0}
-          >
-            <DollarSign className="mr-2 group-hover:scale-110 transition-transform" size={20} strokeWidth={2.5} />
-            TUNAI
-          </button>
-
-          <button
-            className="group py-4 bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 rounded-2xl font-black text-sm flex items-center justify-center transition-all disabled:opacity-50 active:scale-95"
-            onClick={handleQrisPayment}
-            disabled={cart.length === 0}
-          >
-            <CreditCard className="mr-2 group-hover:scale-110 transition-transform" size={20} strokeWidth={2.5} />
-            QRIS
-          </button>
-        </div>
+        <button
+          className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm flex items-center justify-center transition-all shadow-lg shadow-indigo-200 disabled:opacity-50 active:scale-95"
+          onClick={processPayment}
+          disabled={cart.length === 0}
+        >
+          <DollarSign className="mr-2 group-hover:scale-110 transition-transform" size={20} strokeWidth={2.5} />
+          BAYAR
+        </button>
       </div>
     </div>
   );

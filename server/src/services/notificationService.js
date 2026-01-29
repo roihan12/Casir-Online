@@ -1,6 +1,8 @@
 const prisma = require("../config/db");
 const { ResponseError } = require("../error/responseError");
 const nodemailer = require("nodemailer"); // Untuk pengiriman email
+const ejs = require("ejs");
+const path = require("path");
 
 // Mendapatkan atau membuat konfigurasi notifikasi untuk cabang
 const getOrCreateNotificationConfig = async (cabangId) => {
@@ -669,6 +671,371 @@ const getNotificationStats = async (filters) => {
   };
 };
 
+// Send stock transfer request notification to admins
+const sendStockTransferRequestNotification = async (transfer) => {
+  try {
+    // Get all users with permission to approve stock transfers
+    const admins = await prisma.userRole.findMany({
+      where: {
+        role: {
+          permissions: {
+            hasSome: ['stock_transfer:approve', 'stock_transfer:write'],
+          },
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            namaLengkap: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (admins.length === 0) {
+      console.log('No admins found with stock transfer approval permission');
+      return { success: false, message: 'No admins to notify' };
+    }
+
+    // Get recipient emails
+    const recipients = admins
+      .map((admin) => admin.user.email)
+      .filter((email) => email);
+
+    if (recipients.length === 0) {
+      console.log('No email addresses found for admins');
+      return { success: false, message: 'No email addresses found' };
+    }
+
+    // Prepare template data
+    const templateData = {
+      transfer: {
+        ...transfer,
+        cabangAsal: await prisma.cabang.findUnique({
+          where: { id: transfer.cabangAsalId },
+          select: { namaCabang: true },
+        }),
+        cabangTujuan: await prisma.cabang.findUnique({
+          where: { id: transfer.cabangTujuanId },
+          select: { namaCabang: true },
+        }),
+        items: await prisma.stockTransferItem.findMany({
+          where: { stockTransferId: transfer.id },
+          include: {
+            produk: {
+              include: {
+                produkMaster: true,
+              },
+            },
+          },
+        }),
+      },
+      language: 'id',
+      companyName: 'Casir Online POS',
+      appUrl: process.env.APP_URL || 'http://localhost:3000',
+      formatDate: (date) => {
+        if (!date) return '';
+        const d = new Date(date);
+        return d.toLocaleDateString('id-ID', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+      },
+    };
+
+    // Render email template
+    const templatePath = path.join(__dirname, '../../templates/emails/stock_transfer_request.ejs');
+    const html = await ejs.renderFile(templatePath, templateData);
+
+    // Create transporter
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.example.com',
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER || 'user@example.com',
+        pass: process.env.SMTP_PASS || 'password',
+      },
+    });
+
+    // Send email
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || '"Casir Online POS" <noreply@casir-online.com>',
+      to: recipients.join(','),
+      subject: `Stock Transfer Request - ${templateData.transfer.nomorTransfer}`,
+      html,
+    });
+
+    return { success: true, recipients: recipients.length };
+  } catch (error) {
+    console.error('Error sending stock transfer request notification:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Send stock transfer approved notification to source branch
+const sendStockTransferApprovedNotification = async (transfer) => {
+  try {
+    // Get users from source branch who should be notified
+    const branchUsers = await prisma.userRole.findMany({
+      where: {
+        cabangId: transfer.cabangAsalId,
+        role: {
+          permissions: {
+            hasSome: ['stock_transfer:read', 'stock_transfer:write'],
+          },
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            namaLengkap: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    // Also get admins
+    const admins = await prisma.userRole.findMany({
+      where: {
+        role: {
+          permissions: {
+            hasSome: ['stock_transfer:approve'],
+          },
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            namaLengkap: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    const allRecipients = [...branchUsers, ...admins];
+    const recipients = allRecipients
+      .map((r) => r.user.email)
+      .filter((email) => email);
+
+    if (recipients.length === 0) {
+      console.log('No recipients found for approved notification');
+      return { success: false, message: 'No recipients found' };
+    }
+
+    // Get approved by user
+    let approvedBy = null;
+    if (transfer.approvedById) {
+      approvedBy = await prisma.user.findUnique({
+        where: { id: transfer.approvedById },
+        select: { namaLengkap: true },
+      });
+    }
+
+    // Prepare template data
+    const templateData = {
+      transfer: {
+        ...transfer,
+        approvedBy,
+        cabangAsal: await prisma.cabang.findUnique({
+          where: { id: transfer.cabangAsalId },
+          select: { namaCabang: true },
+        }),
+        cabangTujuan: await prisma.cabang.findUnique({
+          where: { id: transfer.cabangTujuanId },
+          select: { namaCabang: true },
+        }),
+        items: await prisma.stockTransferItem.findMany({
+          where: { stockTransferId: transfer.id },
+          include: {
+            produk: {
+              include: {
+                produkMaster: true,
+              },
+            },
+          },
+        }),
+      },
+      language: 'id',
+      companyName: 'Casir Online POS',
+      formatDate: (date) => {
+        if (!date) return '';
+        const d = new Date(date);
+        return d.toLocaleDateString('id-ID', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+      },
+    };
+
+    // Render email template
+    const templatePath = path.join(__dirname, '../../templates/emails/stock_transfer_approved.ejs');
+    const html = await ejs.renderFile(templatePath, templateData);
+
+    // Create transporter
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.example.com',
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER || 'user@example.com',
+        pass: process.env.SMTP_PASS || 'password',
+      },
+    });
+
+    // Send email
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || '"Casir Online POS" <noreply@casir-online.com>',
+      to: recipients.join(','),
+      subject: `Stock Transfer Approved - ${templateData.transfer.nomorTransfer}`,
+      html,
+    });
+
+    return { success: true, recipients: recipients.length };
+  } catch (error) {
+    console.error('Error sending stock transfer approved notification:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Send stock transfer rejected notification to source branch
+const sendStockTransferRejectedNotification = async (transfer) => {
+  try {
+    // Get users from source branch who should be notified
+    const branchUsers = await prisma.userRole.findMany({
+      where: {
+        cabangId: transfer.cabangAsalId,
+        role: {
+          permissions: {
+            hasSome: ['stock_transfer:read', 'stock_transfer:write'],
+          },
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            namaLengkap: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    // Also get admins
+    const admins = await prisma.userRole.findMany({
+      where: {
+        role: {
+          permissions: {
+            hasSome: ['stock_transfer:approve'],
+          },
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            namaLengkap: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    const allRecipients = [...branchUsers, ...admins];
+    const recipients = allRecipients
+      .map((r) => r.user.email)
+      .filter((email) => email);
+
+    if (recipients.length === 0) {
+      console.log('No recipients found for rejected notification');
+      return { success: false, message: 'No recipients found' };
+    }
+
+    // Get rejected by user
+    let rejectedBy = null;
+    if (transfer.rejectedById) {
+      rejectedBy = await prisma.user.findUnique({
+        where: { id: transfer.rejectedById },
+        select: { namaLengkap: true },
+      });
+    }
+
+    // Prepare template data
+    const templateData = {
+      transfer: {
+        ...transfer,
+        rejectedBy,
+        cabangAsal: await prisma.cabang.findUnique({
+          where: { id: transfer.cabangAsalId },
+          select: { namaCabang: true },
+        }),
+        cabangTujuan: await prisma.cabang.findUnique({
+          where: { id: transfer.cabangTujuanId },
+          select: { namaCabang: true },
+        }),
+        items: await prisma.stockTransferItem.findMany({
+          where: { stockTransferId: transfer.id },
+          include: {
+            produk: {
+              include: {
+                produkMaster: true,
+              },
+            },
+          },
+        }),
+      },
+      language: 'id',
+      companyName: 'Casir Online POS',
+      formatDate: (date) => {
+        if (!date) return '';
+        const d = new Date(date);
+        return d.toLocaleDateString('id-ID', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+      },
+    };
+
+    // Render email template
+    const templatePath = path.join(__dirname, '../../templates/emails/stock_transfer_rejected.ejs');
+    const html = await ejs.renderFile(templatePath, templateData);
+
+    // Create transporter
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.example.com',
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER || 'user@example.com',
+        pass: process.env.SMTP_PASS || 'password',
+      },
+    });
+
+    // Send email
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || '"Casir Online POS" <noreply@casir-online.com>',
+      to: recipients.join(','),
+      subject: `Stock Transfer Rejected - ${templateData.transfer.nomorTransfer}`,
+      html,
+    });
+
+    return { success: true, recipients: recipients.length };
+  } catch (error) {
+    console.error('Error sending stock transfer rejected notification:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   getOrCreateNotificationConfig,
   updateNotificationConfig,
@@ -679,4 +1046,7 @@ module.exports = {
   checkLowStock,
   checkExpiringStock,
   getNotificationStats,
+  sendStockTransferRequestNotification,
+  sendStockTransferApprovedNotification,
+  sendStockTransferRejectedNotification,
 };

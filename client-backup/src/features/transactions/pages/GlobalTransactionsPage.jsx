@@ -19,6 +19,8 @@ import {
   BarChart3,
   ChevronRight,
   CreditCard,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
@@ -26,7 +28,8 @@ import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
 import { useCabang } from "@features/cabang/hooks/useCabang";
 import toast from "react-hot-toast";
-import { useTransactionsList, useTransactionDashboard } from "../hooks/useTransactions";
+import { useAuth } from "@features/auth/hooks/useAuth";
+import { useTransactionsList, useTransactionDashboard, useCancelTransaction } from "../hooks/useTransactions";
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import formatCurrency from "@common/utils/formatCurrency";
 
@@ -36,17 +39,36 @@ import formatCurrency from "@common/utils/formatCurrency";
 const GlobalTransactions = () => {
   const navigate = useNavigate();
   const { selectedCabang, cabangList = [] } = useCabang();
+  const { hasPermission, isSuperAdmin, user } = useAuth();
   const [timeRange, setTimeRange] = useState("30d"); // '7d', '30d', '90d', '1y'
+
+  // Permissions
+  const showDashboardStats = hasPermission("transaksi:manage");
+  const canCreate = hasPermission("transaksi:create");
+  const canRead = hasPermission("transaksi:read");
+  const canDelete = hasPermission("transaksi:delete");
+  const isSuperAdminUser = isSuperAdmin();
 
   // Filter state
   const [filters, setFilters] = useState({
     startDate: dayjs().subtract(30, "day"),
     endDate: dayjs(),
-    cabangId: "all", // Default to all cabang
+    cabangId: isSuperAdminUser ? "all" : (selectedCabang?.id || "all"), // Default logic updated below
     jenisTransaksi: "all",
     statusPembayaran: "all",
     search: "",
   });
+
+  // Update default cabangId when not super admin
+  React.useEffect(() => {
+    if (!isSuperAdminUser && cabangList.length > 0 && filters.cabangId === "all") {
+       // Find first valid branch if "all" is set but not allowed
+       const defaultBranch = selectedCabang?.id || cabangList[0]?.id;
+       if (defaultBranch) {
+         setFilters(prev => ({ ...prev, cabangId: defaultBranch }));
+       }
+    }
+  }, [isSuperAdminUser, cabangList, selectedCabang]);
 
   // Pagination state
   const [page, setPage] = useState(0);
@@ -56,8 +78,11 @@ const GlobalTransactions = () => {
   const {
     data: transactionsData,
     isLoading: isLoadingTransactions,
-    error: transactionsError
+    error: transactionsError,
+    refetch: refetchTransactions
   } = useTransactionsList(filters, page, rowsPerPage);
+
+  const cancelTransactionMutation = useCancelTransaction();
 
   // Fetch dashboard stats using React Query
   const {
@@ -150,6 +175,21 @@ const GlobalTransactions = () => {
     navigate(`/transactions/${transactionId}`);
   };
 
+  const handleCancelTransaction = async (id, status) => {
+    if (status === "DIBATALKAN" || status === "LUNAS") return;
+    
+    if (window.confirm("Apakah Anda yakin ingin membatalkan transaksi ini?")) {
+      try {
+        await cancelTransactionMutation.mutateAsync(id);
+        toast.success("Transaksi berhasil dibatalkan");
+        refetchTransactions();
+      } catch (error) {
+        console.error("Gagal membatalkan transaksi:", error);
+        toast.error("Gagal membatalkan transaksi");
+      }
+    }
+  };
+
   // Status badge component
   const StatusBadge = ({ status }) => {
     let className;
@@ -214,100 +254,117 @@ const GlobalTransactions = () => {
     );
   };
 
-  // Change time range
+  // Change time range and update filters automatically
   const handleChangeTimeRange = (range) => {
     setTimeRange(range);
+    
+    // Calculate new date range based on selection
+    const end = dayjs();
+    let start = dayjs();
+    
+    switch(range) {
+      case "1d":
+        start = dayjs().startOf('day');
+        break;
+      case "7d":
+        start = dayjs().subtract(7, 'day');
+        break;
+      case "30d":
+        start = dayjs().subtract(30, 'day');
+        break;
+      case "90d":
+        start = dayjs().subtract(90, 'day');
+        break;
+      case "1y":
+        start = dayjs().subtract(1, 'year');
+        break;
+      default:
+        start = dayjs().subtract(30, 'day');
+    }
+    
+    setFilters(prev => ({
+      ...prev,
+      startDate: start,
+      endDate: end
+    }));
   };
 
   // Dummy data untuk demonstrasi
  
 
-  // Time range options component
+  // Time range options component - Modern Clean Design
   const TimeRangeSelector = () => (
-    <div className="inline-flex justify-center items-center space-x-2 bg-gradient-to-r from-indigo-100 to-blue-100 p-1 rounded-md text-sm font-medium mb-4 shadow-md">
-      <button
-        className={`px-3 py-1 rounded ${
-          timeRange === "1d" ? "bg-white shadow-md text-blue-600 font-bold" : "hover:bg-blue-200 text-gray-700"
-        }`}
-        onClick={() => handleChangeTimeRange("1d")}
-      >
-        1D
-      </button>
-      <button
-        className={`px-3 py-1 rounded ${
-          timeRange === "7d" ? "bg-white shadow-md text-blue-600 font-bold" : "hover:bg-blue-200 text-gray-700"
-        }`}
-        onClick={() => handleChangeTimeRange("7d")}
-      >
-        7D
-      </button>
-      <button
-        className={`px-3 py-1 rounded ${
-          timeRange === "30d" ? "bg-white shadow-md text-blue-600 font-bold" : "hover:bg-blue-200 text-gray-700"
-        }`}
-        onClick={() => handleChangeTimeRange("30d")}
-      >
-        30D
-      </button>
-      <button
-        className={`px-3 py-1 rounded ${
-          timeRange === "90d" ? "bg-white shadow-md text-blue-600 font-bold" : "hover:bg-blue-200 text-gray-700"
-        }`}
-        onClick={() => handleChangeTimeRange("90d")}
-      >
-        90D
-      </button>
-      <button
-        className={`px-3 py-1 rounded ${
-          timeRange === "1y" ? "bg-white shadow-md text-blue-600 font-bold" : "hover:bg-blue-200 text-gray-700"
-        }`}
-        onClick={() => handleChangeTimeRange("1y")}
-      >
-        1T
-      </button>
+    <div className="inline-flex bg-gray-100 p-1 rounded-lg">
+      {[
+        { id: "1d", label: "Hari Ini" },
+        { id: "7d", label: "7 Hari" },
+        { id: "30d", label: "30 Hari" },
+        { id: "90d", label: "90 Hari" },
+        { id: "1y", label: "1 Tahun" }
+      ].map((option) => (
+        <button
+          key={option.id}
+          className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
+            timeRange === option.id 
+              ? "bg-white text-gray-900 shadow-sm ring-1 ring-black/5" 
+              : "text-gray-500 hover:text-gray-900 hover:bg-gray-200/50"
+          }`}
+          onClick={() => handleChangeTimeRange(option.id)}
+        >
+          {option.label}
+        </button>
+      ))}
     </div>
   );
 
-  // Branch stat card component
+  // Branch stat card component - Modern Clean Design
   const BranchStatCard = ({ branch }) => (
-    <div className="bg-gradient-to-br from-white to-purple-50 rounded-lg shadow-md p-4 hover:shadow-lg transition-all duration-300 border-l-4 border-purple-400">
-      <div className="flex justify-between items-start mb-3">
-        <h3 className="font-medium text-gray-900">{branch.namaCabang}</h3>
-        <Store className="h-5 w-5 text-gray-400" />
+    <div className="bg-white rounded-xl border border-gray-200 p-4 transition-all duration-200 hover:shadow-md hover:border-gray-300">
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex items-center space-x-3">
+          <div className="p-2 bg-purple-50 rounded-lg">
+            <Store className="h-5 w-5 text-purple-600" />
+          </div>
+          <h3 className="font-semibold text-gray-900 line-clamp-1" title={branch.namaCabang}>{branch.namaCabang}</h3>
+        </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      
+      <div className="grid grid-cols-2 gap-4">
         <div>
-          <p className="text-xs text-gray-500">Transaksi</p>
-          <p className="text-lg font-bold text-gray-800">
-            {branch.totalTransaksi}
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Transaksi</p>
+          <p className="text-xl font-bold text-gray-900">
+            {branch.totalTransaksi.toLocaleString()}
           </p>
         </div>
-        <div>
-          <p className="text-xs text-gray-500">Pendapatan</p>
-          <p className="text-[14px] font-bold text-gray-800">
+        <div className="border-l border-gray-100 pl-4">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Pendapatan</p>
+          <p className="text-base font-bold text-gray-900 truncate">
             {formatCurrency(branch.totalPendapatan)}
           </p>
         </div>
       </div>
-      <div className="mt-3 flex items-center">
-        <span
-          className={`text-xs font-medium flex items-center ${
-            branch.persentasePertumbuhan >= 0
-              ? "text-green-500"
-              : "text-red-500"
-          }`}
-        >
-          {branch.persentasePertumbuhan >= 0 ? (
-            <ArrowUpCircle size={12} className="mr-1" />
-          ) : (
-            <ArrowDownCircle size={12} className="mr-1" />
-          )}
-          {Math.abs(branch.persentasePertumbuhan)}%
-        </span>
-        <span className="text-xs text-gray-500 ml-1">
-          dari periode sebelumnya
-        </span>
-      </div>
+      
+      {branch.persentasePertumbuhan !== 0 && (
+        <div className="mt-4 pt-3 border-t border-gray-50 flex items-center">
+          <span
+            className={`text-xs font-medium flex items-center px-2 py-0.5 rounded-full ${
+              branch.persentasePertumbuhan >= 0
+                ? "bg-green-50 text-green-700"
+                : "bg-red-50 text-red-700"
+            }`}
+          >
+            {branch.persentasePertumbuhan >= 0 ? (
+              <ArrowUpCircle size={12} className="mr-1.5" />
+            ) : (
+              <ArrowDownCircle size={12} className="mr-1.5" />
+            )}
+            {Math.abs(branch.persentasePertumbuhan)}%
+          </span>
+          <span className="text-xs text-gray-400 ml-2">
+            vs periode lalu
+          </span>
+        </div>
+      )}
     </div>
   );
 
@@ -325,261 +382,300 @@ const GlobalTransactions = () => {
       </div>
 
       {/* Dashboard Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-        {/* Total Transaksi */}
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg shadow-lg p-6 border-l-4 border-blue-500 hover:shadow-xl transition-all duration-300">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm font-medium text-gray-500">
-                Total Transaksi
-              </p>
-              <p className="text-2xl font-bold text-gray-800 mt-2">
-                {(summary.total_transaksi ?? 0).toLocaleString()}
-              </p>
-            </div>
-            <div className="p-2 bg-blue-200 rounded-lg shadow-inner">
-              <ShoppingCart className="h-6 w-6 text-indigo-500" />
-            </div>
-          </div>
-          
-        </div>
-
-        {/* Pendapatan */}
-        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg shadow-lg p-6 border-l-4 border-green-500 hover:shadow-xl transition-all duration-300">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Pendapatan</p>
-              <p className="text-2xl font-bold text-gray-800 mt-2">
-                {formatCurrency(summary.total_penjualan)}
-              </p>
-            </div>
-            <div className="p-2 bg-green-200 rounded-lg shadow-inner">
-              <DollarSign className="h-6 w-6 text-green-500" />
-            </div>
-          </div>
-          
-        </div>
-
-        {/* Rata-rata Nilai Transaksi */}
-        <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg shadow-lg p-6 border-l-4 border-amber-500 hover:shadow-xl transition-all duration-300">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm font-medium text-gray-500">
-                Rata-rata Nilai Transaksi
-              </p>
-              <p className="text-2xl font-bold text-gray-800 mt-2">
-                {formatCurrency(summary.rata_rata_nilai_transaksi || 0)}
-              </p>
-            </div>
-            <div className="p-2 bg-amber-200 rounded-lg shadow-inner">
-              <Clock className="h-6 w-6 text-yellow-500" />
-            </div>
-          </div>
-          
-        </div>
-
-      </div>
-
-      {/* Dashboard Detailed Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Branch Stats - Full Width */}
-        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg shadow-lg col-span-1 lg:col-span-3 border-t-4 border-purple-500">
-          <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-            <h2 className="text-lg font-medium text-gray-800 flex items-center">
-              <Store className="h-5 w-5 text-gray-500 mr-2" />
-              Performa Cabang
-            </h2>
-            <button
-              onClick={() => navigate("/superadmin/cabang")}
-              className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center"
-            >
-              Lihat Semua
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </button>
-          </div>
-          <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {branchDistribution.map((branch) => (
-              <BranchStatCard key={branch.cabang_id} branch={{
-                namaCabang: branch.nama_cabang,
-                totalTransaksi: branch.jumlah_transaksi,
-                totalPendapatan: branch.total_penjualan,
-                persentasePertumbuhan: 0 // Default to 0 as it's not in the new API format
-              }} />
-            ))}
-          </div>
-        </div>
-
-        {/* Payment Method Stats */}
-        <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-lg shadow-lg col-span-1 border-t-4 border-cyan-500 hover:shadow-xl transition-all duration-300">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-800 flex items-center">
-              <CreditCard className="h-5 w-5 text-gray-500 mr-2" />
-              Metode Pembayaran
-            </h2>
-          </div>
-          <div className="p-4">
-            {metodePembayaranArray.length > 0 ? (
-              metodePembayaranArray.map((item) => (
-                <div key={item.metode} className="mb-3">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-medium text-gray-700">
-                      {item.metode.replace("_", " ")}
-                    </span>
-                    <span className="text-sm text-gray-600">
-                      {item.jumlah} transaksi ({item.persentase}%)
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-gradient-to-r from-blue-600 to-indigo-500 h-2 rounded-full shadow-inner"
-                      style={{ width: `${item.persentase}%` }}
-                    ></div>
-                  </div>
+      {showDashboardStats && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {/* Total Transaksi */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 transition-all duration-200 hover:shadow-md hover:border-gray-300">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 tracking-wide">
+                    Total Transaksi
+                  </p>
+                  <p className="text-3xl font-bold text-gray-900 mt-2">
+                    {(summary.total_transaksi ?? 0).toLocaleString()}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">periode terpilih</p>
                 </div>
-              ))
-            ) : (
-              <div className="text-center text-sm text-gray-500 py-3">
-                Tidak ada data metode pembayaran
+                <div className="p-3 bg-blue-50 rounded-xl">
+                  <ShoppingCart className="h-6 w-6 text-blue-600" />
+                </div>
               </div>
-            )}
+            </div>
+    
+            {/* Pendapatan */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 transition-all duration-200 hover:shadow-md hover:border-gray-300">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 tracking-wide">Total Pendapatan</p>
+                  <p className="text-3xl font-bold text-gray-900 mt-2">
+                    {formatCurrency(summary.total_penjualan)}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">periode terpilih</p>
+                </div>
+                <div className="p-3 bg-green-50 rounded-xl">
+                  <DollarSign className="h-6 w-6 text-green-600" />
+                </div>
+              </div>
+            </div>
+    
+            {/* Rata-rata Nilai Transaksi */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 transition-all duration-200 hover:shadow-md hover:border-gray-300">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 tracking-wide">
+                    Rata-rata Transaksi
+                  </p>
+                  <p className="text-3xl font-bold text-gray-900 mt-2">
+                    {formatCurrency(summary.rata_rata_nilai_transaksi || 0)}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">per transaksi</p>
+                </div>
+                <div className="p-3 bg-amber-50 rounded-xl">
+                  <Clock className="h-6 w-6 text-amber-600" />
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-
-        {/* Transaction Type Stats */}
-        <div className="bg-gradient-to-br from-rose-50 to-orange-50 rounded-lg shadow-lg col-span-1 border-t-4 border-rose-500 hover:shadow-xl transition-all duration-300">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-800 flex items-center">
-              <PieChart className="h-5 w-5 text-gray-500 mr-2" />
-              Jenis Transaksi
-            </h2>
-          </div>
-          <div className="p-4">
-            {Object.entries(paymentStatus).length > 0 ? (
-              Object.entries(paymentStatus).map(([status, data]) => {
-                const total = Object.values(paymentStatus).reduce((acc, curr) => acc + curr.count, 0);
-                const percentage = total > 0 ? ((data.count / total) * 100).toFixed(1) : 0;
-                
-                return (
-                  <div key={status} className="mb-3">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium text-gray-700">
-                        {status.replace("_", " ")}
-                      </span>
-                      <span className="text-sm text-gray-600">
-                        {data.count} transaksi ({percentage}%)
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full shadow-inner ${
-                          status === "LUNAS"
-                            ? "bg-gradient-to-r from-green-500 to-emerald-400"
-                            : status === "BELUM_LUNAS"
-                            ? "bg-gradient-to-r from-yellow-500 to-amber-400"
-                            : "bg-gradient-to-r from-red-500 to-rose-400"
-                        }`}
-                        style={{ width: `${percentage}%` }}
-                      ></div>
-                    </div>
+    
+          {/* Dashboard Detailed Stats */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Branch Stats - Full Width */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 col-span-1 lg:col-span-3">
+              <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                <div className="flex items-center space-x-2">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <Store className="h-5 w-5 text-purple-600" />
                   </div>
-                );
-              })
-            ) : (
-              <div className="text-center text-sm text-gray-500 py-3">
-                Tidak ada data status pembayaran
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Performa Cabang
+                  </h2>
+                </div>
+                <button
+                  onClick={() => navigate("/superadmin/cabang")}
+                  className="text-sm font-medium text-indigo-600 hover:text-indigo-800 flex items-center transition-colors"
+                >
+                  Lihat Semua
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </button>
               </div>
-            )}
+              <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {branchDistribution.map((branch) => (
+                  <BranchStatCard key={branch.cabang_id} branch={{
+                    namaCabang: branch.nama_cabang,
+                    totalTransaksi: branch.jumlah_transaksi,
+                    totalPendapatan: branch.total_penjualan,
+                    persentasePertumbuhan: 0 
+                  }} />
+                ))}
+              </div>
+            </div>
+    
+            {/* Payment Method Stats */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 col-span-1">
+              <div className="p-6 border-b border-gray-100 flex items-center space-x-3">
+                <div className="p-2 bg-blue-50 rounded-lg">
+                  <CreditCard className="h-5 w-5 text-blue-600" />
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Metode Pembayaran
+                </h2>
+              </div>
+              <div className="p-6">
+                {metodePembayaranArray.length > 0 ? (
+                  metodePembayaranArray.map((item) => (
+                    <div key={item.metode} className="mb-4 last:mb-0">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-agreed text-gray-700 capitalize">
+                          {item.metode.replace("_", " ").toLowerCase()}
+                        </span>
+                        <span className="text-sm text-gray-600">
+                          {item.jumlah} ({item.persentase}%)
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full"
+                          style={{ width: `${item.persentase}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-sm text-gray-500 py-6 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                    Tidak ada data metode pembayaran
+                  </div>
+                )}
+              </div>
+            </div>
+    
+            {/* Transaction Type Stats */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 col-span-1">
+              <div className="p-6 border-b border-gray-100 flex items-center space-x-3">
+                <div className="p-2 bg-amber-50 rounded-lg">
+                   <PieChart className="h-5 w-5 text-amber-600" />
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Status Pembayaran
+                </h2>
+              </div>
+              <div className="p-6">
+                {Object.entries(paymentStatus).length > 0 ? (
+                  Object.entries(paymentStatus).map(([status, data]) => {
+                    const total = Object.values(paymentStatus).reduce((acc, curr) => acc + curr.count, 0);
+                    const percentage = total > 0 ? ((data.count / total) * 100).toFixed(1) : 0;
+                    
+                    return (
+                      <div key={status} className="mb-4 last:mb-0">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium text-gray-700 capitalize">
+                            {status.replace("_", " ").toLowerCase()}
+                          </span>
+                          <span className="text-sm text-gray-600">
+                            {data.count} ({percentage}%)
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full ${
+                              status === "LUNAS"
+                                ? "bg-emerald-500"
+                                : status === "BELUM_LUNAS"
+                                ? "bg-amber-500"
+                                : "bg-red-500"
+                            }`}
+                            style={{ width: `${percentage}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center text-sm text-gray-500 py-6 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                    Tidak ada data status pembayaran
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-
-      {/* Daily Transaction Chart */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg shadow-lg mb-6 border-t-4 border-blue-500 hover:shadow-xl transition-all duration-300">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-800 flex items-center">
-            <TrendingUp className="h-5 w-5 text-gray-500 mr-2" />
-            Transaksi Harian
-          </h2>
-        </div>
-        <div className="p-4 h-64">
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={salesTrend} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="periode"
-                tickFormatter={date => {
-                  // Format tanggal ke dd/MM atau sesuai kebutuhan
-                  const d = new Date(date);
-                  return `${d.getDate()}/${d.getMonth()+1}`;
-                }}
-                tick={{ fontSize: 12 }}
-              />
-              <YAxis 
-                tickFormatter={val => val >= 1000 ? `${(val/1000).toFixed(1)}k` : val}
-                tick={{ fontSize: 12 }}
-              />
-              <Tooltip formatter={(value) => formatCurrency(value)} labelFormatter={label => `Tanggal: ${label}`} />
-              <Line type="monotone" dataKey="total_penjualan" stroke="#6366f1" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 6 }} name="Total Penjualan" />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Top Products */}
-      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg shadow-lg mb-6 border-t-4 border-emerald-500 hover:shadow-xl transition-all duration-300">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-800 flex items-center">
-            <BarChart3 className="h-5 w-5 text-gray-500 mr-2" />
-            Produk Terlaris
-          </h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Produk
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Terjual
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total Penjualan
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {topProducts.length > 0 ? (
-                topProducts.map((product) => (
-                  <tr key={product.nama_produk} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {product.nama_produk}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {product.jumlah_terjual} unit
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatCurrency(product.total_penjualan)}
-                    </td>
+    
+          {/* Daily Transaction Chart */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
+            <div className="p-6 border-b border-gray-100 flex items-center space-x-3">
+              <div className="p-2 bg-indigo-50 rounded-lg">
+                <TrendingUp className="h-5 w-5 text-indigo-600" />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Transaksi Harian
+              </h2>
+            </div>
+            <div className="p-6 h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={salesTrend} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                  <XAxis 
+                    dataKey="periode"
+                    tickFormatter={date => {
+                      const d = new Date(date);
+                      return `${d.getDate()}/${d.getMonth()+1}`;
+                    }}
+                    tick={{ fontSize: 12, fill: '#6B7280' }}
+                    axisLine={false}
+                    tickLine={false}
+                    dy={10}
+                  />
+                  <YAxis 
+                    tickFormatter={val => val >= 1000 ? `${(val/1000).toFixed(0)}k` : val}
+                    tick={{ fontSize: 12, fill: '#6B7280' }}
+                    axisLine={false}
+                    tickLine={false}
+                    dx={-10}
+                  />
+                  <Tooltip 
+                    cursor={{ stroke: '#6366F1', strokeWidth: 1, strokeDasharray: '4 4' }}
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                    formatter={(value) => [formatCurrency(value), 'Total Penjualan']}
+                    labelFormatter={label => `Tanggal: ${label}`}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="total_penjualan" 
+                    stroke="#4F46E5" 
+                    strokeWidth={3} 
+                    dot={{ r: 4, stroke: '#4F46E5', strokeWidth: 2, fill: '#ffffff' }} 
+                    activeDot={{ r: 6, stroke: '#4F46E5', strokeWidth: 2, fill: '#4F46E5' }} 
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+    
+          {/* Top Products */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
+            <div className="p-6 border-b border-gray-100 flex items-center space-x-3">
+              <div className="p-2 bg-emerald-50 rounded-lg">
+                <BarChart3 className="h-5 w-5 text-emerald-600" />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Produk Terlaris
+              </h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50/50">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Produk
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Terjual
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Total Penjualan
+                    </th>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="3" className="px-6 py-4 text-center text-sm text-gray-500">
-                    Tidak ada data produk
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {topProducts.length > 0 ? (
+                    topProducts.map((product) => (
+                      <tr key={product.nama_produk} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {product.nama_produk}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                             {product.jumlah_terjual} unit
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                          {formatCurrency(product.total_penjualan)}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="3" className="px-6 py-12 text-center text-sm text-gray-500">
+                        <div className="flex flex-col items-center justify-center">
+                          <div className="p-3 bg-gray-100 rounded-full mb-3">
+                            <BarChart3 className="h-6 w-6 text-gray-400" />
+                          </div>
+                          <p>Tidak ada data produk</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Content */}
-      <div className="bg-gradient-to-r from-slate-50 to-gray-50 rounded-lg shadow-lg mb-6 border-t-4 border-slate-500 hover:shadow-xl transition-all duration-300">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-800">
-            Transaksi Global
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
+        <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Daftar Transaksi
           </h2>
         </div>
 
@@ -634,7 +730,7 @@ const GlobalTransactions = () => {
                 value={filters.cabangId}
                 onChange={(e) => handleFilterChange("cabangId", e.target.value)}
               >
-                <option value="all">Semua Cabang</option>
+                {isSuperAdminUser && <option value="all">Pilih Cabang</option>}
                 {cabangList &&
                   cabangList.map((cabang) => (
                     <option key={cabang.id} value={cabang.id}>
@@ -725,6 +821,15 @@ const GlobalTransactions = () => {
                 <Download className="h-4 w-4 inline mr-1" />
                 Ekspor
               </button>
+              {canCreate && (
+                <button
+                  onClick={() => navigate("/kasir/pos")}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Tambah Transaksi
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -859,16 +964,32 @@ const GlobalTransactions = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {transaction.created_by || "-"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm">
-                      <button
-                        onClick={() =>
-                          viewTransactionDetail(transaction.transaksi_id)
-                        }
-                        className="text-indigo-600 hover:text-indigo-900"
-                        title="Lihat Detail"
-                      >
-                        <Eye className="h-5 w-5" />
-                      </button>
+                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm space-x-2">
+                       {canRead && (
+                        <button
+                          onClick={() =>
+                            viewTransactionDetail(transaction.transaksi_id)
+                          }
+                          className="text-indigo-600 hover:text-indigo-900 inline-block"
+                          title="Lihat Detail"
+                        >
+                          <Eye className="h-5 w-5" />
+                        </button>
+                      )}
+                      
+                      {canDelete && 
+                       transaction.status_pembayaran !== "DIBATALKAN" && 
+                       transaction.status_pembayaran !== "LUNAS" && (
+                        <button
+                          onClick={() =>
+                            handleCancelTransaction(transaction.transaksi_id, transaction.status_pembayaran)
+                          }
+                          className="text-red-600 hover:text-red-900 inline-block"
+                          title="Batalkan Transaksi"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))

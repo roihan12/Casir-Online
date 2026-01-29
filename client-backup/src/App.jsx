@@ -100,7 +100,6 @@ import PurchaseCreate from "./features/purchases/pages/PurchaseCreatePage";
 import PurchaseDetail from "./features/purchases/pages/PurchaseDetailPage";
 
 import { ToastProvider } from "./app/providers/ToastContext";
-import PointOfSale from "./features/pos/pages/PointOfSale";
 import POSPage from "./features/pos/pages/POSPage";
 
 function App() {
@@ -386,7 +385,7 @@ function App() {
             <Route
               path="/transactions"
               element={
-                <ProtectedRoute requiredPermission="transaksi_global:read">
+                <ProtectedRoute requiredPermission="transaksi:read">
                   <DynamicLayout />
                 </ProtectedRoute>
               }

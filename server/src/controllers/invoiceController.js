@@ -1,6 +1,10 @@
 // File: src/controllers/invoiceController.js
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
+const ejs = require("ejs");
+const puppeteer = require("puppeteer");
+const path = require("path");
+const fs = require("fs");
 
 /**
  * @desc    Get list of invoices
@@ -359,7 +363,20 @@ exports.sendInvoice = async (req, res) => {
     const invoice = await prisma.invoice.findUnique({
       where: { id },
       include: {
-        transaksi: true,
+        transaksi: {
+          include: {
+            transaksi_detail: {
+              include: {
+                produk: {
+                  include: {
+                    produkMaster: true,
+                  },
+                },
+              },
+            },
+            pembayaran: true,
+          },
+        },
         cabang: true,
         pelanggan: true,
       },
@@ -372,14 +389,159 @@ exports.sendInvoice = async (req, res) => {
       });
     }
 
-    // TODO: Implement email sending functionality
-    // This would typically involve:
-    // 1. Generating a PDF of the invoice
-    // 2. Sending an email with the PDF attached
+    // Use provided email or customer email
+    const recipientEmail = email || invoice.pelanggan?.email;
+
+    if (!recipientEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "Email penerima harus disediakan",
+      });
+    }
+
+    // Generate PDF using the existing generateInvoicePdf logic
+    const templatePath = path.join(__dirname, "../../templates/invoice_template.ejs");
+
+    // Ensure template exists
+    if (!fs.existsSync(templatePath)) {
+      return res.status(500).json({
+        success: false,
+        message: "Template invoice tidak ditemukan",
+      });
+    }
+
+    // Prepare items for template
+    const items = invoice.transaksi.transaksi_detail.map((detail) => ({
+      namaProduk: detail.produk.produkMaster.namaProduk,
+      sku: detail.produk.produkMaster.sku,
+      jumlah: detail.jumlah,
+      hargaSatuan: parseFloat(detail.harga_satuan),
+      diskonNominal: parseFloat(detail.diskon_nominal || 0),
+      subtotal: parseFloat(detail.subtotal),
+    }));
+
+    // Prepare payments for template
+    const payments = invoice.transaksi.pembayaran
+      .filter((payment) => payment.status === "SUKSES")
+      .map((payment) => ({
+        metodePembayaran: payment.metode_pembayaran,
+        provider: payment.provider,
+        jumlahBayar: parseFloat(payment.jumlah_bayar),
+        jumlahKembali: parseFloat(payment.jumlah_kembali),
+        nomorReferensi: payment.nomor_referensi,
+      }));
+
+    // Prepare template data
+    const templateData = {
+      language: 'id',
+      invoice: invoice,
+      branch: invoice.cabang,
+      customer: invoice.pelanggan,
+      transaksi: invoice.transaksi,
+      items,
+      payments,
+      formatCurrency: (amount) => {
+        return new Intl.NumberFormat("id-ID", {
+          style: "currency",
+          currency: "IDR",
+          minimumFractionDigits: 0,
+        }).format(amount);
+      },
+      formatDate: (date) => {
+        if (!date) return '';
+        const d = new Date(date);
+        return d.toLocaleDateString("id-ID", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+      },
+    };
+
+    // Render template to HTML
+    const html = await ejs.renderFile(templatePath, templateData);
+
+    // Generate PDF from HTML
+    let browser;
+    let pdfBuffer;
+    try {
+      browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
+      const page = await browser.newPage();
+      await page.setContent(html);
+
+      pdfBuffer = await page.pdf({
+        format: 'A4',
+        margin: {
+          top: '10mm',
+          right: '10mm',
+          bottom: '10mm',
+          left: '10mm',
+        },
+        printBackground: true,
+      });
+    } finally {
+      if (browser) {
+        await browser.close();
+      }
+    }
+
+    // Render email template
+    const emailTemplatePath = path.join(__dirname, "../../templates/emails/invoice_email.ejs");
+    const emailTemplateData = {
+      ...templateData,
+      companyName: 'Casir Online POS',
+      formatDate: (date) => {
+        if (!date) return '';
+        const d = new Date(date);
+        return d.toLocaleDateString("id-ID", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+      },
+    };
+
+    const emailHtml = await ejs.renderFile(emailTemplatePath, emailTemplateData);
+
+    // Create transporter
+    const nodemailer = require("nodemailer");
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || "smtp.example.com",
+      port: parseInt(process.env.SMTP_PORT || "587"),
+      secure: process.env.SMTP_SECURE === "true",
+      auth: {
+        user: process.env.SMTP_USER || "user@example.com",
+        pass: process.env.SMTP_PASS || "password",
+      },
+    });
+
+    // Send email
+    const mailOptions = {
+      from: process.env.SMTP_FROM || `"${invoice.cabang.namaCabang}" <noreply@casir-online.com>`,
+      to: recipientEmail,
+      subject: `Invoice ${invoice.nomorInvoice} - ${invoice.cabang.namaCabang}`,
+      html: emailHtml,
+      attachments: [
+        {
+          filename: `invoice-${invoice.nomorInvoice}.pdf`,
+          content: pdfBuffer,
+          contentType: "application/pdf",
+        },
+      ],
+    };
+
+    await transporter.sendMail(mailOptions);
 
     res.status(200).json({
       success: true,
       message: "Invoice berhasil dikirim via email",
+      data: {
+        email: recipientEmail,
+        invoiceNumber: invoice.nomorInvoice,
+      },
     });
   } catch (error) {
     console.error("Error in sendInvoice:", error);
@@ -406,9 +568,13 @@ exports.generateInvoicePdf = async (req, res) => {
       include: {
         transaksi: {
           include: {
-            items: {
+            transaksi_detail: {
               include: {
-                produk: true,
+                produk: {
+                  include: {
+                    produkMaster: true,
+                  },
+                },
               },
             },
             pembayaran: true,
@@ -426,15 +592,102 @@ exports.generateInvoicePdf = async (req, res) => {
       });
     }
 
-    // TODO: Implement PDF generation
-    // This would typically involve using a library like PDFKit or html-pdf
-    // For now, we'll just return the invoice data
+    // Determine template path
+    const templatePath = path.join(__dirname, "../../templates/invoice_template.ejs");
 
-    res.status(200).json({
-      success: true,
-      message: "PDF invoice akan segera tersedia",
-      data: invoice,
-    });
+    // Ensure template exists
+    if (!fs.existsSync(templatePath)) {
+      return res.status(500).json({
+        success: false,
+        message: "Template invoice tidak ditemukan",
+      });
+    }
+
+    // Prepare items for template
+    const items = invoice.transaksi.transaksi_detail.map((detail) => ({
+      namaProduk: detail.produk.produkMaster.namaProduk,
+      sku: detail.produk.produkMaster.sku,
+      jumlah: detail.jumlah,
+      hargaSatuan: parseFloat(detail.harga_satuan),
+      diskonNominal: parseFloat(detail.diskon_nominal || 0),
+      subtotal: parseFloat(detail.subtotal),
+    }));
+
+    // Prepare payments for template
+    const payments = invoice.transaksi.pembayaran
+      .filter((payment) => payment.status === "SUKSES")
+      .map((payment) => ({
+        metodePembayaran: payment.metode_pembayaran,
+        provider: payment.provider,
+        jumlahBayar: parseFloat(payment.jumlah_bayar),
+        jumlahKembali: parseFloat(payment.jumlah_kembali),
+        nomorReferensi: payment.nomor_referensi,
+      }));
+
+    // Prepare template data
+    const templateData = {
+      language: 'id',
+      invoice: invoice,
+      branch: invoice.cabang,
+      customer: invoice.pelanggan,
+      transaksi: invoice.transaksi,
+      items,
+      payments,
+      formatCurrency: (amount) => {
+        return new Intl.NumberFormat("id-ID", {
+          style: "currency",
+          currency: "IDR",
+          minimumFractionDigits: 0,
+        }).format(amount);
+      },
+      formatDate: (date) => {
+        if (!date) return '';
+        const d = new Date(date);
+        return d.toLocaleDateString("id-ID", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+      },
+    };
+
+    // Render template to HTML
+    const html = await ejs.renderFile(templatePath, templateData);
+
+    // Generate PDF from HTML
+    let browser;
+    try {
+      browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
+      const page = await browser.newPage();
+      await page.setContent(html);
+
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        margin: {
+          top: '10mm',
+          right: '10mm',
+          bottom: '10mm',
+          left: '10mm',
+        },
+        printBackground: true,
+      });
+
+      // Set headers for PDF download
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="invoice-${invoice.nomorInvoice}.pdf"`);
+
+      return res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      throw error;
+    } finally {
+      if (browser) {
+        await browser.close();
+      }
+    }
   } catch (error) {
     console.error("Error in generateInvoicePdf:", error);
     res.status(500).json({

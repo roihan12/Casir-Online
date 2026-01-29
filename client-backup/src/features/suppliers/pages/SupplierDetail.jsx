@@ -754,7 +754,7 @@ const SupplierDetail = () => {
                             className="text-indigo-600 hover:text-indigo-900"
                             onClick={() =>
                               navigate(
-                                `/superadmin/transactions/${transaction.id}`
+                                `/transactions/${transaction.id}`
                               )
                             }
                           >

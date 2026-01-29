@@ -9,6 +9,7 @@ import LoadingDashboard from '../components/LoadingDashboard';
 import ErrorDashboard from '../components/ErrorDashboard';
 import CabangIndicator from '@features/cabang/components/CabangIndicator';
 import formatCurrency from '@common/utils/formatCurrency';
+import HourlyTrafficChart from '../components/HourlyTrafficChart';
 
 // Icon mapping for dynamic icon rendering
 const ICON_MAP = {
@@ -32,6 +33,8 @@ const DashboardPage = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+
 
   // Fetch dashboard data when cabang changes
   useEffect(() => {
@@ -264,9 +267,9 @@ const DashboardPage = () => {
   };
 
   return (
-    <>
+    <div className="p-4 md:p-6 bg-gray-50 min-h-screen">
       {/* Welcome Banner */}
-      <div className="mx-6 my-4 bg-indigo-500 rounded-xl p-5 flex justify-between items-center text-white">
+      <div className="my-4 bg-indigo-500 rounded-xl p-5 flex flex-col md:flex-row justify-between items-center text-white space-y-4 md:space-y-0">
         <div>
           <h2 className="text-xl font-semibold">
             Halo, {user?.namaLengkap || userRole}! 👋
@@ -283,7 +286,7 @@ const DashboardPage = () => {
       </div>
 
       {/* Branch Indicator */}
-      <div className="mx-6 mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center">
           <h2 className="text-xl font-semibold">
             {isGlobalView ? 'Dashboard Semua Cabang' : `Dashboard Cabang: ${currentBranch}`}
@@ -295,14 +298,14 @@ const DashboardPage = () => {
       {/* Alert Widgets */}
       {groupedWidgets[WIDGET_TYPES.ALERT]?.length > 0 &&
         criticalAlerts.lowStockProducts.count > 0 && (
-          <div className="mx-6 mb-4">
+          <div className="mb-4">
             {groupedWidgets[WIDGET_TYPES.ALERT].map(renderWidget)}
           </div>
         )}
 
       {/* Stats Widgets - Grid */}
       {groupedWidgets[WIDGET_TYPES.STATS]?.length > 0 && (
-        <div className="mx-6 grid grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {groupedWidgets[WIDGET_TYPES.STATS].map(renderWidget)}
         </div>
       )}
@@ -310,7 +313,7 @@ const DashboardPage = () => {
       {/* Chart Widgets - First Row (2 columns) */}
       {groupedWidgets[WIDGET_TYPES.CHART]?.length > 0 && (
         <>
-          <div className="mx-6 grid grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
             {groupedWidgets[WIDGET_TYPES.CHART]
               .filter((w) => ['category_distribution', 'payment_methods'].includes(w.id))
               .map(renderWidget)}
@@ -321,8 +324,15 @@ const DashboardPage = () => {
             .filter((w) => w.id === 'sales_trend')
             .map(renderWidget)}
 
+          {/* Hourly Traffic - Mobile/Tablet Responsive */}
+          {dashboardData?.transactionCounts?.hourlyBreakdown && (
+             <div className="mb-6 h-[400px]">
+                <HourlyTrafficChart hourlyData={dashboardData.transactionCounts.hourlyBreakdown} />
+             </div>
+          )}
+
           {/* Chart Widgets - Second Row (2 columns) */}
-          <div className="mx-6 grid grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
             {groupedWidgets[WIDGET_TYPES.CHART]
               .filter((w) => ['stock_health_chart', 'branch_performance'].includes(w.id))
               .map(renderWidget)}
@@ -332,11 +342,11 @@ const DashboardPage = () => {
 
       {/* Table Widgets */}
       {groupedWidgets[WIDGET_TYPES.TABLE]?.length > 0 && (
-        <div className="mx-6 mb-6">
+        <div className="mb-6">
           {groupedWidgets[WIDGET_TYPES.TABLE].map(renderWidget)}
         </div>
       )}
-    </>
+    </div>
   );
 };
 

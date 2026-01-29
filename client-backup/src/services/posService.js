@@ -46,9 +46,21 @@ const posService = {
     return response.data.data;
   },
 
-  // QRIS
+  // QRIS - Generate QR code for existing transaction
   generateQrisPayment: async (qrisData) => {
-    const response = await api.post(`/transaksi/payment/qris`, qrisData);
+    const response = await api.post(`/qris`, qrisData);
+    return response.data;
+  },
+
+  // QRIS - Check payment status
+  checkQrisStatus: async (referenceId) => {
+    const response = await api.get(`/qris/${referenceId}/status`);
+    return response.data;
+  },
+
+  // QRIS - Cancel payment
+  cancelQrisPayment: async (referenceId) => {
+    const response = await api.post(`/qris/${referenceId}/cancel`);
     return response.data;
   },
 

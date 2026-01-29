@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="<%= language || 'id' %>">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoice - <%= invoice.nomorInvoice %></title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f9fafb;
+    }
+    .email-container {
+      background-color: #ffffff;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .header {
+      text-align: center;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #4f46e5;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      color: #4f46e5;
+      margin: 0;
+      font-size: 28px;
+    }
+    .header p {
+      color: #6b7280;
+      margin: 5px 0 0 0;
+      font-size: 14px;
+    }
+    .greeting {
+      font-size: 16px;
+      margin-bottom: 15px;
+    }
+    .message-box {
+      background-color: #eff6ff;
+      border-left: 4px solid #4f46e5;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .message-box p {
+      margin: 5px 0;
+      color: #1e40af;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .info-item {
+      padding: 10px;
+      background-color: #f9fafb;
+      border-radius: 4px;
+    }
+    .info-label {
+      font-size: 12px;
+      color: #6b7280;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+    .info-value {
+      font-size: 14px;
+      color: #1f2937;
+      font-weight: 500;
+    }
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+    .summary-table td {
+      padding: 10px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .summary-table .label {
+      color: #6b7280;
+    }
+    .summary-table .value {
+      text-align: right;
+      font-weight: 600;
+      color: #1f2937;
+    }
+    .summary-table .total {
+      font-size: 16px;
+      font-weight: bold;
+      color: #4f46e5;
+      border-top: 2px solid #4f46e5;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .status-paid {
+      background-color: #d1fae5;
+      color: #065f46;
+    }
+    .status-unpaid {
+      background-color: #fee2e2;
+      color: #991b1b;
+    }
+    .action-button {
+      display: inline-block;
+      padding: 12px 24px;
+      background-color: #4f46e5;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      margin: 10px 5px;
+      font-weight: 600;
+    }
+    .action-button:hover {
+      background-color: #4338ca;
+    }
+    .footer {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e7eb;
+      text-align: center;
+      font-size: 12px;
+      color: #6b7280;
+    }
+    .items-preview {
+      background-color: #f9fafb;
+      border-radius: 6px;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    .items-preview h3 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      color: #374151;
+    }
+    .item-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 13px;
+    }
+    .item-row:last-child {
+      border-bottom: none;
+    }
+    .item-name {
+      flex: 1;
+      color: #374151;
+    }
+    .item-qty {
+      color: #6b7280;
+      margin: 0 15px;
+    }
+    .item-total {
+      font-weight: 600;
+      color: #1f2937;
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <div class="header">
+      <h1>INVOICE</h1>
+      <p><%= companyName || branch?.namaCabang || 'Casir Online POS' %></p>
+    </div>
+
+    <div class="greeting">
+      <% if (customer) { %>
+      <p>Dear <%= customer.namaPelanggan %>,</p>
+      <% } else { %>
+      <p>Dear Valued Customer,</p>
+      <% } %>
+    </div>
+
+    <div class="message-box">
+      <p>Thank you for your purchase! Your invoice is ready.</p>
+      <p>Please find the invoice details below. The complete invoice PDF is attached to this email.</p>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-item">
+        <div class="info-label">Invoice Number</div>
+        <div class="info-value"><%= invoice.nomorInvoice %></div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Transaction Number</div>
+        <div class="info-value"><%= transaksi.nomorTransaksi %></div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Invoice Date</div>
+        <div class="info-value"><%= formatDate(invoice.tanggalInvoice) %></div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Payment Status</div>
+        <div class="info-value">
+          <span class="status-badge <%= invoice.status === 'LUNAS' ? 'status-paid' : 'status-unpaid' %>">
+            <%= invoice.status === 'LUNAS' ? 'PAID' : 'UNPAID' %>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <% if (items && items.length > 0) { %>
+    <div class="items-preview">
+      <h3>Items Purchased</h3>
+      <% items.forEach(item => { %>
+      <div class="item-row">
+        <span class="item-name"><%= item.namaProduk %></span>
+        <span class="item-qty">x <%= item.jumlah %></span>
+        <span class="item-total"><%= formatCurrency(item.subtotal) %></span>
+      </div>
+      <% }); %>
+    </div>
+    <% } %>
+
+    <table class="summary-table">
+      <tr>
+        <td class="label">Subtotal</td>
+        <td class="value"><%= formatCurrency(transaksi.subtotal) %></td>
+      </tr>
+      <% if (transaksi.diskon > 0) { %>
+      <tr>
+        <td class="label">Discount</td>
+        <td class="value" style="color: #dc2626;">-<%= formatCurrency(transaksi.diskon) %></td>
+      </tr>
+      <% } %>
+      <% if (transaksi.pajak > 0) { %>
+      <tr>
+        <td class="label">Tax (10%)</td>
+        <td class="value"><%= formatCurrency(transaksi.pajak) %></td>
+      </tr>
+      <% } %>
+      <tr class="total">
+        <td class="label">Total</td>
+        <td class="value"><%= formatCurrency(transaksi.total) %></td>
+      </tr>
+    </table>
+
+    <div style="text-align: center; margin: 25px 0;">
+      <p style="color: #6b7280; font-size: 14px;">Please download the attached PDF for your complete invoice with all details.</p>
+    </div>
+
+    <% if (invoice.tanggalJatuhTempo && invoice.status !== 'LUNAS') { %>
+    <div class="message-box" style="background-color: #fef3c7; border-left-color: #f59e0b;">
+      <p style="color: #92400e;"><strong>Payment Due Date:</strong> <%= formatDate(invoice.tanggalJatuhTempo) %></p>
+      <p style="color: #78350f;">Please ensure payment is made by the due date to avoid any late fees.</p>
+    </div>
+    <% } %>
+
+    <div class="footer">
+      <p><strong>Contact Information:</strong></p>
+      <% if (branch?.alamat) { %>
+      <p><%= branch.alamat %></p>
+      <% } %>
+      <% if (branch?.telepon) { %>
+      <p>Phone: <%= branch.telepon %></p>
+      <% } %>
+      <% if (branch?.email) { %>
+      <p>Email: <%= branch.email %></p>
+      <% } %>
+      <p style="margin-top: 15px;">If you have any questions about this invoice, please don't hesitate to contact us.</p>
+      <p style="margin-top: 15px;">&copy; <%= new Date().getFullYear() %> <%= companyName || 'Casir Online POS' %>. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>
