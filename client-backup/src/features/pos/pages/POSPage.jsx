@@ -46,6 +46,7 @@ import CategoriesSection from "../components/products/CategoriesSection";
 import SearchBar from "../components/search/SearchBar";
 import CartSection from "../components/cart/CartSection";
 import ReceiptModal from "../components/receipt/ReceiptModal";
+import { getReceiptData } from "@/services/receiptService";
 import KeyboardShortcutsHelp from "../components/modals/KeyboardShortcutsHelp";
 import PaymentModal from "../components/payment/PaymentModal";
 
@@ -141,6 +142,13 @@ const POSPage = () => {
     currentBranch?.id
   );
 
+  // Memoize promo change handler to prevent infinite loops
+  const handlePromosChange = useCallback(({ codes, promos, totalDiscount }) => {
+    setPromoCodes(codes);
+    setAppliedPromos(promos);
+    setPromoTotalDiscount(totalDiscount || 0);
+  }, []);
+
   // React Query hooks for products and categories
   const {
     data: productsData,
@@ -175,9 +183,6 @@ const POSPage = () => {
     });
 
   const { data: activeShiftData } = useActiveShift(user?.id);
-
-  console.log("activeShiftData",activeShiftData);
-    console.log("customerSearchResults",customerSearchResults);
 
   const { completeTransaction, isLoading: isProcessingTransaction } =
     useCompleteTransaction();
@@ -692,67 +697,102 @@ const POSPage = () => {
         return;
       }
 
-      const receiptItems = cart.map((item) => ({
-        name: item.name,
-        quantity: item.quantity,
-        price:
-          saleMode === "wholesale" ? item.wholesale_price : item.retail_price,
-        unit: item.unit || "pcs",
-      }));
+      // Get receipt data from backend API
+       transactionId = response?.transactionData?.transaksi_id || response?.transaction?.transaksi_id;
+      if (transactionId) {
+        const receiptData = await getReceiptData(transactionId);
+        setReceiptData(receiptData);
+        setShowReceiptModal(true);
+        setShowPaymentModal(false);
 
-      const subtotal = cart.reduce((sum, item) => {
-        const price =
-          saleMode === "wholesale" ? item.wholesale_price : item.retail_price;
-        return sum + price * item.quantity;
-      }, 0);
+        // Reset cart and payment amount when sale is complete
+        setPaymentAmount(0);
+        setCart([]);
+        setCustomer(null);
+        setDiscount(0);
+        setPromoCodes([]);
+        setAppliedPromos([]);
+        setPromoTotalDiscount(0);
+        setLastTransactionId(null);
+        setLastTransactionData(null);
+      } else {
+        // Fallback to manual receipt data if no transactionId
+        console.error("No transactionId found, creating fallback receipt");
+        const receiptData = createFallbackReceiptData(response, paymentData, actualAmountPaid, paymentMethodEnum);
+        setReceiptData(receiptData);
+        setShowReceiptModal(true);
+        setShowPaymentModal(false);
 
-      const discountAmount =
-        discountType === "percentage" ? subtotal * (discount / 100) : discount;
-
-      const receiptData = {
-        transaction: {
-          id: transactionId || response?.transactionData?.transaction?.transaksi_id || response?.transaction?.transaksi_id || paymentData?.transactionId || "TRX" + new Date().getTime(),
-          nomor_transaksi: paymentData?.transactionNumber || response?.transactionData?.transaction?.nomor_transaksi || response?.transaction?.nomor_transaksi,
-          tanggal: new Date().toISOString(),
-          subtotal: subtotal,
-          discount_amount: discountAmount,
-          discount_type: discountType,
-          discount_value: discount,
-          tax_amount: tax,
-          total_amount: totalAmount,
-        },
-        payment: {
-          metode_pembayaran: paymentMethodEnum,
-          jumlah_bayar: Math.round(actualAmountPaid),
-          jumlah_kembali: Math.round(actualAmountPaid - totalAmount),
-        },
-        // Add hutang info from response - transactionData now at top level
-        hutang: response?.transactionData?.detail_kredit_hutang || null,
-        paymentInfo: response?.transactionData?.payment_info || null,
-        items: receiptItems,
-        customer: customer || { name: "Umum" },
-        branch: currentBranch,
-      };
-
-      setReceiptData(receiptData);
-      setShowReceiptModal(true);
-      setShowPaymentModal(false);
-
-      // Reset cart and payment amount when sale is complete
-      setPaymentAmount(0);
-      setCart([]);
-      setCustomer(null);
-      setDiscount(0);
-      setPromoCodes([]);
-      setAppliedPromos([]);
-      setPromoTotalDiscount(0);
-      setLastTransactionId(null);
-      setLastTransactionData(null);
-
+        // Reset cart and payment amount when sale is complete
+        setPaymentAmount(0);
+        setCart([]);
+        setCustomer(null);
+        setDiscount(0);
+        setPromoCodes([]);
+        setAppliedPromos([]);
+        setPromoTotalDiscount(0);
+        setLastTransactionId(null);
+        setLastTransactionData(null);
+      }
     } catch (error) {
       console.error("Transaction error:", error);
       toast.error("Pembayaran gagal, silakan coba lagi");
     }
+  };
+
+  // Helper function to create manual receipt data (fallback)
+  const createFallbackReceiptData = (response, paymentData, actualAmountPaid, paymentMethodEnum) => {
+    const receiptItems = cart.map((item) => ({
+      name: item.name,
+      quantity: item.quantity,
+      price:
+        saleMode === "wholesale" ? item.wholesale_price : item.retail_price,
+      unit: item.unit || "pcs",
+    }));
+
+    const subtotal = cart.reduce((sum, item) => {
+      const price =
+        saleMode === "wholesale" ? item.wholesale_price : item.retail_price;
+      return sum + price * item.quantity;
+    }, 0);
+
+    const discountAmount =
+      discountType === "percentage" ? subtotal * (discount / 100) : discount;
+
+    return {
+      transaction: {
+        transaksi_id: "TRX" + new Date().getTime(),
+        id: "TRX" + new Date().getTime(),
+        nomor_transaksi: paymentData?.transactionNumber || "",
+        tanggal: new Date().toISOString(),
+        metode_pembayaran: paymentMethodEnum,
+        subtotal: subtotal,
+        diskon: discountAmount,
+        pajak: tax,
+        total: totalAmount,
+      },
+      items: receiptItems,
+      payment: {
+        metode_pembayaran: paymentMethodEnum,
+        method: paymentMethodEnum,
+        jumlah_bayar: Math.round(actualAmountPaid),
+        jumlah_kembali: Math.round(actualAmountPaid - totalAmount),
+        amount: Math.round(actualAmountPaid),
+        change: Math.round(actualAmountPaid - totalAmount),
+      },
+      customer: customer || { name: "Umum" },
+      branch: currentBranch,
+      cashierName: user?.namaLengkap || "Admin",
+      // Include promo data from state
+      promo: {
+        hasPromo: appliedPromos.length > 0,
+        promosApplied: appliedPromos,
+        totalDiskonPromo: promoTotalDiscount,
+      },
+      // Include hutang info from response
+      hutang: response?.transactionData?.detail_kredit_hutang || null,
+      paymentInfo: response?.transactionData?.payment_info || null,
+    };
   };
 
   const handlePdfReceipt = (receiptData) => {
@@ -1113,11 +1153,7 @@ const POSPage = () => {
             processPayment={processPayment}
             cabangId={currentBranch?.id}
             metodePembayaran={paymentMethod}
-            onPromosChange={({ codes, promos, totalDiscount }) => {
-              setPromoCodes(codes);
-              setAppliedPromos(promos);
-              setPromoTotalDiscount(totalDiscount || 0);
-            }}
+            onPromosChange={handlePromosChange}
             // Add extra padding bottom for mobile nav
             className="pb-20 lg:pb-0"
           />

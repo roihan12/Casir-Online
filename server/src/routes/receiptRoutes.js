@@ -35,4 +35,11 @@ router.post(
   receiptController.sendReceiptByEmail
 );
 
+// GET - Get transaction data for receipt (JSON format)
+router.get(
+  "/transaction/:transaksiId",
+  hasPermission(["transaksi:read"]),
+  receiptController.getTransactionData
+);
+
 module.exports = router;

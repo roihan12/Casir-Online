@@ -27,6 +27,14 @@ export const useActiveShift = (userId) => {
     queryKey: shiftKeys.active(userId),
     queryFn: () => shiftService.getActiveShift(userId),
     enabled: !!userId,
+    // Prevent unnecessary refetching
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    // Cache data for 5 minutes
+    staleTime: 5 * 60 * 1000,
+    // Keep cached data for 10 minutes
+    gcTime: 10 * 60 * 1000,
   });
 };
 

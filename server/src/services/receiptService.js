@@ -61,43 +61,207 @@ const getOrCreateReceiptConfig = async (cabangId) => {
  * @returns {Promise<Object>} - Formatted transaction data
  */
 const getTransactionDataForReceipt = async (transaksiId) => {
-  // Get complete transaction data
-  const transaksi = await prisma.transaksi.findUnique({
-    where: { transaksi_id: transaksiId },
-    include: {
-      transaksi_detail: {
-        include: {
-          produk: {
-            include: {
-              produkMaster: true,
-            },
-          },
-        },
-      },
-      pembayaran: true,
-      pelanggan: true,
-      supplier: true,
-      cabang: true,
-      user: {
-        select: {
-          id: true,
-          namaLengkap: true,
-        },
-      },
-      shift: true,
-      promo: true,
-    },
-  });
+  // Get complete transaction data with all related info using raw query
+  const result = await prisma.$queryRaw`
+     SELECT
+  t.transaksi_id,
+  t.nomor_transaksi,
+  t.tanggal,
+  t.jenis_transaksi,
+  t.status_pembayaran,
+  t.subtotal,
+  t.diskon,
+  t.pajak,
+  t.biaya_tambahan,
+  t.total,
+  t.keterangan,
+  t.cabang_id,
+  t.pelanggan_id,
+  t.supplier_id,
+  t.created_by,
+  t.shift_id,
+  pb.metode_pembayaran,
+  -- Cabang data
+  c.nama_cabang as "cabang_nama",
+  c.alamat as "cabang_alamat",
+  c.telepon as "cabang_telepon",
+  -- Pelanggan data
+  p.pelanggan_id,
+  p.nama_pelanggan as "pelanggan_nama",
+  p.telepon as "pelanggan_telepon",
+  p.email as "pelanggan_email",
+  p.poin as "pelanggan_poin",
+  -- Created by user
+  u."user_id",
+  u.nama_lengkap as "user_nama",
+  -- Shift data
+  s.shift_id as "shift_id",
+--  s.nama as "shift_nama",
+  -- Kredit Transaksi data (single row)
+  kt.kredit_transaksi_id as "kredit_id",
+  kt.jumlah_kredit,
+  kt.tenor as "durasi_bulan",
+  kt.bunga,
+  kt.biaya_admin,
+  kt.total_bayar as "kredit_total_pembayaran",
+  kt.angsuran_per_bulan,
+  kt.tanggal_mulai as "kredit_tanggal_mulai",
+  kt.tanggal_jatuh_tempo as "kredit_tanggal_jatuh_tempo",
+  kt."statusKredit" as "kredit_status"
+FROM transaksi t
+left join pembayaran pb on t.transaksi_id = pb.transaksi_id 	
+LEFT JOIN cabang c ON t.cabang_id = c.cabang_id
+LEFT JOIN pelanggan p ON t.pelanggan_id = p.pelanggan_id
+LEFT JOIN "user" u ON t.created_by_user_id = u.user_id 
+LEFT JOIN shift s ON t.shift_id = s.shift_id
+LEFT JOIN kredit_transaksi kt ON t.transaksi_id = kt.transaksi_id
+WHERE t.transaksi_id = ${transaksiId}
+LIMIT 1
+  `;
 
-  if (!transaksi) {
+  if (!result || result.length === 0) {
     throw new ResponseError(404, "Transaksi tidak ditemukan");
   }
 
+  const transaksi = result[0];
+
+  // Get transaction details with products
+  const details = await prisma.$queryRaw`
+    SELECT
+      td."transaksi_detail_id",
+      td.jumlah,
+      td.harga_satuan,
+      td.diskon_nominal,
+      td.diskon_persen,
+      td.subtotal,
+      td.pajak_persen,
+      td.total,
+      prod.produk_id,
+      pm."nama_produk" as "produk_nama"
+    FROM transaksi_detail td
+    LEFT JOIN produk prod ON td.produk_id = prod.produk_id
+    LEFT JOIN produk_master pm ON prod.produk_master_id = pm.produk_master_id
+    WHERE td.transaksi_id = ${transaksiId}
+  `;
+
+  // Get payments
+  const payments = await prisma.$queryRaw`
+    SELECT
+      p."pembayaran_id",
+      p.metode_pembayaran,
+      p.provider,
+      p.nomor_referensi,
+      p.jumlah_bayar,
+      p.jumlah_kembali,
+      p.tanggal_pembayaran,
+      p.status,
+      p."bukti_bayar_url"
+    FROM pembayaran p
+    WHERE p.transaksi_id = ${transaksiId}::VARCHAR
+  `;
+
+  // Get transaction promos
+  const promos = await prisma.$queryRaw`
+    SELECT
+      tp.transaksi_id,
+      tp.promo_id,
+      tp.total_diskon,
+      pr.kode_promo,
+      pr.nama_promo,
+      pr.tipe_diskon
+    FROM transaksi_promo tp
+    LEFT JOIN promo_diskon pr ON tp.promo_id = pr.promo_id 
+    WHERE tp.transaksi_id = ${transaksiId}
+  `;
+
+  // Build transaksi object from raw query results
+  const transaksiObj = {
+    transaksi_id: transaksi.transaksi_id,
+    nomor_transaksi: transaksi.nomor_transaksi,
+    tanggal: transaksi.tanggal,
+    jenis_transaksi: transaksi.jenis_transaksi,
+    metode_pembayaran: transaksi.metode_pembayaran,
+    status_pembayaran: transaksi.status_pembayaran,
+    subtotal: transaksi.subtotal,
+    diskon: transaksi.diskon,
+    pajak: transaksi.pajak,
+    biaya_tambahan: transaksi.biaya_tambahan,
+    total: transaksi.total,
+    keterangan: transaksi.keterangan,
+    cabang_id: transaksi.cabang_id,
+    pelanggan_id: transaksi.pelanggan_id,
+    supplier_id: transaksi.supplier_id,
+    created_by: transaksi.created_by,
+    shift_id: transaksi.shift_id,
+    // Related objects
+    cabang: {
+      id: transaksi.cabang_id,
+      namaCabang: transaksi.cabang_nama,
+      alamat: transaksi.cabang_alamat,
+      telepon: transaksi.cabang_telepon,
+    },
+    pelanggan: transaksi.pelanggan_id ? {
+      id: transaksi.pelanggan_id,
+      namaPelanggan: transaksi.pelanggan_nama,
+      telepon: transaksi.pelanggan_telepon,
+      email: transaksi.pelanggan_email,
+      poin: transaksi.pelanggan_poin,
+    } : null,
+    createdByUser: transaksi.user_id ? {
+      id: transaksi.user_id,
+      namaLengkap: transaksi.user_nama,
+    } : null,
+    shift: transaksi.shift_id ? {
+      shift_id: transaksi.shift_id,
+      nama: transaksi.shift_nama,
+    } : null,
+    transaksi_detail: details.map(d => ({
+      transaksi_detail_id: d.transaksi_detail_id,
+      jumlah: d.jumlah,
+      harga_satuan: d.harga_satuan,
+      diskon_nominal: d.diskon_nominal,
+      diskon_persen: d.diskon_persen,
+      subtotal: d.subtotal,
+      pajak_persen: d.pajak_persen,
+      total: d.total,
+      produk: {
+        id: d.produk_id,
+        produkMaster: {
+          namaProduk: d.produk_nama,
+        },
+      },
+    })),
+    pembayaran: payments,
+    transaksi_promo: promos.map(p => ({
+      transaksi_id: p.transaksi_id,
+      promo_id: p.promo_id,
+      total_diskon: p.total_diskon,
+      promo: {
+        kode_promo: p.kode_promo,
+        nama_promo: p.nama_promo,
+        tipe_diskon: p.tipe_diskon,
+      },
+    })),
+    cicilanKredit: transaksi.cicilan_id ? {
+      id: transaksi.cicilan_id,
+      jumlah_cicilan: transaksi.jumlah_cicilan,
+      durasi_bulan: transaksi.durasi_bulan,
+      bunga_persen: transaksi.bunga_persen,
+      biaya_admin: transaksi.biaya_admin,
+      uang_muka: transaksi.uang_muka,
+      sisa_pembayaran: transaksi.sisa_pembayaran,
+      total_pembayaran: transaksi.cicilan_total_pembayaran,
+      tanggal_mulai: transaksi.cicilan_tanggal_mulai,
+      tanggal_jatuh_tempo: transaksi.cicilan_tanggal_jatuh_tempo,
+      status: transaksi.cicilan_status,
+    } : null,
+  };
+
   // Get receipt configuration for branch
-  const receiptConfig = await getOrCreateReceiptConfig(transaksi.cabang_id);
+  const receiptConfig = await getOrCreateReceiptConfig(transaksiObj.cabang_id);
 
   // Format payment data
-  const payments = transaksi.pembayaran
+  const formattedPayments = transaksiObj.pembayaran
     .filter((payment) => payment.status === "SUKSES")
     .map((payment) => ({
       id: payment.pembayaran_id,
@@ -109,10 +273,19 @@ const getTransactionDataForReceipt = async (transaksiId) => {
       netAmount:
         parseFloat(payment.jumlah_bayar) - parseFloat(payment.jumlah_kembali),
       date: payment.tanggal_pembayaran,
+      // QRIS specific info
+      qris: payment.metode_pembayaran === "QRIS" ? {
+        qrCode: payment.bukti_bayar_url,
+        refId: payment.nomor_referensi,
+      } : null,
     }));
 
+  // Get primary payment method
+  const paymentMethod = transaksiObj.metode_pembayaran || (formattedPayments[0]?.method) || "TUNAI";
+
   // Format items
-  const items = transaksi.transaksi_detail.map((detail) => ({
+  const items = transaksiObj.transaksi_detail.map((detail) => ({
+    id: detail.transaksi_detail_id,
     name: detail.produk.produkMaster.namaProduk,
     quantity: detail.jumlah,
     price: parseFloat(detail.harga_satuan),
@@ -123,40 +296,102 @@ const getTransactionDataForReceipt = async (transaksiId) => {
     total: parseFloat(detail.total),
   }));
 
-  // Format additional data
-  const customerInfo = transaksi.pelanggan
+  // Format promo data
+  const promoData = transaksiObj.transaksi_promo && transaksiObj.transaksi_promo.length > 0
     ? {
-        id: transaksi.pelanggan.id,
-        name: transaksi.pelanggan.namaPelanggan,
-        contact: transaksi.pelanggan.telepon || transaksi.pelanggan.email,
-        points: transaksi.pelanggan.poin || 0,
+        hasPromo: true,
+        promosApplied: transaksiObj.transaksi_promo.map((tp) => ({
+          promoId: tp.promo_id,
+          kodePromo: tp.promo.kode_promo,
+          namaPromo: tp.promo.nama_promo,
+          tipeDiskon: tp.promo.tipe_diskon,
+          diskonAmount: parseFloat(tp.total_diskon),
+        })),
+        totalDiskonPromo: transaksiObj.transaksi_promo.reduce(
+          (sum, tp) => sum + parseFloat(tp.total_diskon),
+          0
+        ),
+      }
+    : { hasPromo: false, promosApplied: [], totalDiskonPromo: 0 };
+
+  // Format credit data (if applicable)
+  const creditData = transaksiObj.cicilanKredit ? {
+    isCredit: true,
+    tenor: transaksiObj.cicilanKredit.jumlah_cicilan,
+    durasiBulan: transaksiObj.cicilanKredit.durasi_bulan,
+    bungaPersen: transaksiObj.cicilanKredit.bunga_persen,
+    biayaAdmin: parseFloat(transaksiObj.cicilanKredit.biaya_admin),
+    uangMuka: parseFloat(transaksiObj.cicilanKredit.uang_muka),
+    sisaPembayaran: parseFloat(transaksiObj.cicilanKredit.sisa_pembayaran),
+    cicilanPerBulan: parseFloat(transaksiObj.cicilanKredit.total_pembayaran) / transaksiObj.cicilanKredit.jumlah_cicilan,
+    tanggalMulai: transaksiObj.cicilanKredit.tanggal_mulai,
+    tanggalJatuhTempo: transaksiObj.cicilanKredit.tanggal_jatuh_tempo,
+    status: transaksiObj.cicilanKredit.status,
+  } : { isCredit: false };
+
+  // Format additional data
+  const customerInfo = transaksiObj.pelanggan
+    ? {
+        id: transaksiObj.pelanggan.id,
+        name: transaksiObj.pelanggan.namaPelanggan,
+        contact: transaksiObj.pelanggan.telepon || transaksiObj.pelanggan.email,
+        points: transaksiObj.pelanggan.poin || 0,
       }
     : null;
 
+  // Determine receipt template type
+  const templateType = determineReceiptTemplate(paymentMethod, promoData.hasPromo, creditData.isCredit);
+
   // Format transaction data
   const transactionData = {
-    id: transaksi.transaksi_id,
-    number: transaksi.nomor_transaksi,
-    date: transaksi.tanggal,
-    type: transaksi.jenis_transaksi,
-    status: transaksi.status_pembayaran,
-    subtotal: parseFloat(transaksi.subtotal),
-    discount: parseFloat(transaksi.diskon),
-    tax: parseFloat(transaksi.pajak),
-    additionalFee: parseFloat(transaksi.biaya_tambahan),
-    total: parseFloat(transaksi.total),
-    notes: transaksi.keterangan,
+    id: transaksiObj.transaksi_id,
+    number: transaksiObj.nomor_transaksi,
+    date: transaksiObj.tanggal,
+    type: transaksiObj.jenis_transaksi,
+    paymentMethod,
+    status: transaksiObj.status_pembayaran,
+    subtotal: parseFloat(transaksiObj.subtotal),
+    discount: parseFloat(transaksiObj.diskon),
+    tax: parseFloat(transaksiObj.pajak),
+    additionalFee: parseFloat(transaksiObj.biaya_tambahan),
+    total: parseFloat(transaksiObj.total),
+    notes: transaksiObj.keterangan,
     items,
-    payments,
+    payments: formattedPayments,
     customerInfo,
-    cashierName: transaksi.user?.namaLengkap || "Admin",
-    branchName: transaksi.cabang?.namaCabang || "Toko",
-    branchAddress: transaksi.cabang?.alamat || receiptConfig.address || "",
-    branchPhone: transaksi.cabang?.telepon || receiptConfig.phoneNumber || "",
+    cashierName: transaksiObj.createdByUser?.namaLengkap || "Admin",
+    branchName: transaksiObj.cabang?.namaCabang || "Toko",
+    branchAddress: transaksiObj.cabang?.alamat || receiptConfig.address || "",
+    branchPhone: transaksiObj.cabang?.telepon || receiptConfig.phoneNumber || "",
     receiptConfig,
+    // Additional data for different receipt types
+    promo: promoData,
+    credit: creditData,
+    templateType,
   };
 
   return transactionData;
+};
+
+/**
+ * Determine receipt template type based on payment method and promo
+ * @param {string} paymentMethod - Payment method
+ * @param {boolean} hasPromo - Has promo discount
+ * @param {boolean} isCredit - Is credit transaction
+ * @returns {string} - Template type
+ */
+const determineReceiptTemplate = (paymentMethod, hasPromo, isCredit) => {
+  if (isCredit || paymentMethod === "KREDIT") {
+    return hasPromo ? "credit_with_promo" : "credit";
+  }
+  if (paymentMethod === "QRIS") {
+    return hasPromo ? "qris_with_promo" : "qris";
+  }
+  if (paymentMethod === "TRANSFER" || paymentMethod === "TRANSFER_BANK") {
+    return hasPromo ? "transfer_with_promo" : "transfer";
+  }
+  // Default: cash payment
+  return hasPromo ? "cash_with_promo" : "cash";
 };
 
 /**
@@ -601,6 +836,7 @@ const handlePaymentReceipt = async (transaksiId, options = {}, auditInfo = {}) =
 module.exports = {
   getOrCreateReceiptConfig,
   getTransactionDataForReceipt,
+  determineReceiptTemplate,
   generateReceiptHtml,
   generatePdfFromHtml,
   getReceiptPreview,

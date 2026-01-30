@@ -136,9 +136,37 @@ const sendReceiptByEmail = async (req, res, next) => {
   }
 };
 
+/**
+ * Controller to get transaction data for receipt (JSON format)
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware
+ * @returns {Promise<void>}
+ */
+const getTransactionData = async (req, res, next) => {
+  try {
+    const transaksiId = req.params.transaksiId;
+
+    if (!transaksiId) {
+      throw new ResponseError(400, "transaksiId diperlukan");
+    }
+
+    const data = await receiptService.getTransactionDataForReceipt(transaksiId);
+
+    res.status(200).json({
+      status: true,
+      message: "Data struk berhasil diambil",
+      data,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getReceiptPreview,
   getReceiptConfig,
   updateReceiptConfig,
   sendReceiptByEmail,
+  getTransactionData,
 };

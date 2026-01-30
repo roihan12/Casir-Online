@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   ShoppingCart,
   Users,
@@ -35,10 +35,23 @@ const CartSection = ({
   const [appliedPromos, setAppliedPromos] = useState([]);
   const [promoTotalDiscount, setPromoTotalDiscount] = useState(0);
 
-  const subtotal = cart.reduce((sum, item) => {
-    const price = saleMode === "wholesale" ? item.wholesale_price : item.retail_price;
-    return sum + price * item.quantity;
-  }, 0);
+  // Memoize callback to prevent infinite loop
+  const handlePromosChange = useCallback(({ codes, promos, totalDiscount }) => {
+    setAppliedPromos(promos);
+    setPromoTotalDiscount(totalDiscount);
+    // Pass up to parent (POSPage) to update total calculation
+    if (onPromosChange) {
+      onPromosChange({ codes, promos, totalDiscount });
+    }
+  }, [onPromosChange]);
+
+  // Memoize subtotal calculation
+  const subtotal = useMemo(() => {
+    return cart.reduce((sum, item) => {
+      const price = saleMode === "wholesale" ? item.wholesale_price : item.retail_price;
+      return sum + price * item.quantity;
+    }, 0);
+  }, [cart, saleMode]);
 
   return (
     <div className={`flex flex-col h-full bg-white border-l border-gray-100 shadow-xl ${className}`}>
@@ -168,14 +181,7 @@ const CartSection = ({
             subtotal={subtotal}
             metodePembayaran={metodePembayaran}
             cartItems={cart}
-            onPromosChange={({ codes, promos, totalDiscount }) => {
-              setAppliedPromos(promos);
-              setPromoTotalDiscount(totalDiscount);
-              // Pass up to parent (POSPage) to update total calculation
-              if (onPromosChange) {
-                onPromosChange({ codes, promos, totalDiscount });
-              }
-            }}
+            onPromosChange={handlePromosChange}
             appliedPromos={appliedPromos}
             disabled={cart.length === 0}
           />
