@@ -11,6 +11,7 @@ const createTransaksiValidation = Joi.object({
   supplier_id: Joi.string().allow(null, ""),
   shift_id: Joi.string().allow(null, ""),
   promo_id: Joi.string().allow(null, ""),
+  promo_codes: Joi.array().items(Joi.string()).allow(null),
   details: Joi.array()
     .items(
       Joi.object({

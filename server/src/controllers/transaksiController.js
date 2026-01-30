@@ -32,6 +32,28 @@ const createTransaksi = async (req, res, next) => {
   }
 };
 
+// Controller untuk membuat transaksi dengan promo codes
+const createTransaksiWithPromo = async (req, res, next) => {
+  try {
+    const auditInfo = {
+      userId: req.user.id,
+      ipAddress: req.ip || req.socket.remoteAddress,
+      userName: req.user.username,
+    };
+    const request = validate(createTransaksiValidation, req.body);
+
+    const result = await transaksiService.createTransaksiWithPromo(request, auditInfo);
+
+    res.status(201).json({
+      status: true,
+      message: "Transaksi dengan promo berhasil dibuat",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Controller untuk mendapatkan detail transaksi
 const getTransaksiById = async (req, res, next) => {
   try {
@@ -259,8 +281,30 @@ const createKreditTransaction = async (req, res, next) => {
   }
 };
 
+// Controller untuk preview promo codes
+const previewPromo = async (req, res, next) => {
+  try {
+    const auditInfo = {
+      userId: req.user.id,
+      ipAddress: req.ip || req.socket.remoteAddress,
+      userName: req.user.namaLengkap || req.user.username,
+    };
+
+    const result = await transaksiService.previewPromo(req.body, auditInfo);
+
+    res.status(200).json({
+      status: true,
+      message: "Promo preview berhasil",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createTransaksi,
+  createTransaksiWithPromo,
   getTransaksiById,
   getTransaksiList,
   addPembayaran,
@@ -270,4 +314,5 @@ module.exports = {
   getSalesReport,
   getKreditPaymentRecommendation,
   createKreditTransaction,
+  previewPromo,
 };

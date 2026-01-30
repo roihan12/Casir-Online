@@ -118,6 +118,56 @@ const verifyPromoCode = async (
   }
 };
 
+// Verify multiple promo codes
+const verifyMultiplePromos = async (
+  promoCodes,
+  cartData
+) => {
+  try {
+    const response = await api.post("/promos/verify-multiple", {
+      promoCodes,
+      ...cartData
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Calculate promo preview for cart
+const calculatePromoPreview = async (
+  promoCodes,
+  cabangId,
+  pelangganId,
+  subtotal,
+  metodePembayaran
+) => {
+  try {
+    const response = await api.post("/promos/calculate-preview", {
+      promoCodes,
+      cabangId,
+      pelangganId,
+      subtotal,
+      metodePembayaran
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Get eligible promos for branch and cart
+const getEligiblePromos = async (cabangId, cartData) => {
+  try {
+    const response = await api.get(`/promos/eligible/${cabangId}`, {
+      params: cartData
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export default {
   getAllPromos,
   getPromoById,
@@ -128,4 +178,7 @@ export default {
   getPromoStats,
   getEligibleProducts,
   verifyPromoCode,
+  verifyMultiplePromos,
+  calculatePromoPreview,
+  getEligiblePromos,
 };

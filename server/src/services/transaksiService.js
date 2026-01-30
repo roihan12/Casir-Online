@@ -114,6 +114,191 @@ const createTransaksi = async (data, auditInfo) => {
   }
 };
 
+// Service untuk transaksi dengan promo codes
+const createTransaksiWithPromo = async (data, auditInfo) => {
+  try {
+    // Validasi dasar
+    if (!data.cabang_id) {
+      throw new ResponseError(400, "Cabang ID harus diisi");
+    }
+
+    if (!data.jenis_transaksi) {
+      throw new ResponseError(400, "Jenis transaksi harus diisi");
+    }
+
+    if (!data.tanggal) {
+      data.tanggal = new Date();
+    }
+
+    if (
+      !data.details ||
+      !Array.isArray(data.details) ||
+      data.details.length === 0
+    ) {
+      throw new ResponseError(
+        400,
+        "Detail transaksi harus berisi minimal satu produk"
+      );
+    }
+
+    // Validate promo_codes if provided
+    if (data.promo_codes && !Array.isArray(data.promo_codes)) {
+      throw new ResponseError(400, "Promo codes harus berupa array");
+    }
+
+    // Panggil stored procedure PostgreSQL dengan promo codes
+    const result = await prisma.$queryRaw`
+      SELECT create_transaksi_with_promo(
+        ${data.cabang_id}::VARCHAR,
+        ${data.jenis_transaksi}::VARCHAR,
+        ${data.tanggal}::TIMESTAMP,
+        ${data.pelanggan_id || null}::VARCHAR,
+        ${data.supplier_id || null}::VARCHAR,
+        ${data.shift_id || null}::VARCHAR,
+        ${JSON.stringify(data.details)}::JSONB,
+        ${data.biaya_tambahan || 0}::DECIMAL,
+        ${data.keterangan || null}::TEXT,
+        ${
+          data.customer_info ? JSON.stringify(data.customer_info) : null
+        }::JSONB,
+        ${auditInfo.userId}::VARCHAR,
+        ${auditInfo.ipAddress}::VARCHAR,
+        ${auditInfo.userName}::VARCHAR,
+        ${data.promo_codes || null}::VARCHAR[],
+        ${data.metode_pembayaran || null}::VARCHAR,
+        ${data.tenor || null}::INTEGER,
+        ${data.uang_muka || 0}::NUMERIC
+      )
+    `;
+
+    const transactionResult = result[0].create_transaksi_with_promo;
+
+    // Ambil data transaksi lengkap dengan query raw
+    const transactions = await prisma.$queryRaw`
+      SELECT
+        t.*,
+        jsonb_agg(
+          jsonb_build_object(
+            'transaksi_detail_id', td.transaksi_detail_id,
+            'transaksi_id', td.transaksi_id,
+            'produk_id', td.produk_id,
+            'jumlah', td.jumlah,
+            'harga_satuan', td.harga_satuan,
+            'total', td.total,
+            'diskon', td.diskon_nominal,
+            'created_at', td.created_at,
+            'updated_at', td.updated_at,
+            'produk', jsonb_build_object(
+              'id', p.produk_id,
+              'produk_master_id', p.produk_master_id,
+              'cabang_id', p.cabang_id,
+              'stok', p.stok,
+              'harga_jual', p.harga_jual,
+              'harga_grosir', p.harga_grosir,
+              'produkMaster', jsonb_build_object(
+                'id', pm.produk_master_id,
+                'namaProduk', pm.nama_produk,
+                'sku', pm.sku,
+                'barcode', pm.barcode,
+                'kategoriId', pm.kategori_id
+              )
+            )
+          )
+        ) as "transaksi_detail",
+        jsonb_build_object(
+          'id', pel.pelanggan_id,
+          'namaPelanggan', pel.nama_pelanggan,
+          'email', pel.email,
+          'telepon', pel.telepon
+        ) as "pelanggan",
+        jsonb_build_object(
+          'id', sup.supplier_id,
+          'namaSupplier', sup.nama_supplier,
+          'email', sup.email,
+          'telepon', sup.telepon
+        ) as "supplier",
+        jsonb_build_object(
+          'id', c.cabang_id,
+          'namaCabang', c.nama_cabang,
+          'alamat', c.alamat
+        ) as "cabang",
+        jsonb_build_object(
+          'id', s.shift_id,
+          'waktu_mulai', s.waktu_mulai,
+          'waktu_selesai', s.waktu_selesai
+        ) as "shift",
+        jsonb_agg(
+          jsonb_build_object(
+            'transaksi_promo_id', tp.transaksi_promo_id,
+            'transaksi_id', tp.transaksi_id,
+            'promo_id', tp.promo_id,
+            'total_diskon', tp.total_diskon,
+            'promo', jsonb_build_object(
+              'promo_id', pr.promo_id,
+              'kode_promo', pr.kode_promo,
+              'nama_promo', pr.nama_promo,
+              'tipe_diskon', pr.tipe_diskon
+            )
+          )
+        ) FILTER (WHERE tp.transaksi_promo_id IS NOT NULL) as "transaksi_promo"
+      FROM transaksi t
+      LEFT JOIN transaksi_detail td ON t.transaksi_id = td.transaksi_id
+      LEFT JOIN produk p ON td.produk_id = p.produk_id
+      LEFT JOIN produk_master pm ON p.produk_master_id = pm.produk_master_id
+      LEFT JOIN pelanggan pel ON t.pelanggan_id = pel.pelanggan_id
+      LEFT JOIN supplier sup ON t.supplier_id = sup.supplier_id
+      LEFT JOIN cabang c ON t.cabang_id = c.cabang_id
+      LEFT JOIN shift s ON t.shift_id = s.shift_id
+      LEFT JOIN transaksi_promo tp ON t.transaksi_id = tp.transaksi_id
+      LEFT JOIN promo_diskon pr ON tp.promo_id = pr.promo_id
+      WHERE t.transaksi_id = ${transactionResult.transaksi_id}::VARCHAR
+      GROUP BY t.transaksi_id, pel.pelanggan_id, sup.supplier_id, c.cabang_id, s.shift_id
+    `;
+
+    const completeTransaction = transactions[0];
+
+    // Parse JSONB fields if needed
+    if (completeTransaction.transaksi_detail && completeTransaction.transaksi_detail[0] === null) {
+      completeTransaction.transaksi_detail = [];
+    }
+    if (completeTransaction.transaksi_promo && completeTransaction.transaksi_promo[0] === null) {
+      completeTransaction.transaksi_promo = [];
+    }
+
+    // Tambahkan customer info jika ada
+    if (data.customer_info && !completeTransaction.pelanggan_id) {
+      completeTransaction.guest_customer = data.customer_info;
+    }
+
+    // Tambahkan info promo yang diterapkan
+    completeTransaction.promo_summary = {
+      promos_applied: transactionResult.promos_applied,
+      total_diskon_promo: transactionResult.diskon_promo,
+      promo_errors: transactionResult.promo_errors,
+    };
+
+    // Update cache
+    const cacheKey = createCacheKey("transaksi", completeTransaction.transaksi_id);
+    await cacheSet(cacheKey, completeTransaction, 1000);
+
+    // Invalidasi cache related
+    await invalidateRelatedCache(completeTransaction);
+
+    await invalidateTransaksiCache(completeTransaction.transaksi_id);
+
+    return completeTransaction;
+  } catch (error) {
+    // PostgreSQL mengembalikan error dengan format tertentu, extract pesan error
+    let errorMessage = error.message;
+    const match = errorMessage.match(/ERROR:\s+(.+)/);
+    if (match) {
+      errorMessage = match[1];
+    }
+
+    throw new ResponseError(400, errorMessage);
+  }
+};
+
 // Service untuk mendapatkan detail transaksi
 const getTransaksiById = async (transaksiId) => {
   const cacheKey = createCacheKey("transaksi", transaksiId);
@@ -1018,6 +1203,52 @@ const invalidateTransaksiCache = async (transaksiId = null) => {
   await cacheDeletePattern("dashboard:*");
 };
 
+// Service untuk preview/validasi promo codes tanpa membuat transaksi
+const previewPromo = async (data, auditInfo) => {
+  try {
+    const { promo_codes, cabang_id, pelanggan_id, subtotal, metode_pembayaran, details } = data;
+
+    // Validate required fields
+    if (!promo_codes || !Array.isArray(promo_codes) || promo_codes.length === 0) {
+      throw new ResponseError(400, "Promo codes harus diisi");
+    }
+
+    if (!cabang_id) {
+      throw new ResponseError(400, "Cabang ID harus diisi");
+    }
+
+    if (!subtotal || subtotal <= 0) {
+      throw new ResponseError(400, "Subtotal harus diisi");
+    }
+
+    // Call apply_multiple_promos database function
+    // Include cart items (details) for product-specific promo validation
+    const result = await prisma.$queryRaw`
+      SELECT apply_multiple_promos(
+        ${promo_codes}::VARCHAR[],
+        ${cabang_id}::VARCHAR,
+        ${pelanggan_id || null}::VARCHAR,
+        ${details ? JSON.stringify(details) : '[]'}::JSONB,
+        ${subtotal}::NUMERIC,
+        ${metode_pembayaran || null}::VARCHAR
+      ) as result
+    `;
+
+    const promoResult = result[0]?.result;
+
+    return {
+      applicable_promos: promoResult?.applicable_promos || [],
+      total_discount: parseFloat(promoResult?.total_discount || 0),
+      errors: promoResult?.errors || [],
+    };
+  } catch (error) {
+    if (error instanceof ResponseError) {
+      throw error;
+    }
+    throw new ResponseError(500, `Gagal memvalidasi promo: ${error.message}`);
+  }
+};
+
 // Service untuk mendapatkan rekomendasi pembayaran kredit untuk transaksi
 const getKreditPaymentRecommendation = async (transaksiId) => {
   try {
@@ -1196,6 +1427,7 @@ const createKreditTransaction = async (data, auditInfo) => {
 
 module.exports = {
   createTransaksi,
+  createTransaksiWithPromo,
   getTransaksiById,
   getTransaksiList,
   addPembayaran,
@@ -1205,5 +1437,6 @@ module.exports = {
   getSalesReport,
   getKreditPaymentRecommendation,
   createKreditTransaction,
+  previewPromo,
   invalidateTransaksiCache,
 };

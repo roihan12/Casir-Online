@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
 import {
   ShoppingCart,
   Users,
@@ -10,6 +10,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import formatCurrency from "@common/utils/formatCurrency";
+import PromoSection from "./PromoSection";
 
 const CartSection = ({
   cart,
@@ -26,8 +27,14 @@ const CartSection = ({
   discountType,
   setDiscountType,
   processPayment,
+  cabangId,
+  metodePembayaran,
+  onPromosChange,
   className = "",
 }) => {
+  const [appliedPromos, setAppliedPromos] = useState([]);
+  const [promoTotalDiscount, setPromoTotalDiscount] = useState(0);
+
   const subtotal = cart.reduce((sum, item) => {
     const price = saleMode === "wholesale" ? item.wholesale_price : item.retail_price;
     return sum + price * item.quantity;
@@ -153,8 +160,27 @@ const CartSection = ({
 
       {/* Cart summary */}
       <div className="p-6 bg-gray-50 border-t border-gray-100">
-        <div className="space-y-3 mb-6">
-          {/* Discount Section */}
+        <div className="space-y-4 mb-6">
+          {/* Promo Section */}
+          <PromoSection
+            cabangId={cabangId}
+            pelangganId={customer?.id || customer?.pelanggan_id}
+            subtotal={subtotal}
+            metodePembayaran={metodePembayaran}
+            cartItems={cart}
+            onPromosChange={({ codes, promos, totalDiscount }) => {
+              setAppliedPromos(promos);
+              setPromoTotalDiscount(totalDiscount);
+              // Pass up to parent (POSPage) to update total calculation
+              if (onPromosChange) {
+                onPromosChange({ codes, promos, totalDiscount });
+              }
+            }}
+            appliedPromos={appliedPromos}
+            disabled={cart.length === 0}
+          />
+
+          {/* Manual Discount Section */}
           <div className="flex items-center gap-3">
             <div className="flex-1 relative">
               <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
@@ -162,7 +188,7 @@ const CartSection = ({
               </div>
               <input
                 type="number"
-                placeholder="Diskon"
+                placeholder="Diskon Manual"
                 className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-400 outline-none"
                 value={discount || ""}
                 onChange={(e) => setDiscount(Number(e.target.value) || 0)}
@@ -183,9 +209,15 @@ const CartSection = ({
               <span>Subtotal</span>
               <span className="text-gray-800 font-bold">{formatCurrency(subtotal)}</span>
             </div>
+            {promoTotalDiscount > 0 && (
+              <div className="flex justify-between text-green-600">
+                <span>Diskon Promo</span>
+                <span className="font-bold">-{formatCurrency(promoTotalDiscount)}</span>
+              </div>
+            )}
             {discount > 0 && (
               <div className="flex justify-between text-red-500">
-                <span>Diskon</span>
+                <span>Diskon Manual</span>
                 <span className="font-bold">
                   -{formatCurrency(discountType === "percentage" ? subtotal * (discount / 100) : discount)}
                 </span>

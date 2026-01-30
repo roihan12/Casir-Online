@@ -36,7 +36,12 @@ const posService = {
 
   // Transaksi
   createTransaction: async (transactionData) => {
-    const response = await api.post(`/transaksi`, transactionData);
+    // Use create-with-promo endpoint if promo_codes are present
+    const endpoint = transactionData.promo_codes && transactionData.promo_codes.length > 0
+      ? `/transaksi/create-with-promo`
+      : `/transaksi`;
+
+    const response = await api.post(endpoint, transactionData);
     return response.data.data;
   },
 

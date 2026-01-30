@@ -33,6 +33,13 @@ router.post(
   transaksiController.createTransaksi
 );
 
+// POST - Create transaction with promo codes
+router.post(
+  "/create-with-promo",
+  hasPermission(["transaksi:create"]),
+  transaksiController.createTransaksiWithPromo
+);
+
 // POST - Create credit transaction
 router.post(
   "/kredit",

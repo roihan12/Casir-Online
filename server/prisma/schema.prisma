@@ -46,6 +46,7 @@ model Cabang {
   userCabang          UserCabang[]
   userRoles           UserRole[]
   userLokasiAbsensi   UserLokasiAbsensi[]  @relation("CabangToUserLokasiAbsensi")
+  promoCabang        PromoCabang[]
 
   @@map("cabang")
 }
@@ -281,13 +282,19 @@ model PromoDiskon {
   id                 String            @id @default(uuid()) @map("promo_id")
   namaPromo          String            @map("nama_promo") @db.VarChar(100)
   kodePromo          String            @unique @map("kode_promo") @db.VarChar(50)
+  deskripsi          String?           @db.Text
   tipeDiskon         TipeDiskon        @map("tipe_diskon")
   nilaiDiskon        Decimal           @map("nilai_diskon") @db.Decimal(15, 2)
+  buyXgetYConfig     Json?             @map("buy_x_get_y_config")
   minPembelian       Decimal?          @map("min_pembelian") @db.Decimal(15, 2)
   maxDiskon          Decimal?          @map("max_diskon") @db.Decimal(15, 2)
+  maxPenggunaanTotal Int?              @map("max_penggunaan_total")
+  maxPenggunaanPerUser Int?            @map("max_penggunaan_per_user")
+  currentUsage       Int               @default(0) @map("current_usage")
   tanggalMulai       DateTime?         @map("tanggal_mulai") @db.Date
   tanggalBerakhir    DateTime?         @map("tanggal_berakhir") @db.Date
   limitPenggunaan    Int?              @map("limit_penggunaan")
+  tipeScope          TipeScopePromo    @default(GLOBAL) @map("tipe_scope")
   kategoriId         String?           @map("kategori_id")
   produkId           String?           @map("produk_id")
   cabangId           String?           @map("cabang_id")
@@ -307,9 +314,127 @@ model PromoDiskon {
   kategori           Kategori?         @relation(fields: [kategoriId], references: [id])
   produkMaster       ProdukMaster?     @relation(fields: [produkId], references: [id])
   updatedByUserId    User?             @relation("PromoDiskonUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
-  transaksis         Transaksi[]
+  transaksis         Transaksi[]       
+  promoRules         PromoRule[]
+  promoCabangs       PromoCabang[]
+  promoProduk        PromoProduk[]
+  promoBundle        PromoBundle[]
+  transaksiPromo     TransaksiPromo[]
+  voucherUsage       VoucherUsage[]
 
   @@map("promo_diskon")
+}
+
+
+
+
+model PromoRule {
+  id                 String            @id @default(uuid()) @map("promo_rule_id")
+  promoId            String            @map("promo_id")
+  tipeRule           TipeRulePromo     @map("tipe_rule")
+  operator           String            @default("EQUAL") @db.VarChar(20)
+  nilai              Json             
+  isRequired         Boolean           @default(true) @map("is_required")
+  errorMessage       String?           @map("error_message") @db.VarChar(255)
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+  promo              PromoDiskon       @relation(fields: [promoId], references: [id], onDelete: Cascade)
+
+  @@map("promo_rule")
+}
+
+
+model PromoCabang {
+  id                 String            @id @default(uuid()) @map("promo_cabang_id")
+  promoId            String            @map("promo_id")
+  cabangId           String            @map("cabang_id")
+  isActive           Boolean           @default(true) @map("is_active")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+  promo              PromoDiskon       @relation(fields: [promoId], references: [id], onDelete: Cascade)
+  cabang             Cabang            @relation(fields: [cabangId], references: [id], onDelete: Cascade)
+  @@unique([promoId, cabangId])
+  @@map("promo_cabang")
+}
+
+
+model PromoProduk {
+  id                 String            @id @default(uuid()) @map("promo_produk_id")
+  promoId            String            @map("promo_id")
+  tipeTarget         TipeTargetPromo   @map("tipe_target")
+  targetId           String            @map("target_id")
+  // Polymorphic: bisa produk_master_id, produk_id (cabang), atau kategori_id
+  
+  isInclude          Boolean           @default(true) @map("is_include")
+  // TRUE = include (produk ini dapat promo)
+  // FALSE = exclude (produk ini TIDAK dapat promo)
+  
+  isActive           Boolean           @default(true) @map("is_active")
+  
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+  
+  promo              PromoDiskon       @relation(fields: [promoId], references: [id], onDelete: Cascade)
+
+  @@unique([promoId, tipeTarget, targetId])
+  @@map("promo_produk")
+}
+
+
+model PromoBundle {
+  id                 String            @id @default(uuid()) @map("promo_bundle_id")
+  promoId            String            @map("promo_id")
+  produkMasterId     String            @map("produk_master_id")
+  minQty             Int               @default(1) @map("min_qty")
+  isRequired         Boolean           @default(true) @map("is_required")
+  // TRUE = wajib beli produk ini
+  // FALSE = opsional, tapi jika beli dapat diskon lebih
+  
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+  
+  promo              PromoDiskon       @relation(fields: [promoId], references: [id], onDelete: Cascade)
+  produkMaster       ProdukMaster      @relation(fields: [produkMasterId], references: [id], onDelete: Cascade)
+
+  @@unique([promoId, produkMasterId])
+  @@map("promo_bundle")
+}
+
+
+model TransaksiPromo {
+  id                 String            @id @default(uuid()) @map("transaksi_promo_id")
+  transaksiId        String            @map("transaksi_id")
+  promoId            String            @map("promo_id")
+  totalDiskon        Decimal           @map("total_diskon") @db.Decimal(15, 2)
+  isApplied          Boolean           @default(true) @map("is_applied")
+  errorMessage       String?           @map("error_message")
+  metadata           Json?             // Extra info (misal: free items, cashback amount, dll)
+  
+  createdAt          DateTime          @default(now()) @map("created_at")
+  
+  transaksi          Transaksi         @relation(fields: [transaksiId], references: [transaksi_id], onDelete: Cascade)
+  promo              PromoDiskon       @relation(fields: [promoId], references: [id])
+
+  @@unique([transaksiId, promoId])
+  @@map("transaksi_promo")
+}
+
+
+model VoucherUsage {
+  id                 String            @id @default(uuid()) @map("voucher_usage_id")
+  promoId            String            @map("promo_id")
+  pelangganId        String            @map("pelanggan_id")
+  transaksiId        String?           @map("transaksi_id")
+  kodeVoucher        String            @map("kode_voucher") @db.VarChar(50)
+  tanggalDigunakan   DateTime          @default(now()) @map("tanggal_digunakan")
+  nilaiDiskon        Decimal           @map("nilai_diskon") @db.Decimal(15, 2)
+  
+  promo              PromoDiskon       @relation(fields: [promoId], references: [id])
+  pelanggan          Pelanggan         @relation(fields: [pelangganId], references: [id])
+  transaksi          Transaksi?        @relation(fields: [transaksiId], references: [transaksi_id])
+
+  @@unique([promoId, pelangganId, transaksiId])
+  @@map("voucher_usage")
 }
 
 model Shift {
@@ -404,6 +529,7 @@ model Pelanggan {
   KreditRekomendasi           KreditRekomendasi[]
   kreditSettings              KreditSetting[]
   LoyaltyPointHistory         LoyaltyPointHistory[]
+  voucherUsage                VoucherUsage[]
   cabang                      Cabang?                       @relation(fields: [cabang_id], references: [id])
   createdByUser               User?                         @relation("PelangganCreatedByUserId", fields: [created_by_user_Id], references: [id])
   deletedByUser               User?                         @relation("PelangganDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
@@ -449,6 +575,7 @@ model ProdukMaster {
   requestItems             ProdukRequestItem[]
   produkSupplier           ProdukSupplier[]
   promoDiskon              PromoDiskon[]
+  promoBundle              PromoBundle[]
 
   @@map("produk_master")
 }
@@ -669,6 +796,8 @@ model Transaksi {
   supplier            Supplier?             @relation(fields: [supplier_id], references: [id])
   updatedByUser       User?                 @relation("TransaksiUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
   transaksi_detail    TransaksiDetail[]
+  transaksiPromo     TransaksiPromo[]
+  voucherUsage       VoucherUsage[]
 
   @@map("transaksi")
 }
@@ -714,6 +843,8 @@ model TransaksiDetail {
   subtotal            Decimal   @db.Decimal(15, 2)
   pajak_persen        Decimal   @db.Decimal(5, 2)
   total               Decimal   @db.Decimal(15, 2)
+  hargaAsli           Decimal?  @map("harga_asli") @db.Decimal(15, 2)
+  promoItemId         String?   @map("promo_item_id")
   created_at          DateTime  @default(now()) @db.Timestamp(6)
   updated_at          DateTime  @updatedAt @db.Timestamp(6)
   produk              Produk    @relation(fields: [produk_id], references: [id])
@@ -1601,14 +1732,54 @@ enum KategoriStatus {
 
 enum PromoDiskonStatus {
   aktif
-  nonaktif
+  tidak_aktif
+  kadaluarsa
+  
+  @@map("promo_diskon_status")
+}
+
+enum TipeRulePromo {
+  MIN_QTY
+  MIN_NOMINAL
+  HARI_TERTENTU
+  JAM_TERTENTU
+  PELANGGAN_SEGMEN
+  METODE_PEMBAYARAN
+  FIRST_TIME_BUYER
+  MEMBER_TIER
+  
+  @@map("tipe_rule_promo")
+}
+
+
+enum TipeTargetPromo {
+  PRODUK_MASTER
+  PRODUK_CABANG
+  KATEGORI
+  
+  @@map("tipe_target_promo")
+}
+
+
+enum TipeScopePromo {
+  GLOBAL              // Semua cabang, semua produk
+  CABANG_SPESIFIK     // Cabang tertentu saja
+  PRODUK_SPESIFIK     // Produk tertentu saja
+  KATEGORI_SPESIFIK   // Kategori tertentu
+  CUSTOM              // Kombinasi kompleks
+  
+  @@map("tipe_scope_promo")
 }
 
 enum TipeDiskon {
-  persentase
-  nominal
-  bogo
-  bundle
+  PERSENTASE
+  NOMINAL
+  BUY_X_GET_Y
+  HARGA_SPESIAL
+  CASHBACK
+  VOUCHER
+  
+  @@map("tipe_diskon")
 }
 
 enum ShiftStatus {

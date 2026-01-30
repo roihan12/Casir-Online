@@ -114,7 +114,12 @@ const POSPage = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState("TUNAI");
-  
+
+  // Promo state
+  const [promoCodes, setPromoCodes] = useState([]);
+  const [appliedPromos, setAppliedPromos] = useState([]);
+  const [promoTotalDiscount, setPromoTotalDiscount] = useState(0);
+
   // State untuk menyimpan transaksi terakhir
   const [lastTransactionId, setLastTransactionId] = useState(null);
   const [lastTransactionData, setLastTransactionData] = useState(null);
@@ -282,7 +287,7 @@ const POSPage = () => {
   // Calculate totals when cart or sale mode changes
   useEffect(() => {
     calculateTotal();
-  }, [cart, saleMode, discount, discountType]);
+  }, [cart, saleMode, discount, discountType, promoTotalDiscount]);
 
   // Filter branches based on search query
   useEffect(() => {
@@ -345,18 +350,21 @@ const POSPage = () => {
       return sum + price * item.quantity;
     }, 0);
 
-    // Apply discount
-    let discountAmount = 0;
+    // Apply manual discount
+    let manualDiscountAmount = 0;
     if (discountType === "percentage") {
-      discountAmount = subtotal * (discount / 100);
+      manualDiscountAmount = subtotal * (discount / 100);
     } else {
-      discountAmount = discount;
+      manualDiscountAmount = discount;
     }
 
-    // Calculate tax (assume 10% tax)
-    const taxAmount = Math.round((subtotal - discountAmount) * 0.1);
+    // Total discount = manual discount + promo discount
+    const totalDiscount = manualDiscountAmount + promoTotalDiscount;
 
-    setTotalAmount(Math.round(subtotal - discountAmount + taxAmount));
+    // Calculate tax (assume 10% tax) - applied after discounts
+    const taxAmount = Math.round((subtotal - totalDiscount) * 0.1);
+
+    setTotalAmount(Math.round(subtotal - totalDiscount + taxAmount));
     setTax(taxAmount);
   };
 
@@ -583,6 +591,7 @@ const POSPage = () => {
             keterangan: `${
               saleMode === "wholesale" ? "Penjualan Grosir" : "Penjualan Retail"
             }`,
+            promo_codes: promoCodes.length > 0 ? promoCodes : null,
           };
 
           if (saleMode === "wholesale" && !customer?.id) {
@@ -661,6 +670,7 @@ const POSPage = () => {
             keterangan: `${
               saleMode === "wholesale" ? "Penjualan Grosir" : "Penjualan Retail"
             }`,
+            promo_codes: promoCodes.length > 0 ? promoCodes : null,
           };
 
           if (saleMode === "wholesale" && !customer?.id) {
@@ -733,6 +743,9 @@ const POSPage = () => {
       setCart([]);
       setCustomer(null);
       setDiscount(0);
+      setPromoCodes([]);
+      setAppliedPromos([]);
+      setPromoTotalDiscount(0);
       setLastTransactionId(null);
       setLastTransactionData(null);
 
@@ -761,6 +774,8 @@ const POSPage = () => {
       setCart([]);
       setCustomer(null);
       setDiscount(0);
+      setPromoCodes([]);
+      setAppliedPromos([]);
       setLastTransactionId(null);
       setLastTransactionData(null);
 
@@ -807,6 +822,9 @@ const POSPage = () => {
     setCart([]);
     setCustomer(null);
     setDiscount(0);
+    setPromoCodes([]);
+    setAppliedPromos([]);
+    setPromoTotalDiscount(0);
     setLastTransactionId(null);
     setLastTransactionData(null);
     setReceiptData(null);
@@ -1093,6 +1111,13 @@ const POSPage = () => {
             discountType={discountType}
             setDiscountType={setDiscountType}
             processPayment={processPayment}
+            cabangId={currentBranch?.id}
+            metodePembayaran={paymentMethod}
+            onPromosChange={({ codes, promos, totalDiscount }) => {
+              setPromoCodes(codes);
+              setAppliedPromos(promos);
+              setPromoTotalDiscount(totalDiscount || 0);
+            }}
             // Add extra padding bottom for mobile nav
             className="pb-20 lg:pb-0"
           />
