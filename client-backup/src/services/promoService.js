@@ -6,20 +6,16 @@ const getAllPromos = async (filters = {}) => {
     const queryParams = new URLSearchParams();
 
     if (filters.status) queryParams.append("status", filters.status);
-    if (filters.tipeDiskon)
-      queryParams.append("tipeDiskon", filters.tipeDiskon);
+    if (filters.tipeDiskon) queryParams.append("tipeDiskon", filters.tipeDiskon);
     if (filters.cabangId) queryParams.append("cabangId", filters.cabangId);
-    if (filters.kategoriId)
-      queryParams.append("kategoriId", filters.kategoriId);
+    if (filters.kategoriId) queryParams.append("kategoriId", filters.kategoriId);
     if (filters.produkId) queryParams.append("produkId", filters.produkId);
     if (filters.search) queryParams.append("search", filters.search);
-    if (filters.isActive !== undefined)
-      queryParams.append("isActive", filters.isActive);
     if (filters.page) queryParams.append("page", filters.page);
     if (filters.limit) queryParams.append("limit", filters.limit);
 
     const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
-    const response = await api.get(`/api/promos${query}`);
+    const response = await api.get(`/promos${query}`);
     return response.data;
   } catch (error) {
     throw error;
@@ -29,7 +25,7 @@ const getAllPromos = async (filters = {}) => {
 // Get details of a specific promo
 const getPromoById = async (promoId) => {
   try {
-    const response = await api.get(`/api/promos/${promoId}`);
+    const response = await api.get(`/promos/${promoId}`);
     return response.data;
   } catch (error) {
     throw error;
@@ -39,7 +35,7 @@ const getPromoById = async (promoId) => {
 // Create a new promo
 const createPromo = async (promoData) => {
   try {
-    const response = await api.post("/api/promos", promoData);
+    const response = await api.post("/promos", promoData);
     return response.data;
   } catch (error) {
     throw error;
@@ -49,7 +45,7 @@ const createPromo = async (promoData) => {
 // Update an existing promo
 const updatePromo = async (promoId, promoData) => {
   try {
-    const response = await api.put(`/api/promos/${promoId}`, promoData);
+    const response = await api.put(`/promos/${promoId}`, promoData);
     return response.data;
   } catch (error) {
     throw error;
@@ -59,7 +55,7 @@ const updatePromo = async (promoId, promoData) => {
 // Delete a promo
 const deletePromo = async (promoId) => {
   try {
-    const response = await api.delete(`/api/promos/${promoId}`);
+    const response = await api.delete(`/promos/${promoId}`);
     return response.data;
   } catch (error) {
     throw error;
@@ -69,7 +65,7 @@ const deletePromo = async (promoId) => {
 // Change promo status (activate/deactivate)
 const changePromoStatus = async (promoId, status) => {
   try {
-    const response = await api.patch(`/api/promos/${promoId}/status`, {
+    const response = await api.patch(`/promos/${promoId}/status`, {
       status,
     });
     return response.data;
@@ -81,7 +77,7 @@ const changePromoStatus = async (promoId, status) => {
 // Get promo usage statistics
 const getPromoStats = async (promoId) => {
   try {
-    const response = await api.get(`/api/promos/${promoId}/stats`);
+    const response = await api.get(`/promos/${promoId}/stats`);
     return response.data;
   } catch (error) {
     throw error;
@@ -91,7 +87,7 @@ const getPromoStats = async (promoId) => {
 // Get list of products that are eligible for a specific promo
 const getEligibleProducts = async (promoId) => {
   try {
-    const response = await api.get(`/api/promos/${promoId}/eligible-products`);
+    const response = await api.get(`/promos/${promoId}/eligible-products`);
     return response.data;
   } catch (error) {
     throw error;
@@ -101,16 +97,20 @@ const getEligibleProducts = async (promoId) => {
 // Verify if a promo code is valid
 const verifyPromoCode = async (
   kodePromo,
+  cabangId,
   subtotal = 0,
   items = [],
-  pelangganId = null
+  pelangganId = null,
+  metodePembayaran = null
 ) => {
   try {
-    const response = await api.post("/api/promos/verify", {
+    const response = await api.post("/promos/verify", {
       kodePromo,
+      cabangId,
       subtotal,
       items,
       pelangganId,
+      metodePembayaran,
     });
     return response.data;
   } catch (error) {
@@ -121,12 +121,20 @@ const verifyPromoCode = async (
 // Verify multiple promo codes
 const verifyMultiplePromos = async (
   promoCodes,
-  cartData
+  cabangId,
+  subtotal = 0,
+  items = [],
+  pelangganId = null,
+  metodePembayaran = null
 ) => {
   try {
     const response = await api.post("/promos/verify-multiple", {
       promoCodes,
-      ...cartData
+      cabangId,
+      subtotal,
+      items,
+      pelangganId,
+      metodePembayaran,
     });
     return response.data;
   } catch (error) {
@@ -138,9 +146,10 @@ const verifyMultiplePromos = async (
 const calculatePromoPreview = async (
   promoCodes,
   cabangId,
-  pelangganId,
-  subtotal,
-  metodePembayaran
+  pelangganId = null,
+  subtotal = 0,
+  items = [],
+  metodePembayaran = null
 ) => {
   try {
     const response = await api.post("/promos/calculate-preview", {
@@ -148,7 +157,8 @@ const calculatePromoPreview = async (
       cabangId,
       pelangganId,
       subtotal,
-      metodePembayaran
+      items,
+      metodePembayaran,
     });
     return response.data;
   } catch (error) {
@@ -157,11 +167,17 @@ const calculatePromoPreview = async (
 };
 
 // Get eligible promos for branch and cart
-const getEligiblePromos = async (cabangId, cartData) => {
+const getEligiblePromos = async (cabangId, cartData = {}) => {
   try {
-    const response = await api.get(`/promos/eligible/${cabangId}`, {
-      params: cartData
-    });
+    const { subtotal = 0, items = [] } = cartData;
+    const queryParams = new URLSearchParams();
+    if (subtotal) queryParams.append("subtotal", subtotal);
+    if (items && items.length > 0) {
+      queryParams.append("items", JSON.stringify(items));
+    }
+
+    const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
+    const response = await api.get(`/promos/eligible/${cabangId}${query}`);
     return response.data;
   } catch (error) {
     throw error;

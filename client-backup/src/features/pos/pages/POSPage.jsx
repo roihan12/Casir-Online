@@ -1374,6 +1374,7 @@ const POSPage = () => {
           cabang_id: currentBranch?.id,
           shift_id: activeShiftData?.data?.id || null,
           jenis_transaksi: "PENJUALAN",
+          metode_pembayaran: "QRIS",
           tanggal: new Date().toISOString(),
           pelanggan_id: customer ? customer.id : null,
           details: cart.map((item) => ({

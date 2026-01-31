@@ -57,121 +57,31 @@ const PromoManagement = () => {
         cabangId: selectedCabang?.isGlobalView ? null : selectedCabang?.id,
       };
 
-      // Add sorting
-      if (sort.field) {
-        apiFilters.sortBy = sort.field;
-        apiFilters.sortDir = sort.direction;
+      // Filter out "all" values for status and tipeDiskon
+      if (apiFilters.status === "all") {
+        delete apiFilters.status;
+      }
+      if (apiFilters.tipeDiskon === "all") {
+        delete apiFilters.tipeDiskon;
+      }
+      if (!apiFilters.search) {
+        delete apiFilters.search;
       }
 
-      // Mock data for now since the API doesn't exist yet
-      // Replace with actual API call when backend is implemented
-      // const response = await promoService.getAllPromos(apiFilters);
+      const response = await promoService.getAllPromos(apiFilters);
 
-      // Mock data
-      const mockPromos = generateMockPromos();
-
-      setPromos(mockPromos.data);
+      setPromos(response.data || []);
       setPagination({
-        currentPage: mockPromos.page,
-        totalPages: mockPromos.totalPages,
-        totalItems: mockPromos.totalItems,
+        currentPage: response.pagination?.currentPage || 1,
+        totalPages: response.pagination?.totalPages || 1,
+        totalItems: response.pagination?.totalItems || 0,
       });
     } catch (error) {
       console.error("Error fetching promos:", error);
-      toast.error("Gagal memuat data promo dan diskon");
+      toast.error(error.response?.data?.message || "Gagal memuat data promo dan diskon");
     } finally {
       setLoading(false);
     }
-  };
-
-  // Generate mock data
-  const generateMockPromos = () => {
-    const mockData = [];
-    const tipeDiskonOptions = ["persentase", "nominal", "bogo", "bundle"];
-    const statusOptions = ["aktif", "nonaktif"];
-
-    for (let i = 1; i <= 20; i++) {
-      const tipeDiskon =
-        tipeDiskonOptions[Math.floor(Math.random() * tipeDiskonOptions.length)];
-      const status =
-        statusOptions[Math.floor(Math.random() * statusOptions.length)];
-      const now = new Date();
-      const startDate = new Date(
-        now.setDate(now.getDate() - Math.floor(Math.random() * 30))
-      );
-      const endDate = new Date(
-        now.setDate(now.getDate() + Math.floor(Math.random() * 60))
-      );
-
-      mockData.push({
-        id: `promo-${i}`,
-        namaPromo: `Promo ${i}`,
-        kodePromo: `PROMO${i}`,
-        tipeDiskon,
-        nilaiDiskon:
-          tipeDiskon === "persentase"
-            ? Math.floor(Math.random() * 50)
-            : Math.floor(Math.random() * 100000),
-        minPembelian: Math.floor(Math.random() * 200000),
-        maxDiskon:
-          tipeDiskon === "persentase"
-            ? Math.floor(Math.random() * 100000)
-            : null,
-        tanggalMulai: startDate,
-        tanggalBerakhir: endDate,
-        limitPenggunaan: Math.floor(Math.random() * 100),
-        status,
-        createdAt: new Date(
-          now.setDate(now.getDate() - Math.floor(Math.random() * 90))
-        ),
-        updatedAt: new Date(),
-      });
-    }
-
-    // Filter based on search and status
-    let filteredData = mockData;
-
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      filteredData = filteredData.filter(
-        (promo) =>
-          promo.namaPromo.toLowerCase().includes(searchLower) ||
-          promo.kodePromo.toLowerCase().includes(searchLower)
-      );
-    }
-
-    if (filters.status !== "all") {
-      filteredData = filteredData.filter(
-        (promo) => promo.status === filters.status
-      );
-    }
-
-    if (filters.tipeDiskon !== "all") {
-      filteredData = filteredData.filter(
-        (promo) => promo.tipeDiskon === filters.tipeDiskon
-      );
-    }
-
-    // Sort data
-    filteredData.sort((a, b) => {
-      if (sort.direction === "asc") {
-        return a[sort.field] > b[sort.field] ? 1 : -1;
-      } else {
-        return a[sort.field] < b[sort.field] ? 1 : -1;
-      }
-    });
-
-    // Paginate
-    const startIndex = (filters.page - 1) * filters.limit;
-    const endIndex = startIndex + filters.limit;
-    const paginatedData = filteredData.slice(startIndex, endIndex);
-
-    return {
-      data: paginatedData,
-      page: filters.page,
-      totalPages: Math.ceil(filteredData.length / filters.limit),
-      totalItems: filteredData.length,
-    };
   };
 
   // Handle filter change
@@ -206,36 +116,34 @@ const PromoManagement = () => {
     if (!selectedPromo) return;
 
     try {
-      // Implement delete API call when backend is ready
-      // await promoService.deletePromo(selectedPromo.id);
+      await promoService.deletePromo(selectedPromo.id);
 
-      // For now, just update the UI
-      setPromos((prev) => prev.filter((p) => p.id !== selectedPromo.id));
+      // Refresh the promos list
+      await fetchPromos();
       toast.success("Promo berhasil dihapus");
       setShowDeleteModal(false);
     } catch (error) {
       console.error("Error deleting promo:", error);
-      toast.error("Gagal menghapus promo");
+      toast.error(error.response?.data?.message || "Gagal menghapus promo");
     }
   };
 
   // Handle status change
   const handleStatusChange = async (promo) => {
-    const newStatus = promo.status === "aktif" ? "nonaktif" : "aktif";
+    const newStatus = promo.status === "aktif" ? "tidak_aktif" : "aktif";
 
     try {
-      // Implement status change API call when backend is ready
-      // await promoService.changePromoStatus(promo.id, newStatus);
+      await promoService.changePromoStatus(promo.id, newStatus);
 
-      // For now, just update the UI
+      // Update the local state
       setPromos((prev) =>
         prev.map((p) => (p.id === promo.id ? { ...p, status: newStatus } : p))
       );
 
-      toast.success(`Status promo berhasil diubah menjadi ${newStatus}`);
+      toast.success(`Status promo berhasil diubah menjadi ${newStatus === "aktif" ? "Aktif" : "Nonaktif"}`);
     } catch (error) {
       console.error("Error changing promo status:", error);
-      toast.error("Gagal mengubah status promo");
+      toast.error(error.response?.data?.message || "Gagal mengubah status promo");
     }
   };
 
@@ -250,13 +158,17 @@ const PromoManagement = () => {
 
   // Format discount value based on type
   const formatDiskonValue = (promo) => {
-    if (promo.tipeDiskon === "persentase") {
+    if (promo.tipeDiskon === "PERSENTASE") {
       return `${promo.nilaiDiskon}%`;
-    } else if (promo.tipeDiskon === "nominal") {
+    } else if (promo.tipeDiskon === "NOMINAL") {
       return formatCurrency(promo.nilaiDiskon);
-    } else if (promo.tipeDiskon === "bogo") {
+    } else if (promo.tipeDiskon === "BUY_X_GET_Y") {
       return "Beli 1 Gratis 1";
-    } else if (promo.tipeDiskon === "bundle") {
+    } else if (promo.tipeDiskon === "VOUCHER") {
+      return formatCurrency(promo.nilaiDiskon);
+    } else if (promo.tipeDiskon === "CASHBACK") {
+      return formatCurrency(promo.maxDiskon);
+    } else if (promo.tipeDiskon === "BUNDLE") {
       return "Paket Bundling";
     }
     return "-";
@@ -275,12 +187,12 @@ const PromoManagement = () => {
 
   // Add handleCreatePromo function
   const handleCreatePromo = () => {
-    navigate("/superadmin/promos/create");
+    navigate("/promos/create");
   };
 
   // Add handleEditPromo function
   const handleEditPromo = (id) => {
-    navigate(`/superadmin/promos/edit/${id}`);
+    navigate(`/promos/edit/${id}`);
   };
 
   return (
@@ -364,7 +276,7 @@ const PromoManagement = () => {
                 >
                   <option value="all">Semua Status</option>
                   <option value="aktif">Aktif</option>
-                  <option value="nonaktif">Nonaktif</option>
+                  <option value="tidak_aktif">Nonaktif</option>
                 </select>
               </div>
               <div>
@@ -504,22 +416,26 @@ const PromoManagement = () => {
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          promo.tipeDiskon === "persentase"
+                          promo.tipeDiskon === "PERSENTASE"
                             ? "bg-blue-100 text-blue-800"
-                            : promo.tipeDiskon === "nominal"
+                            : promo.tipeDiskon === "NOMINAL"
                             ? "bg-green-100 text-green-800"
-                            : promo.tipeDiskon === "bogo"
+                            : promo.tipeDiskon === "BUY_X_GET_Y"
                             ? "bg-purple-100 text-purple-800"
                             : "bg-orange-100 text-orange-800"
                         }`}
                       >
                         <Tag size={12} className="mr-1" />
-                        {promo.tipeDiskon === "persentase"
+                        {promo.tipeDiskon === "PERSENTASE"
                           ? "Persentase"
-                          : promo.tipeDiskon === "nominal"
+                          : promo.tipeDiskon === "NOMINAL"
                           ? "Nominal"
-                          : promo.tipeDiskon === "bogo"
+                          : promo.tipeDiskon === "BUY_X_GET_Y"
                           ? "Beli 1 Gratis 1"
+                          : promo.tipeDiskon === "VOUCHER"
+                          ? "Voucher"
+                          : promo.tipeDiskon === "CASHBACK"
+                          ? "Cashback"
                           : "Bundling"}
                       </span>
                     </td>
@@ -559,14 +475,14 @@ const PromoManagement = () => {
                         ) : (
                           <XCircle size={12} className="mr-1" />
                         )}
-                        {promo.status === "aktif" ? "Aktif" : "Nonaktif"}
+                        {promo.status === "aktif" ? "Aktif" : "Tidak Aktif"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() =>
-                            navigate(`/superadmin/promos/${promo.id}`)
+                            navigate(`/promos/${promo.id}`)
                           }
                           className="p-1 text-blue-600 hover:text-blue-800"
                           title="Lihat Detail"

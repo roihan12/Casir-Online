@@ -41,6 +41,7 @@ import FinanceReport from "@features/reports/pages/FinanceReport";
 import InventoryReport from "@features/reports/pages/InventoryReport";
 import BranchReport from "@features/reports/pages/BranchReport";
 import PromoManagement from "./features/promos/pages/PromoManagementPage";
+import PromoDetailPage from "./features/promos/pages/PromoDetailPage";
 import DiscountManagement from "./features/discounts/pages/DiscountManagementPage";
 import PromoForm from "./features/promos/components/PromoForm";
 import DiscountForm from "./features/discounts/components/DiscountForm";
@@ -464,6 +465,7 @@ function App() {
               }
             >
               <Route index element={<PromoManagement />} />
+              <Route path=":id" element={<PromoDetailPage />} />
               <Route path="create" element={<PromoForm />} />
               <Route path="edit/:id" element={<PromoForm />} />
               <Route path="discounts" element={<DiscountManagement />} />

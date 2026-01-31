@@ -48,6 +48,7 @@ const kreditRekomendasiRoutes = require("./routes/kreditRekomendasiRoutes");
 const kreditNotifikasiRoutes = require("./routes/kreditNotifikasiRoutes");
 const pembayaranHutangRoutes = require("./routes/pembayaranHutangRoutes");
 const promoPreviewRoutes = require("./routes/promoPreviewRoutes");
+const promoRoutes = require("./routes/promoRoutes");
 
 const {
   setupNotificationScheduler,
@@ -141,6 +142,7 @@ app.use("/api/kredit-rekomendasi", kreditRekomendasiRoutes);
 app.use("/api/kredit-notifikasi", kreditNotifikasiRoutes);
 app.use("/api/hutang", pembayaranHutangRoutes);
 app.use("/api/transaksi", promoPreviewRoutes);
+app.use("/api/promos", promoRoutes);
 
 // 404 handler
 app.use((req, res) => {

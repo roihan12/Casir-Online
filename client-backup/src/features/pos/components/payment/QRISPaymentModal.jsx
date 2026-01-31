@@ -72,7 +72,9 @@ const QRISPaymentModal = ({
       });
 
       console.log("QRIS response:", response);
-      if (response.success && response.data?.qris_data) {
+      console.log("QRIS response data:", response.data);
+      console.log("QRIS response data qris_data:", response.data.qris_data);
+      if (response.status === true && response.data?.qris_data) {
         const qrisData = response.data.qris_data;
 
         // Use qr_string if available, otherwise fall back to qris_url

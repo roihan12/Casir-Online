@@ -25,7 +25,7 @@ const SearchBar = ({
   inputRef,
 }) => {
   return (
-    <div className="px-6 py-5 bg-white border-b border-gray-100 relative z-[60]">
+    <div className="px-6 py-5 bg-white border-b border-gray-100 relative z-[1]">
       <div className="relative group">
         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors">
           {isLoading ? (

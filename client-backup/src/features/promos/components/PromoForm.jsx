@@ -43,6 +43,7 @@ const PromoForm = () => {
     produkId: "",
     cabangId: selectedCabang?.id || "",
     status: "aktif",
+    deskripsi: "",
   });
 
   const isEditMode = !!id;
@@ -54,46 +55,24 @@ const PromoForm = () => {
 
       setLoading(true);
       try {
-        // In a real app, this would be:
-        // const response = await promoService.getPromoById(id);
-        // const promoData = response.data;
-
-        // Mock data for demonstration
-        const promoData = {
-          id,
-          namaPromo: `Promo ${id.split("-")[1]}`,
-          kodePromo: `PROMO${id.split("-")[1]}`,
-          tipeDiskon: ["persentase", "nominal", "bogo", "bundle"][
-            Math.floor(Math.random() * 4)
-          ],
-          nilaiDiskon: Math.floor(Math.random() * 50),
-          minPembelian: Math.floor(Math.random() * 200000),
-          maxDiskon: Math.floor(Math.random() * 100000),
-          tanggalMulai: new Date(),
-          tanggalBerakhir: new Date(
-            new Date().setDate(new Date().getDate() + 30)
-          ),
-          limitPenggunaan: Math.floor(Math.random() * 100),
-          kategoriId: Math.random() > 0.5 ? "cat1" : "",
-          produkId: Math.random() > 0.5 ? "prod1" : "",
-          cabangId: selectedCabang?.id || "",
-          status: Math.random() > 0.5 ? "aktif" : "nonaktif",
-        };
+        const response = await promoService.getPromoById(id);
+        const promoData = response.data;
 
         // Format dates for form inputs
         const formattedPromo = {
           ...promoData,
-          tanggalMulai: format(new Date(promoData.tanggalMulai), "yyyy-MM-dd"),
-          tanggalBerakhir: format(
-            new Date(promoData.tanggalBerakhir),
-            "yyyy-MM-dd"
-          ),
+          tanggalMulai: promoData.tanggalMulai
+            ? format(new Date(promoData.tanggalMulai), "yyyy-MM-dd")
+            : format(new Date(), "yyyy-MM-dd"),
+          tanggalBerakhir: promoData.tanggalBerakhir
+            ? format(new Date(promoData.tanggalBerakhir), "yyyy-MM-dd")
+            : format(new Date(new Date().setDate(new Date().getDate() + 30)), "yyyy-MM-dd"),
         };
 
         setFormData(formattedPromo);
       } catch (error) {
         console.error("Error fetching promo:", error);
-        toast.error("Gagal memuat data promo");
+        toast.error(error.response?.data?.message || "Gagal memuat data promo");
       } finally {
         setLoading(false);
       }
@@ -162,39 +141,53 @@ const PromoForm = () => {
         return;
       }
 
+      // Map tipeDiskon values to match backend enum
+      const tipeDiskonMap = {
+        persentase: "PERSENTASE",
+        nominal: "NOMINAL",
+        bogo: "BUY_X_GET_Y",
+        bundle: "HARGA_SPESIAL",
+      };
+
       // Format data for API
       const apiData = {
-        ...formData,
+        namaPromo: formData.namaPromo,
+        kodePromo: formData.kodePromo,
+        deskripsi: formData.deskripsi || null,
+        tipeDiskon: tipeDiskonMap[formData.tipeDiskon] || "PERSENTASE",
         nilaiDiskon: parseFloat(formData.nilaiDiskon),
         minPembelian: formData.minPembelian
           ? parseFloat(formData.minPembelian)
           : null,
         maxDiskon: formData.maxDiskon ? parseFloat(formData.maxDiskon) : null,
+        maxPenggunaanTotal: null,
+        maxPenggunaanPerUser: null,
+        tanggalMulai: formData.tanggalMulai ? new Date(formData.tanggalMulai) : null,
+        tanggalBerakhir: formData.tanggalBerakhir ? new Date(formData.tanggalBerakhir) : null,
         limitPenggunaan: formData.limitPenggunaan
           ? parseInt(formData.limitPenggunaan)
           : null,
+        tipeScope: "GLOBAL",
         kategoriId: formData.kategoriId || null,
         produkId: formData.produkId || null,
+        cabangId: formData.cabangId || null,
+        status: formData.status === "nonaktif" ? "tidak_aktif" : formData.status,
       };
 
       if (isEditMode) {
-        // In a real app, this would be:
-        // await promoService.updatePromo(id, apiData);
-        console.log("Updating promo:", apiData);
+        await promoService.updatePromo(id, apiData);
         toast.success("Promo berhasil diperbarui");
       } else {
-        // In a real app, this would be:
-        // await promoService.createPromo(apiData);
-        console.log("Creating promo:", apiData);
+        await promoService.createPromo(apiData);
         toast.success("Promo berhasil dibuat");
       }
 
       // Navigate back to promo list
-      navigate("/superadmin/promos");
+      navigate("/promos");
     } catch (error) {
       console.error("Error saving promo:", error);
       toast.error(
-        isEditMode ? "Gagal memperbarui promo" : "Gagal membuat promo"
+        error.response?.data?.message || (isEditMode ? "Gagal memperbarui promo" : "Gagal membuat promo")
       );
     } finally {
       setSubmitting(false);
@@ -232,7 +225,7 @@ const PromoForm = () => {
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-2">
           <button
-            onClick={() => navigate("/superadmin/promos")}
+            onClick={() => navigate("/promos")}
             className="flex items-center justify-center h-10 w-10 rounded-lg border hover:bg-gray-50"
           >
             <ChevronLeft size={20} />
@@ -405,8 +398,8 @@ const PromoForm = () => {
                 <div className="relative">
                   <select
                     name="status"
-                    value={formData.status}
-                    onChange={handleChange}
+                    value={formData.status === "tidak_aktif" ? "nonaktif" : formData.status}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value === "nonaktif" ? "tidak_aktif" : e.target.value }))}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none pr-10"
                   >
                     <option value="aktif">Aktif</option>
@@ -556,7 +549,7 @@ const PromoForm = () => {
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => navigate("/superadmin/promos")}
+                onClick={() => navigate("/promos")}
                 className="px-4 py-2 border rounded-lg hover:bg-gray-50"
               >
                 Batal
