@@ -56,7 +56,9 @@ import CustomerForm from "./features/customers/components/CustomerForm";
 import CustomerSegmentation from "./features/customers/pages/CustomerSegmentation";
 import LoyaltyProgram from "./features/loyalty/pages/LoyaltyProgramPage";
 import HutangManagementPage from "./features/hutang/pages/HutangManagementPage";
+
 import HutangDetailPage from "./features/hutang/pages/HutangDetailPage";
+import LoyaltyConfigPage from "./features/settings/pages/LoyaltyConfigPage";
 
 // Other Components
 import NotFoundPage from "./features/common/pages/NotFoundPage";
@@ -101,6 +103,14 @@ import StockOpname from "./features/inventory/components/StockOpname";
 import PriceManagement from "./features/products/pages/PriceManagementPage";
 import PurchaseCreate from "./features/purchases/pages/PurchaseCreatePage";
 import PurchaseDetail from "./features/purchases/pages/PurchaseDetailPage";
+
+import BotConfigPage from "./features/whatsapp/pages/BotConfigPage";
+import ChatPage from "./features/whatsapp/pages/ChatPage";
+import TemplatePage from "./features/whatsapp/pages/TemplatePage";
+import BroadcastPage from "./features/whatsapp/pages/BroadcastPage";
+import OrderPage from "./features/whatsapp/pages/OrderPage";
+import AnalysisPage from "./features/whatsapp/pages/AnalysisPage";
+import AIAgentPage from "./features/whatsapp/pages/AIAgentPage";
 
 import { ToastProvider } from "./app/providers/ToastContext";
 import POSPage from "./features/pos/pages/POSPage";
@@ -236,6 +246,7 @@ function App() {
               <Route path="notifications" element={<NotificationSettings />} />
               <Route path="menus" element={<MenuManagementPage />} />
               <Route path="audit" element={<AuditLog />} />
+              <Route path="loyalty" element={<LoyaltyConfigPage />} />
               <Route
                 index
                 element={<Navigate to="/settings/account" replace />}
@@ -500,6 +511,25 @@ function App() {
               <Route path="open" element={<ShiftForm />} />
               <Route path="close/:id" element={<ShiftForm />} />
               <Route path="adjust/:id" element={<ShiftForm />} />
+            </Route>
+
+            {/* WhatsApp Feature */}
+            <Route
+              path="/whatsapp"
+              element={
+                <ProtectedRoute requiredPermission="whatsapp:read">
+                  <DynamicLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="config" element={<BotConfigPage />} />
+              <Route path="chats" element={<ChatPage />} />
+              <Route path="templates" element={<TemplatePage />} />
+              <Route path="broadcast" element={<BroadcastPage />} />
+              <Route path="orders" element={<OrderPage />} />
+              <Route path="analytics" element={<AnalysisPage />} />
+              <Route path="ai-agent" element={<AIAgentPage />} />
+              <Route index element={<Navigate to="/whatsapp/config" replace />} />
             </Route>
 
             {/* 404 Not Found */}
