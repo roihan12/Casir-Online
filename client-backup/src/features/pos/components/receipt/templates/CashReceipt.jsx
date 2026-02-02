@@ -15,33 +15,53 @@ import formatCurrency from "@common/utils/formatCurrency";
  * }
  */
 const CashReceipt = ({ data }) => {
-  const { paymentMethod, discount, promo, payments } = data;
+  const { paymentMethod, discount, promo, payments, discountBreakdown } = data;
 
   // Get the first payment info
   const payment = payments?.[0];
   const jumlahBayar = payment?.amount || 0;
   const kembalian = payment?.change || 0;
 
-  // Calculate total discount including manual and promo
-  const totalDiskon = (discount || 0) + (promo?.totalDiskonPromo || 0);
+  // Get discount values from breakdown or fallback
+  const diskonItem = discountBreakdown?.diskonItem || discount || 0;
+  const diskonMember = discountBreakdown?.diskonMember || 0;
+  const diskonManual = discountBreakdown?.diskonManualNominal || 0;
+  const diskonManualPersen = discountBreakdown?.diskonManualPersen;
+  const diskonPromo = discountBreakdown?.diskonPromo || promo?.totalDiskonPromo || 0;
 
   return (
     <BaseReceipt
       data={data}
       renderExtraSection={() => (
         <>
+          {/* Item Discount */}
+          {diskonItem > 0 && (
+            <div className="flex justify-between text-orange-600 text-[11px]">
+              <span>DISKON ITEM:</span>
+              <span>-{formatCurrency(diskonItem)}</span>
+            </div>
+          )}
+          {/* Member Discount */}
+          {diskonMember > 0 && (
+            <div className="flex justify-between text-blue-600 text-[11px]">
+              <span>DISKON MEMBER:</span>
+              <span>-{formatCurrency(diskonMember)}</span>
+            </div>
+          )}
           {/* Manual Discount */}
-          {discount > 0 && (
+          {diskonManual > 0 && (
             <div className="flex justify-between text-red-600 text-[11px]">
-              <span>DISKON MANUAL:</span>
-              <span>-{formatCurrency(discount)}</span>
+              <span>
+                DISKON MANUAL{diskonManualPersen ? ` (${diskonManualPersen}%)` : ''}:
+              </span>
+              <span>-{formatCurrency(diskonManual)}</span>
             </div>
           )}
           {/* Promo Discount */}
-          {promo?.hasPromo && promo?.totalDiskonPromo > 0 && (
+          {diskonPromo > 0 && (
             <div className="flex justify-between text-green-600 text-[11px]">
               <span>DISKON PROMO:</span>
-              <span>-{formatCurrency(promo.totalDiskonPromo)}</span>
+              <span>-{formatCurrency(diskonPromo)}</span>
             </div>
           )}
         </>

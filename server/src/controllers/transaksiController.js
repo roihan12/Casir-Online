@@ -8,6 +8,7 @@ const {
   updateQrisStatusValidation,
   getTransaksiListValidation,
   createKreditTransaksiValidation,
+  previewDiscountValidation,
 } = require("../validation/transaksiValidation");
 
 // Controller untuk membuat transaksi baru
@@ -302,6 +303,29 @@ const previewPromo = async (req, res, next) => {
   }
 };
 
+// Controller untuk preview semua diskon (promo + member + manual)
+const previewAllDiscounts = async (req, res, next) => {
+  try {
+    const auditInfo = {
+      userId: req.user.id,
+      ipAddress: req.ip || req.socket.remoteAddress,
+      userName: req.user.namaLengkap || req.user.username,
+    };
+
+    const request = validate(previewDiscountValidation, req.body);
+
+    const result = await transaksiService.previewAllDiscounts(request, auditInfo);
+
+    res.status(200).json({
+      status: true,
+      message: "Discount preview berhasil",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createTransaksi,
   createTransaksiWithPromo,
@@ -315,4 +339,5 @@ module.exports = {
   getKreditPaymentRecommendation,
   createKreditTransaction,
   previewPromo,
+  previewAllDiscounts,
 };

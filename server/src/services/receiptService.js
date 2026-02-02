@@ -80,6 +80,12 @@ const getTransactionDataForReceipt = async (transaksiId) => {
   t.supplier_id,
   t.created_by,
   t.shift_id,
+  -- Discount breakdown
+  t.diskon_member,
+  t.diskon_manual_persen,
+  t.diskon_manual_nominal,
+  t.diskon_manual_alasan,
+  t.total_diskon_final,
   pb.metode_pembayaran,
   -- Cabang data
   c.nama_cabang as "cabang_nama",
@@ -193,6 +199,12 @@ LIMIT 1
     supplier_id: transaksi.supplier_id,
     created_by: transaksi.created_by,
     shift_id: transaksi.shift_id,
+    // Discount breakdown
+    diskon_member: transaksi.diskon_member,
+    diskon_manual_persen: transaksi.diskon_manual_persen,
+    diskon_manual_nominal: transaksi.diskon_manual_nominal,
+    diskon_manual_alasan: transaksi.diskon_manual_alasan,
+    total_diskon_final: transaksi.total_diskon_final,
     // Related objects
     cabang: {
       id: transaksi.cabang_id,
@@ -368,6 +380,16 @@ LIMIT 1
     promo: promoData,
     credit: creditData,
     templateType,
+    // Discount breakdown for receipt display
+    discountBreakdown: {
+      diskonItem: parseFloat(transaksiObj.diskon) || 0,
+      diskonMember: parseFloat(transaksiObj.diskon_member) || 0,
+      diskonManualPersen: parseFloat(transaksiObj.diskon_manual_persen) || null,
+      diskonManualNominal: parseFloat(transaksiObj.diskon_manual_nominal) || 0,
+      diskonManualAlasan: transaksiObj.diskon_manual_alasan || null,
+      diskonPromo: promoData.totalDiskonPromo || 0,
+      totalDiskonFinal: parseFloat(transaksiObj.total_diskon_final) || 0,
+    },
   };
 
   return transactionData;

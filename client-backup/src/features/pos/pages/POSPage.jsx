@@ -39,6 +39,7 @@ import useModalManager from "@common/hooks/useModalManager";
 import useKeyboardManager from "@common/hooks/useKeyboardManager";
 import useDebounce from "@common/hooks/useDebounce";
 import { useActiveShift } from "../../shifts/hooks/useShiftQueries";
+import api from "@common/utils/api";
 
 // Components
 import ProductsSection from "../components/products/ProductsSection";
@@ -116,10 +117,17 @@ const POSPage = () => {
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState("TUNAI");
 
+  // Debounced discount to prevent API calls on every keystroke
+  const debouncedDiscount = useDebounce(discount, 800);
+
   // Promo state
   const [promoCodes, setPromoCodes] = useState([]);
   const [appliedPromos, setAppliedPromos] = useState([]);
   const [promoTotalDiscount, setPromoTotalDiscount] = useState(0);
+
+  // State for discount breakdown from backend
+  const [discountBreakdown, setDiscountBreakdown] = useState(null);
+  const [isCalculatingDiscount, setIsCalculatingDiscount] = useState(false);
 
   // State untuk menyimpan transaksi terakhir
   const [lastTransactionId, setLastTransactionId] = useState(null);
@@ -289,10 +297,11 @@ const POSPage = () => {
     }
   }, [cabangList, selectedCabang, user, setSelectedCabangById]);
 
-  // Calculate totals when cart or sale mode changes
+  // Calculate discounts when cart, sale mode, discounts, or promos change
+  // Using debouncedDiscount to prevent API calls on every keystroke
   useEffect(() => {
-    calculateTotal();
-  }, [cart, saleMode, discount, discountType, promoTotalDiscount]);
+    calculateDiscounts();
+  }, [cart, saleMode, debouncedDiscount, discountType, promoCodes, paymentMethod]);
 
   // Filter branches based on search query
   useEffect(() => {
@@ -340,37 +349,62 @@ const POSPage = () => {
     }
   }, [debouncedProductSearch, productsData]);
 
-  // Calculate total amount
-  const calculateTotal = () => {
+  // Calculate discounts using backend API
+  const calculateDiscounts = async () => {
     if (cart.length === 0) {
       setTotalAmount(0);
       setTax(0);
+      setDiscountBreakdown(null);
       return;
     }
 
-    const subtotal = cart.reduce((sum, item) => {
-      // Use wholesale price if in wholesale mode, otherwise retail price
-      const price =
-        saleMode === "wholesale" ? item.wholesale_price : item.retail_price;
-      return sum + price * item.quantity;
-    }, 0);
+    setIsCalculatingDiscount(true);
+    try {
+      const subtotal = cart.reduce((sum, item) => {
+        const price = saleMode === "wholesale" ? item.wholesale_price : item.retail_price;
+        return sum + price * item.quantity;
+      }, 0);
 
-    // Apply manual discount
-    let manualDiscountAmount = 0;
-    if (discountType === "percentage") {
-      manualDiscountAmount = subtotal * (discount / 100);
-    } else {
-      manualDiscountAmount = discount;
+      const response = await api.post("/transaksi/preview-discount", {
+        cabang_id: currentBranch.id,
+        pelanggan_id: customer?.id || null,
+        subtotal: subtotal,
+        promo_codes: promoCodes.length > 0 ? promoCodes : null,
+        manual_discount_persen: discountType === "percentage" ? debouncedDiscount : null,
+        manual_discount_nominal: discountType === "fixed" ? debouncedDiscount : 0,
+        manual_discount_alasan: debouncedDiscount > 0 ? "Diskon manual POS" : null,
+        metode_pembayaran: paymentMethod,
+        details: cart.map(item => ({
+          produk_id: item.id,
+          jumlah: item.quantity,
+          harga_satuan: saleMode === "wholesale" ? item.wholesale_price : item.retail_price,
+        })),
+      });
+
+      const breakdown = response.data.data;
+      setDiscountBreakdown(breakdown);
+
+      // Calculate tax (assume 10% tax) - applied after discounts
+      const discountedSubtotal = subtotal - (breakdown?.total_discount || 0);
+      const taxAmount = Math.round(discountedSubtotal * 0.1);
+
+      setTotalAmount(Math.round(discountedSubtotal + taxAmount));
+      setTax(taxAmount);
+    } catch (error) {
+      console.error("Error calculating discounts:", error);
+      toast.error(error.response?.data?.message || "Gagal menghitung diskon");
+      // Reset to base calculation
+      const subtotal = cart.reduce((sum, item) => {
+        const price = saleMode === "wholesale" ? item.wholesale_price : item.retail_price;
+        return sum + price * item.quantity;
+      }, 0);
+      const taxAmount = Math.round(subtotal * 0.1);
+      setTotalAmount(Math.round(subtotal + taxAmount));
+      setTax(taxAmount);
+      setDiscountBreakdown(null);
+    } finally {
+      setIsCalculatingDiscount(false);
     }
-
-    // Total discount = manual discount + promo discount
-    const totalDiscount = manualDiscountAmount + promoTotalDiscount;
-
-    // Calculate tax (assume 10% tax) - applied after discounts
-    const taxAmount = Math.round((subtotal - totalDiscount) * 0.1);
-
-    setTotalAmount(Math.round(subtotal - totalDiscount + taxAmount));
-    setTax(taxAmount);
   };
 
   // Add product to cart
@@ -597,6 +631,9 @@ const POSPage = () => {
               saleMode === "wholesale" ? "Penjualan Grosir" : "Penjualan Retail"
             }`,
             promo_codes: promoCodes.length > 0 ? promoCodes : null,
+            manual_discount_persen: discountType === "percentage" ? discount : null,
+            manual_discount_nominal: discountType === "fixed" ? discount : 0,
+            manual_discount_alasan: discount > 0 ? "Diskon manual POS" : null,
           };
 
           if (saleMode === "wholesale" && !customer?.id) {
@@ -676,6 +713,9 @@ const POSPage = () => {
               saleMode === "wholesale" ? "Penjualan Grosir" : "Penjualan Retail"
             }`,
             promo_codes: promoCodes.length > 0 ? promoCodes : null,
+            manual_discount_persen: discountType === "percentage" ? discount : null,
+            manual_discount_nominal: discountType === "fixed" ? discount : 0,
+            manual_discount_alasan: discount > 0 ? "Diskon manual POS" : null,
           };
 
           if (saleMode === "wholesale" && !customer?.id) {
@@ -1154,6 +1194,8 @@ const POSPage = () => {
             cabangId={currentBranch?.id}
             metodePembayaran={paymentMethod}
             onPromosChange={handlePromosChange}
+            discountBreakdown={discountBreakdown}
+            isCalculatingDiscount={isCalculatingDiscount}
             // Add extra padding bottom for mobile nav
             className="pb-20 lg:pb-0"
           />

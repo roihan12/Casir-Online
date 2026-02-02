@@ -146,9 +146,9 @@ const createTransaksiWithPromo = async (data, auditInfo) => {
       throw new ResponseError(400, "Promo codes harus berupa array");
     }
 
-    // Panggil stored procedure PostgreSQL dengan promo codes
+    // Panggil stored procedure PostgreSQL dengan promo codes dan manual discount
     const result = await prisma.$queryRaw`
-      SELECT create_transaksi_with_promo(
+      SELECT create_transaksi_with_promo_and_discount(
         ${data.cabang_id}::VARCHAR,
         ${data.jenis_transaksi}::VARCHAR,
         ${data.tanggal}::TIMESTAMP,
@@ -156,7 +156,7 @@ const createTransaksiWithPromo = async (data, auditInfo) => {
         ${data.supplier_id || null}::VARCHAR,
         ${data.shift_id || null}::VARCHAR,
         ${JSON.stringify(data.details)}::JSONB,
-        ${data.biaya_tambahan || 0}::DECIMAL,
+        ${data.biaya_tambahan || 0}::FLOAT8,
         ${data.keterangan || null}::TEXT,
         ${
           data.customer_info ? JSON.stringify(data.customer_info) : null
@@ -167,11 +167,14 @@ const createTransaksiWithPromo = async (data, auditInfo) => {
         ${data.promo_codes || null}::VARCHAR[],
         ${data.metode_pembayaran || null}::VARCHAR,
         ${data.tenor || null}::INTEGER,
-        ${data.uang_muka || 0}::NUMERIC
+        ${data.uang_muka || 0}::NUMERIC,
+        ${data.manual_discount_persen || null}::NUMERIC,
+        ${data.manual_discount_nominal || 0}::NUMERIC,
+        ${data.manual_discount_alasan || null}::VARCHAR
       )
     `;
 
-    const transactionResult = result[0].create_transaksi_with_promo;
+    const transactionResult = result[0].create_transaksi_with_promo_and_discount;
 
     // Ambil data transaksi lengkap dengan query raw
     const transactions = await prisma.$queryRaw`
@@ -532,7 +535,7 @@ const addPembayaran = async (data, auditInfo) => {
     if (error.message.includes("Transaksi tidak ditemukan")) {
       throw new ResponseError(404, "Transaksi tidak ditemukan");
     } else if (error.message.includes("Jumlah pembayaran tidak mencukupi")) {
-      throw new ResponseError(400, "Jumlah pembayaran tidak mencukupi");
+      throw new ResponseError(400, `Jumlah pembayaran tidak mencukupi ${error.message}`);
     } else if (error.message.includes("Transaksi sudah dibayar lunas")) {
       throw new ResponseError(400, "Transaksi sudah dibayar lunas");
     }
@@ -1249,6 +1252,113 @@ const previewPromo = async (data, auditInfo) => {
   }
 };
 
+// Service untuk preview semua diskon (promo + member + manual)
+const previewAllDiscounts = async (data, auditInfo) => {
+  try {
+    const {
+      cabang_id,
+      pelanggan_id,
+      subtotal,
+      promo_codes,
+      manual_discount_persen,
+      manual_discount_nominal,
+      manual_discount_alasan,
+      metode_pembayaran,
+      details
+    } = data;
+
+    // Validate required fields
+    if (!cabang_id) {
+      throw new ResponseError(400, "Cabang ID harus diisi");
+    }
+
+    if (!subtotal || subtotal <= 0) {
+      throw new ResponseError(400, "Subtotal harus diisi");
+    }
+
+    // First, validate manual discount if provided
+    if ((manual_discount_persen && manual_discount_persen > 0) ||
+        (manual_discount_nominal && manual_discount_nominal > 0)) {
+
+      const hasPromo = promo_codes && promo_codes.length > 0;
+
+      const manualValidation = await prisma.$queryRaw`
+        SELECT validate_manual_discount(
+          ${manual_discount_persen || null}::NUMERIC,
+          ${manual_discount_nominal || 0}::NUMERIC,
+          ${subtotal}::NUMERIC,
+          ${cabang_id}::VARCHAR,
+          ${hasPromo}::BOOLEAN
+        ) as result
+      `;
+
+      const validationResult = manualValidation[0]?.result;
+      if (!validationResult?.is_valid) {
+        const errorMsg = validationResult?.errors?.map(e => {
+          if (typeof e === 'string') return e;
+          return JSON.stringify(e);
+        }).join(', ') || 'Manual discount tidak valid';
+        throw new ResponseError(400, errorMsg);
+      }
+    }
+
+    // Calculate promo discount if promo codes are provided
+    let promoDiscount = 0;
+    let promoErrors = [];
+
+    if (promo_codes && promo_codes.length > 0) {
+      try {
+        const promoResult = await prisma.$queryRaw`
+          SELECT apply_multiple_promos(
+            ${promo_codes}::VARCHAR[],
+            ${cabang_id}::VARCHAR,
+            ${pelanggan_id || null}::VARCHAR,
+            ${details ? JSON.stringify(details) : '[]'}::JSONB,
+            ${subtotal}::NUMERIC,
+            ${metode_pembayaran || null}::VARCHAR
+          ) as result
+        `;
+
+        const result = promoResult[0]?.result;
+        promoDiscount = parseFloat(result?.total_discount || 0);
+        promoErrors = result?.errors || [];
+      } catch (error) {
+        // If promo validation fails, continue without promo discount
+        promoErrors = [error.message];
+      }
+    }
+
+    // Apply all discounts using apply_all_discounts function
+    const hasPromo = promo_codes && promo_codes.length > 0;
+
+    const result = await prisma.$queryRaw`
+      SELECT apply_all_discounts(
+        ${pelanggan_id || null}::VARCHAR,
+        ${subtotal}::NUMERIC,
+        ${cabang_id}::VARCHAR,
+        ${manual_discount_persen || null}::NUMERIC,
+        ${manual_discount_nominal || 0}::NUMERIC,
+        ${manual_discount_alasan || null}::VARCHAR,
+        ${hasPromo}::BOOLEAN,
+        ${promoDiscount}::NUMERIC
+      ) as result
+    `;
+
+    const discountResult = result[0]?.result;
+
+    // Return the breakdown with any promo errors
+    return {
+      ...discountResult,
+      promo_errors: promoErrors,
+    };
+  } catch (error) {
+    if (error instanceof ResponseError) {
+      throw error;
+    }
+    throw new ResponseError(500, `Gagal mempreview diskon: ${error.message}`);
+  }
+};
+
 // Service untuk mendapatkan rekomendasi pembayaran kredit untuk transaksi
 const getKreditPaymentRecommendation = async (transaksiId) => {
   try {
@@ -1438,5 +1548,6 @@ module.exports = {
   getKreditPaymentRecommendation,
   createKreditTransaction,
   previewPromo,
+  previewAllDiscounts,
   invalidateTransaksiCache,
 };

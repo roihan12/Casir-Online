@@ -40,6 +40,13 @@ router.post(
   transaksiController.createTransaksiWithPromo
 );
 
+// POST - Preview all discounts (promo + member + manual)
+router.post(
+  "/preview-discount",
+  hasPermission(["transaksi:create"]),
+  transaksiController.previewAllDiscounts
+);
+
 // POST - Create credit transaction
 router.post(
   "/kredit",

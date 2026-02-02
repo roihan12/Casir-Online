@@ -40,6 +40,9 @@ const createTransaksiValidation = Joi.object({
       "TEMPO"
     )
     .required(),
+  manual_discount_persen: Joi.number().precision(2).min(0).max(100).allow(null),
+  manual_discount_nominal: Joi.number().precision(2).min(0).allow(null),
+  manual_discount_alasan: Joi.string().allow(null, ""),
 });
 
 // Validasi untuk tambah pembayaran
@@ -179,6 +182,32 @@ const getHutangListValidation = Joi.object({
   limit: Joi.number().min(1).max(100).default(10),
 });
 
+// Validasi untuk preview diskon (promo + member + manual)
+const previewDiscountValidation = Joi.object({
+  cabang_id: Joi.string().required(),
+  pelanggan_id: Joi.string().allow(null, ""),
+  subtotal: Joi.number().precision(2).min(0).required(),
+  promo_codes: Joi.array().items(Joi.string()).allow(null),
+  manual_discount_persen: Joi.number().precision(2).min(0).max(100).allow(null),
+  manual_discount_nominal: Joi.number().precision(2).min(0).allow(null),
+  manual_discount_alasan: Joi.string().allow(null, ""),
+  metode_pembayaran: Joi.string().allow(null, ""),
+   details: Joi.array()
+    .items(
+      Joi.object({
+        produk_id: Joi.string().required(),
+        batch_number: Joi.string().allow(null, ""),
+        expired_date: Joi.date().allow(null),
+        jumlah: Joi.number().integer().min(1).required(),
+        harga_satuan: Joi.number().precision(2).min(0).required(),
+        diskon_persen: Joi.number().precision(2).min(0).max(100).default(0),
+        pajak_persen: Joi.number().precision(2).min(0).max(100).default(0),
+      })
+    )
+    .min(1)
+    .required(),
+});
+
 module.exports = {
   createTransaksiValidation,
   createPembayaranValidation,
@@ -191,4 +220,5 @@ module.exports = {
   createKreditTransaksiValidation,
   createPembayaranHutangValidation,
   getHutangListValidation,
+  previewDiscountValidation,
 };

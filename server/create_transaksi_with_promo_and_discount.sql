@@ -564,18 +564,7 @@ BEGIN
             ic.harga_satuan * ic.jumlah AS harga_total,
             ic.harga_satuan * ic.jumlah - ic.diskon_nominal AS item_subtotal_pre_tax,
             
-            -- Calculate tax
-            CASE 
-                WHEN v_is_tax_included AND ic.pajak_persen > 0 THEN
-                    ROUND((ic.harga_satuan * ic.jumlah - ic.diskon_nominal) - 
-                          ((ic.harga_satuan * ic.jumlah - ic.diskon_nominal) / 
-                           (1 + (ic.pajak_persen / 100))), 2)
-                ELSE
-                    ROUND(((ic.harga_satuan * ic.jumlah - ic.diskon_nominal) * 
-                           ic.pajak_persen) / 100, 2)
-            END AS pajak_nominal,
-            
-            -- Validations
+            -- Validations (tax will be calculated after all discounts per Indonesian PPN regulation)
             CASE 
                 WHEN p_jenis_transaksi IN ('PENJUALAN', 'RETUR_PENJUALAN') 
                      AND v_is_grosir 
@@ -601,12 +590,11 @@ BEGIN
         SELECT 
             SUM(harga_total) AS subtotal,
             SUM(diskon_nominal) AS total_diskon_item,
-            SUM(pajak_nominal) AS total_pajak,
             string_agg(error_message, '; ') FILTER (WHERE error_message IS NOT NULL) AS errors
         FROM validation_check
     )
-    SELECT subtotal, total_diskon_item, total_pajak, errors
-    INTO v_subtotal, v_total_diskon_item, v_total_pajak, v_reference_type
+    SELECT subtotal, total_diskon_item, errors
+    INTO v_subtotal, v_total_diskon_item, v_reference_type
     FROM totals;
     
     -- Check for validation errors
@@ -662,11 +650,26 @@ BEGIN
     END IF;
     
     -- ================================================================
-    -- CALCULATE FINAL TOTALS
+    -- CALCULATE FINAL TOTALS (Indonesian PPN: tax calculated AFTER all discounts)
     -- ================================================================
     
     v_total_diskon_final := v_total_diskon_item + v_total_diskon_promo + 
                             v_total_diskon_member + v_total_diskon_manual;
+    
+    -- Calculate tax AFTER all discounts (Indonesian PPN regulation)
+    -- Pajak dihitung dari subtotal setelah semua potongan
+    IF v_is_tax_included AND v_tax_percentage > 0 THEN
+        -- Tax already included in price, extract it
+        v_total_pajak := ROUND(
+            (v_subtotal - v_total_diskon_final) - 
+            ((v_subtotal - v_total_diskon_final) / (1 + (v_tax_percentage / 100))), 2
+        );
+    ELSE
+        -- Tax not included, add on top of discounted subtotal
+        v_total_pajak := ROUND(
+            ((v_subtotal - v_total_diskon_final) * v_tax_percentage) / 100, 2
+        );
+    END IF;
     
     v_total := v_subtotal - v_total_diskon_final + v_total_pajak + 
                COALESCE(p_biaya_tambahan, 0);

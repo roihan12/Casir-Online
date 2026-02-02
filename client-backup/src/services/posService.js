@@ -36,8 +36,14 @@ const posService = {
 
   // Transaksi
   createTransaction: async (transactionData) => {
-    // Use create-with-promo endpoint if promo_codes are present
-    const endpoint = transactionData.promo_codes && transactionData.promo_codes.length > 0
+    // Use create-with-promo endpoint if:
+    // 1. promo_codes are present, OR
+    // 2. manual discount is present (manual_discount_persen OR manual_discount_nominal)
+    const hasPromoCodes = transactionData.promo_codes && transactionData.promo_codes.length > 0;
+    const hasManualDiscount = (transactionData.manual_discount_persen && transactionData.manual_discount_persen > 0) ||
+                              (transactionData.manual_discount_nominal && transactionData.manual_discount_nominal > 0);
+
+    const endpoint = (hasPromoCodes || hasManualDiscount)
       ? `/transaksi/create-with-promo`
       : `/transaksi`;
 

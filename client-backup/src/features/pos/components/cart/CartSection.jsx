@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import formatCurrency from "@common/utils/formatCurrency";
 import PromoSection from "./PromoSection";
+import { cn } from "@common/utils/cn";
 
 const CartSection = ({
   cart,
@@ -30,13 +31,17 @@ const CartSection = ({
   cabangId,
   metodePembayaran,
   onPromosChange,
+  discountBreakdown,
+  isCalculatingDiscount,
   className = "",
 }) => {
   const [appliedPromos, setAppliedPromos] = useState([]);
   const [promoTotalDiscount, setPromoTotalDiscount] = useState(0);
+  const [promoCodes, setPromoCodes] = useState([]);
 
   // Memoize callback to prevent infinite loop
   const handlePromosChange = useCallback(({ codes, promos, totalDiscount }) => {
+    setPromoCodes(codes || []);
     setAppliedPromos(promos);
     setPromoTotalDiscount(totalDiscount);
     // Pass up to parent (POSPage) to update total calculation
@@ -195,15 +200,25 @@ const CartSection = ({
               <input
                 type="number"
                 placeholder="Diskon Manual"
-                className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-400 outline-none"
+                className={cn(
+                  "w-full pl-9 pr-3 py-2 bg-white border rounded-lg text-sm font-bold focus:ring-2 focus:ring-indigo-500/10 outline-none",
+                  isCalculatingDiscount && "opacity-50 cursor-not-allowed",
+                  discountBreakdown?.message?.includes("promo") && "opacity-50 cursor-not-allowed bg-gray-50"
+                )}
                 value={discount || ""}
                 onChange={(e) => setDiscount(Number(e.target.value) || 0)}
+                disabled={isCalculatingDiscount || (discountBreakdown?.message?.includes("promo") && promoCodes.length > 0)}
               />
             </div>
             <select
-              className="bg-white border border-gray-200 rounded-lg py-2 px-2 text-xs font-black text-gray-600 focus:ring-2 focus:ring-indigo-500/10 outline-none"
+              className={cn(
+                "bg-white border rounded-lg py-2 px-2 text-xs font-black text-gray-600 focus:ring-2 focus:ring-indigo-500/10 outline-none",
+                isCalculatingDiscount && "opacity-50 cursor-not-allowed",
+                discountBreakdown?.message?.includes("promo") && "opacity-50 cursor-not-allowed bg-gray-50"
+              )}
               value={discountType}
               onChange={(e) => setDiscountType(e.target.value)}
+              disabled={isCalculatingDiscount || (discountBreakdown?.message?.includes("promo") && promoCodes.length > 0)}
             >
               <option value="percentage">%</option>
               <option value="fixed">IDR</option>
@@ -215,24 +230,59 @@ const CartSection = ({
               <span>Subtotal</span>
               <span className="text-gray-800 font-bold">{formatCurrency(subtotal)}</span>
             </div>
-            {promoTotalDiscount > 0 && (
-              <div className="flex justify-between text-green-600">
-                <span>Diskon Promo</span>
-                <span className="font-bold">-{formatCurrency(promoTotalDiscount)}</span>
-              </div>
+
+            {/* Display discount breakdown from backend if available */}
+            {discountBreakdown && discountBreakdown.breakdown && discountBreakdown.breakdown.length > 0 ? (
+              <>
+                {discountBreakdown.breakdown.map((item, idx) => (
+                  <div key={idx} className={`flex justify-between ${
+                    item.tipe === 'PROMO' ? 'text-green-600' :
+                    item.tipe === 'MANUAL' ? 'text-red-500' :
+                    'text-blue-600'
+                  }`}>
+                    <span>
+                      {item.tipe === 'PROMO' ? 'Diskon Promo' :
+                       item.tipe === 'MANUAL' ? 'Diskon Manual' :
+                       item.tipe === 'SEGMEN_AUTO' ? 'Diskon Member' :
+                       item.tipe === 'TIER_AUTO' ? 'Diskon Member' :
+                       'Diskon'}
+                      {item.persen && ` (${item.persen}%)`}
+                    </span>
+                    <span className="font-bold">-{formatCurrency(item.amount)}</span>
+                  </div>
+                ))}
+              </>
+            ) : (
+              <>
+                {/* Fallback to old display if no backend breakdown */}
+                {promoTotalDiscount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Diskon Promo</span>
+                    <span className="font-bold">-{formatCurrency(promoTotalDiscount)}</span>
+                  </div>
+                )}
+                {discount > 0 && (
+                  <div className="flex justify-between text-red-500">
+                    <span>Diskon Manual</span>
+                    <span className="font-bold">
+                      -{formatCurrency(discountType === "percentage" ? subtotal * (discount / 100) : discount)}
+                    </span>
+                  </div>
+                )}
+              </>
             )}
-            {discount > 0 && (
-              <div className="flex justify-between text-red-500">
-                <span>Diskon Manual</span>
-                <span className="font-bold">
-                  -{formatCurrency(discountType === "percentage" ? subtotal * (discount / 100) : discount)}
-                </span>
-              </div>
-            )}
+
             <div className="flex justify-between text-gray-500">
               <span>Pajak (10%)</span>
               <span className="text-gray-800 font-bold">{formatCurrency(tax)}</span>
             </div>
+
+            {/* Display warning message if backend rejected manual discount */}
+            {discountBreakdown?.message && (
+              <div className="text-xs text-amber-600 italic">
+                {discountBreakdown.message}
+              </div>
+            )}
           </div>
         </div>
 

@@ -87,7 +87,7 @@ const BaseReceipt = ({
         <div className="flex justify-between">
           <span className="text-[11px]">TRX ID:</span>
           <span className="font-bold text-[11px]">
-            {(number || id || "")?.slice(-10).toUpperCase()}
+            {(number || id || "")?.toUpperCase()}
           </span>
         </div>
         <div className="flex justify-between">
