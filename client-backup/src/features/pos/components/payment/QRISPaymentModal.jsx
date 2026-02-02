@@ -19,6 +19,7 @@ const QRISPaymentModal = ({
   const [paymentStatus, setPaymentStatus] = useState("pending"); // pending, processing, success, failed, expired
   const [expiryTime, setExpiryTime] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(0);
+  const [showCloseConfirmation, setShowCloseConfirmation] = useState(false); // Medium Fix #6: Confirmation dialog
   const pollIntervalRef = useRef(null);
   const timeoutRef = useRef(null);
   const isGeneratingRef = useRef(false); // Prevent duplicate generation calls
@@ -170,6 +171,16 @@ const QRISPaymentModal = ({
     }
   };
 
+  // Medium Fix #6: Show confirmation before closing when payment is pending
+  const handleCloseRequest = () => {
+    // If payment is pending, show confirmation dialog
+    if (paymentStatus === "pending" && qrReferenceId) {
+      setShowCloseConfirmation(true);
+    } else {
+      handleClose();
+    }
+  };
+
   const handleClose = () => {
     cleanup();
     setPaymentStatus("pending");
@@ -178,6 +189,7 @@ const QRISPaymentModal = ({
     setQrReferenceId(null);
     setExpiryTime(null);
     setTimeRemaining(0);
+    setShowCloseConfirmation(false);
     onClose();
   };
 
@@ -199,9 +211,9 @@ const QRISPaymentModal = ({
             QRIS Payment
           </h3>
           <button
-            onClick={handleClose}
+            onClick={handleCloseRequest}
             className="p-2 hover:bg-gray-100 rounded-lg transition"
-            disabled={paymentStatus === "processing" || paymentStatus === "pending"}
+            disabled={paymentStatus === "processing"}
           >
             <X size={24} className="text-gray-600" />
           </button>
@@ -338,6 +350,40 @@ const QRISPaymentModal = ({
           )}
         </div>
       </div>
+
+      {/* Medium Fix #6: Confirmation dialog for closing during pending payment */}
+      {showCloseConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm mx-4">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Clock className="text-yellow-600" size={32} />
+              </div>
+              <h4 className="text-xl font-bold text-gray-800 mb-2">
+                Pembayaran Belum Selesai
+              </h4>
+              <p className="text-gray-600 text-sm mb-6">
+                Transaksi sudah dibuat tapi pembayaran QRIS belum selesai. 
+                Jika ditutup sekarang, transaksi akan tetap <span className="font-semibold text-yellow-600">PENDING</span>.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowCloseConfirmation(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition"
+                >
+                  Lanjut Bayar
+                </button>
+                <button
+                  onClick={handleCancelPayment}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium"
+                >
+                  Batalkan
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

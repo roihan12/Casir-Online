@@ -943,7 +943,7 @@ model ReceiptConfig {
   @@map("receipt_config")
 }
 
-model TaxConfig {
+model TaxConfig { 
   id              String   @id @default(uuid()) @map("tax_config_id")
   cabang_id       String   @unique
   is_tax_enabled  Boolean  @default(false)

@@ -38,12 +38,14 @@ const posService = {
   createTransaction: async (transactionData) => {
     // Use create-with-promo endpoint if:
     // 1. promo_codes are present, OR
-    // 2. manual discount is present (manual_discount_persen OR manual_discount_nominal)
+    // 2. manual discount is present (manual_discount_persen OR manual_discount_nominal), OR
+    // 3. pelanggan_id is present (for member discount calculation)
     const hasPromoCodes = transactionData.promo_codes && transactionData.promo_codes.length > 0;
     const hasManualDiscount = (transactionData.manual_discount_persen && transactionData.manual_discount_persen > 0) ||
                               (transactionData.manual_discount_nominal && transactionData.manual_discount_nominal > 0);
+    const hasCustomer = !!transactionData.pelanggan_id; // Check for member discount
 
-    const endpoint = (hasPromoCodes || hasManualDiscount)
+    const endpoint = (hasPromoCodes || hasManualDiscount || hasCustomer)
       ? `/transaksi/create-with-promo`
       : `/transaksi`;
 

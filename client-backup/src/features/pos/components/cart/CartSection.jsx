@@ -199,6 +199,7 @@ const CartSection = ({
               </div>
               <input
                 type="number"
+                min="0"
                 placeholder="Diskon Manual"
                 className={cn(
                   "w-full pl-9 pr-3 py-2 bg-white border rounded-lg text-sm font-bold focus:ring-2 focus:ring-indigo-500/10 outline-none",
@@ -206,7 +207,7 @@ const CartSection = ({
                   discountBreakdown?.message?.includes("promo") && "opacity-50 cursor-not-allowed bg-gray-50"
                 )}
                 value={discount || ""}
-                onChange={(e) => setDiscount(Number(e.target.value) || 0)}
+                onChange={(e) => setDiscount(Math.max(0, Number(e.target.value) || 0))}
                 disabled={isCalculatingDiscount || (discountBreakdown?.message?.includes("promo") && promoCodes.length > 0)}
               />
             </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -6,7 +6,6 @@ import {
   Edit,
   Trash2,
   Eye,
-  Tag,
   Filter,
   RefreshCw,
   Calendar,
@@ -26,12 +25,13 @@ import toast from "react-hot-toast";
 import { format } from "date-fns";
 import promoService from "../../../services/promoService";
 import { useCabang } from "../../../features/cabang/hooks/useCabang";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import api from "../../../services/api";
 
 const DiscountManagement = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { selectedCabang } = useCabang();
-  const [discounts, setDiscounts] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     search: "",
     status: "all",
@@ -42,172 +42,82 @@ const DiscountManagement = () => {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [sort, setSort] = useState({ field: "createdAt", direction: "desc" });
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-    totalItems: 0,
-  });
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedDiscount, setSelectedDiscount] = useState(null);
-  const [categories, setCategories] = useState([]);
 
-  // Fetch discounts data
-  const fetchDiscounts = async () => {
-    setLoading(true);
-    try {
-      // Add cabangId and type filter for discounts to filters
+  // Fetch discounts using React Query
+  const {
+    data: discountsData,
+    isLoading: loading,
+    refetch: refetchDiscounts,
+  } = useQuery({
+    queryKey: ["discounts", filters, selectedCabang?.id],
+    queryFn: async () => {
       const apiFilters = {
-        ...filters,
+        page: filters.page,
+        limit: filters.limit,
+        search: filters.search || undefined,
         cabangId: selectedCabang?.isGlobalView ? null : selectedCabang?.id,
         // Filter to only persentase and nominal discount types
         tipeDiskon:
           filters.tipeDiskon === "all"
-            ? ["persentase", "nominal"]
-            : [filters.tipeDiskon],
+            ? ["persentase", "nominal"].join(",")
+            : filters.tipeDiskon,
+        status: filters.status === "all" ? undefined : filters.status,
+        kategoriId: filters.kategoriId || undefined,
       };
 
-      // Mock data for now since the API doesn't exist yet
-      const mockData = generateMockDiscounts();
+      const response = await promoService.getAllPromos(apiFilters);
+      return response;
+    },
+    staleTime: 30000, // 30 seconds
+  });
 
-      setDiscounts(mockData.data);
-      setPagination({
-        currentPage: mockData.page,
-        totalPages: mockData.totalPages,
-        totalItems: mockData.totalItems,
-      });
-    } catch (error) {
-      console.error("Error fetching discounts:", error);
-      toast.error("Gagal memuat data diskon");
-    } finally {
-      setLoading(false);
-    }
+  // Fetch categories using React Query
+  const { data: categoriesData } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const response = await api.get("/kategori");
+      return response.data.data || [];
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const categories = categoriesData || [];
+  const discounts = discountsData?.data || [];
+  const pagination = discountsData?.pagination || {
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
   };
 
-  // Mock categories
-  const fetchCategories = async () => {
-    // Mock categories for now
-    const mockCategories = [
-      { id: "cat1", namaKategori: "Makanan" },
-      { id: "cat2", namaKategori: "Minuman" },
-      { id: "cat3", namaKategori: "Alat Tulis" },
-      { id: "cat4", namaKategori: "Elektronik" },
-      { id: "cat5", namaKategori: "Rumah Tangga" },
-    ];
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: (promoId) => promoService.deletePromo(promoId),
+    onSuccess: () => {
+      toast.success("Diskon berhasil dihapus");
+      setShowDeleteModal(false);
+      queryClient.invalidateQueries({ queryKey: ["discounts"] });
+    },
+    onError: (error) => {
+      console.error("Error deleting discount:", error);
+      toast.error(error.response?.data?.message || "Gagal menghapus diskon");
+    },
+  });
 
-    setCategories(mockCategories);
-  };
-
-  // Generate mock data
-  const generateMockDiscounts = () => {
-    const mockData = [];
-    const tipeDiskonOptions = ["persentase", "nominal"];
-    const statusOptions = ["aktif", "nonaktif"];
-    const categoryIds = ["cat1", "cat2", "cat3", "cat4", "cat5", null];
-    const productIds = ["prod1", "prod2", "prod3", "prod4", "prod5", null];
-
-    for (let i = 1; i <= 20; i++) {
-      const tipeDiskon =
-        tipeDiskonOptions[Math.floor(Math.random() * tipeDiskonOptions.length)];
-      const status =
-        statusOptions[Math.floor(Math.random() * statusOptions.length)];
-      const categoryId =
-        categoryIds[Math.floor(Math.random() * categoryIds.length)];
-      const productId =
-        productIds[Math.floor(Math.random() * productIds.length)];
-      const now = new Date();
-      const startDate = new Date(
-        now.setDate(now.getDate() - Math.floor(Math.random() * 30))
-      );
-      const endDate = new Date(
-        now.setDate(now.getDate() + Math.floor(Math.random() * 60))
-      );
-
-      mockData.push({
-        id: `disc-${i}`,
-        namaPromo: `Diskon ${
-          tipeDiskon === "persentase" ? "Persentase" : "Nominal"
-        } ${i}`,
-        kodePromo: `DISC${i}`,
-        tipeDiskon,
-        nilaiDiskon:
-          tipeDiskon === "persentase"
-            ? Math.floor(Math.random() * 50)
-            : Math.floor(Math.random() * 100000),
-        minPembelian: Math.floor(Math.random() * 200000),
-        maxDiskon:
-          tipeDiskon === "persentase"
-            ? Math.floor(Math.random() * 100000)
-            : null,
-        tanggalMulai: startDate,
-        tanggalBerakhir: endDate,
-        limitPenggunaan: Math.floor(Math.random() * 100),
-        kategoriId: categoryId,
-        kategoriNama: categoryId
-          ? categories.find((c) => c.id === categoryId)?.namaKategori
-          : null,
-        produkId: productId,
-        produkNama: productId
-          ? `Produk ${productId.replace("prod", "")}`
-          : null,
-        status,
-        createdAt: new Date(
-          now.setDate(now.getDate() - Math.floor(Math.random() * 90))
-        ),
-        updatedAt: new Date(),
-      });
-    }
-
-    // Filter based on search and other filters
-    let filteredData = mockData;
-
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      filteredData = filteredData.filter(
-        (disc) =>
-          disc.namaPromo.toLowerCase().includes(searchLower) ||
-          disc.kodePromo.toLowerCase().includes(searchLower)
-      );
-    }
-
-    if (filters.status !== "all") {
-      filteredData = filteredData.filter(
-        (disc) => disc.status === filters.status
-      );
-    }
-
-    if (filters.tipeDiskon !== "all") {
-      filteredData = filteredData.filter(
-        (disc) => disc.tipeDiskon === filters.tipeDiskon
-      );
-    }
-
-    if (filters.kategoriId) {
-      filteredData = filteredData.filter(
-        (disc) => disc.kategoriId === filters.kategoriId
-      );
-    }
-
-    // Sort data
-    filteredData.sort((a, b) => {
-      if (sort.direction === "asc") {
-        return a[sort.field] > b[sort.field] ? 1 : -1;
-      } else {
-        return a[sort.field] < b[sort.field] ? 1 : -1;
-      }
-    });
-
-    // Paginate
-    const startIndex = (filters.page - 1) * filters.limit;
-    const endIndex = startIndex + filters.limit;
-    const paginatedData = filteredData.slice(startIndex, endIndex);
-
-    return {
-      data: paginatedData,
-      page: filters.page,
-      totalPages: Math.ceil(filteredData.length / filters.limit),
-      totalItems: filteredData.length,
-    };
-  };
+  // Status change mutation
+  const statusMutation = useMutation({
+    mutationFn: ({ promoId, newStatus }) =>
+      promoService.changePromoStatus(promoId, newStatus),
+    onSuccess: (_, variables) => {
+      toast.success(`Status diskon berhasil diubah menjadi ${variables.newStatus}`);
+      queryClient.invalidateQueries({ queryKey: ["discounts"] });
+    },
+    onError: (error) => {
+      console.error("Error changing discount status:", error);
+      toast.error(error.response?.data?.message || "Gagal mengubah status diskon");
+    },
+  });
 
   // Handle filter change
   const handleFilterChange = (name, value) => {
@@ -239,41 +149,13 @@ const DiscountManagement = () => {
   // Handle delete discount
   const handleDeleteDiscount = async () => {
     if (!selectedDiscount) return;
-
-    try {
-      // Implement delete API call when backend is ready
-      // await promoService.deletePromo(selectedDiscount.id);
-
-      // For now, just update the UI
-      setDiscounts((prev) => prev.filter((d) => d.id !== selectedDiscount.id));
-      toast.success("Diskon berhasil dihapus");
-      setShowDeleteModal(false);
-    } catch (error) {
-      console.error("Error deleting discount:", error);
-      toast.error("Gagal menghapus diskon");
-    }
+    deleteMutation.mutate(selectedDiscount.id);
   };
 
   // Handle status change
   const handleStatusChange = async (discount) => {
     const newStatus = discount.status === "aktif" ? "nonaktif" : "aktif";
-
-    try {
-      // Implement status change API call when backend is ready
-      // await promoService.changePromoStatus(discount.id, newStatus);
-
-      // For now, just update the UI
-      setDiscounts((prev) =>
-        prev.map((d) =>
-          d.id === discount.id ? { ...d, status: newStatus } : d
-        )
-      );
-
-      toast.success(`Status diskon berhasil diubah menjadi ${newStatus}`);
-    } catch (error) {
-      console.error("Error changing discount status:", error);
-      toast.error("Gagal mengubah status diskon");
-    }
+    statusMutation.mutate({ promoId: discount.id, newStatus });
   };
 
   // Format currency
@@ -304,22 +186,13 @@ const DiscountManagement = () => {
   // Get discount target display
   const getDiscountTarget = (discount) => {
     if (discount.kategoriId) {
-      return `Kategori: ${discount.kategoriNama || discount.kategoriId}`;
+      return `Kategori: ${discount.kategori?.namaKategori || discount.kategoriNama || discount.kategoriId}`;
     } else if (discount.produkId) {
-      return `Produk: ${discount.produkNama || discount.produkId}`;
+      return `Produk: ${discount.produk?.produkMaster?.namaProduk || discount.produkNama || discount.produkId}`;
     } else {
       return "Semua Produk";
     }
   };
-
-  // Load discounts on component mount and when filters or sort change
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  useEffect(() => {
-    fetchDiscounts();
-  }, [filters, sort, selectedCabang, categories]);
 
   // Add handleCreateDiscount function
   const handleCreateDiscount = () => {
@@ -379,10 +252,10 @@ const DiscountManagement = () => {
                 )}
               </button>
               <button
-                onClick={fetchDiscounts}
+                onClick={() => refetchDiscounts()}
                 className="flex items-center gap-2 px-3 py-2 border rounded-lg hover:bg-gray-50"
               >
-                <RefreshCw size={18} />
+                <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
                 <span className="hidden sm:inline">Refresh</span>
               </button>
               <button className="flex items-center gap-2 px-3 py-2 border rounded-lg hover:bg-gray-50">
@@ -444,7 +317,7 @@ const DiscountManagement = () => {
                 >
                   <option value="">Semua Kategori</option>
                   {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
+                    <option key={category.kategoriId || category.id} value={category.kategoriId || category.id}>
                       {category.namaKategori}
                     </option>
                   ))}
@@ -637,11 +510,12 @@ const DiscountManagement = () => {
                         </button>
                         <button
                           onClick={() => handleStatusChange(discount)}
+                          disabled={statusMutation.isPending}
                           className={`p-1 ${
                             discount.status === "aktif"
                               ? "text-red-600 hover:text-red-800"
                               : "text-green-600 hover:text-green-800"
-                          }`}
+                          } ${statusMutation.isPending ? "opacity-50" : ""}`}
                           title={
                             discount.status === "aktif"
                               ? "Nonaktifkan"
@@ -752,15 +626,17 @@ const DiscountManagement = () => {
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowDeleteModal(false)}
+                disabled={deleteMutation.isPending}
                 className="px-4 py-2 border rounded-lg hover:bg-gray-50"
               >
                 Batal
               </button>
               <button
                 onClick={handleDeleteDiscount}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                disabled={deleteMutation.isPending}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
               >
-                Hapus
+                {deleteMutation.isPending ? "Menghapus..." : "Hapus"}
               </button>
             </div>
           </div>

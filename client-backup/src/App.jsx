@@ -45,6 +45,7 @@ import PromoDetailPage from "./features/promos/pages/PromoDetailPage";
 import DiscountManagement from "./features/discounts/pages/DiscountManagementPage";
 import PromoForm from "./features/promos/components/PromoForm";
 import DiscountForm from "./features/discounts/components/DiscountForm";
+import DiscountConfigPage from "./features/discounts/pages/DiscountConfigPage";
 import TaxSettings from "./features/settings/pages/TaxSettingsPage";
 import ReceiptSettings from "./features/settings/pages/ReceiptSettingsPage";
 import NotificationSettings from "./features/settings/pages/NotificationSettingsPage";
@@ -245,6 +246,7 @@ function App() {
               <Route path="receipt" element={<ReceiptSettings />} />
               <Route path="notifications" element={<NotificationSettings />} />
               <Route path="menus" element={<MenuManagementPage />} />
+              <Route path="promo" element={<DiscountConfigPage />} />
               <Route path="audit" element={<AuditLog />} />
               <Route path="loyalty" element={<LoyaltyConfigPage />} />
               <Route

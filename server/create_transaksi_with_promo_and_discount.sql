@@ -54,14 +54,18 @@ BEGIN
     CASE v_config.member_discount_type
         WHEN 'PERCENTAGE' THEN
             -- Get discount from segmen mapping
-            IF v_config.discount_segmen IS NOT NULL THEN
+            IF v_config.discount_segmen IS NOT NULL AND v_pelanggan.segmen IS NOT NULL THEN
+                -- Cast enum to text for JSONB access
                 v_discount_persen := COALESCE(
-                    (v_config.discount_segmen->>v_pelanggan.segmen)::DECIMAL, 
+                    (v_config.discount_segmen->>(v_pelanggan.segmen::TEXT))::DECIMAL, 
                     0
                 );
+            ELSE
+                -- No segmen set for customer, no discount
+                v_discount_persen := 0;
             END IF;
             v_discount_nominal := (p_subtotal * v_discount_persen) / 100;
-            v_tipe_discount := 'SEGMEN_AUTO';
+            v_tipe_discount := COALESCE(v_pelanggan.segmen::TEXT, 'NO_SEGMEN') || '_AUTO';
             
         WHEN 'TIER_BASED' THEN
             -- Tier-based discount
@@ -79,8 +83,8 @@ BEGIN
     RETURN jsonb_build_object(
         'discount_nominal', ROUND(v_discount_nominal, 2),
         'discount_persen', v_discount_persen,
-        'tipe', v_tipe_discount,
-        'segmen', v_pelanggan.segmen,
+        'tipe', COALESCE(v_tipe_discount, 'NONE'),
+        'segmen', COALESCE(v_pelanggan.segmen::TEXT, 'TIDAK_ADA'),
         'tier', v_pelanggan.discount_tier
     );
 END;

@@ -462,9 +462,19 @@ const getAllPromos = async (filters) => {
   }
 
   if (tipeDiskon) {
-    conditions.push(`p.tipe_diskon = $${paramIndex}`);
-    params.push(tipeDiskon);
-    paramIndex++;
+    // Handle comma-separated tipeDiskon values and cast to enum
+     
+    const tipeValues = tipeDiskon.toUpperCase().split(',').map(t => t.trim()).filter(t => t);
+    if (tipeValues.length === 1) {
+      conditions.push(`p.tipe_diskon = $${paramIndex}::"tipe_diskon"`);
+      params.push(tipeValues[0]);
+      paramIndex++;
+    } else if (tipeValues.length > 1) {
+      // Use ANY for multiple values
+      conditions.push(`p.tipe_diskon = ANY($${paramIndex}::"tipe_diskon"[])`);
+      params.push(tipeValues);
+      paramIndex++;
+    }
   }
 
   if (cabangId) {
