@@ -3,10 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Search, Plus, Trash, RefreshCcw } from "lucide-react";
 import { useCabang } from "@features/cabang/hooks/useCabang";
 import toast from "react-hot-toast";
+import api from "@common/utils/api";
+import { useCreateRetur } from "../hooks/useReturQueries";
 
 const GlobalReturnCreate = () => {
   const navigate = useNavigate();
   const { selectedCabang, cabangList = [] } = useCabang();
+  const createReturMutation = useCreateRetur();
 
   // State for the form
   const [formData, setFormData] = useState({
@@ -18,7 +21,6 @@ const GlobalReturnCreate = () => {
     items: [],
   });
 
-  const [loading, setLoading] = useState(false);
   const [searchingTransaction, setSearchingTransaction] = useState(false);
   const [foundTransaction, setFoundTransaction] = useState(null);
 
@@ -32,7 +34,7 @@ const GlobalReturnCreate = () => {
   };
 
   // Search for original transaction
-  const searchTransaction = () => {
+  const searchTransaction = async () => {
     if (!formData.nomorTransaksiAsli) {
       toast.error("Masukkan nomor transaksi asli");
       return;
@@ -40,70 +42,56 @@ const GlobalReturnCreate = () => {
 
     setSearchingTransaction(true);
 
-    // This would be replaced with an actual API call
-    setTimeout(() => {
-      // Dummy transaction data
-      const dummyTransaction = {
-        transaksi_id: "tr001",
-        nomor_transaksi: formData.nomorTransaksiAsli,
-        jenis_transaksi:
-          formData.jenisRetur === "RETUR_PENJUALAN" ? "PENJUALAN" : "PEMBELIAN",
-        tanggal: new Date().toISOString(),
-        cabang: {
-          id: selectedCabang || "cbg001",
-          namaCabang: "Cabang Pusat",
+    try {
+      // Search for the original transaction by number
+      const expectedType = formData.jenisRetur === "RETUR_PENJUALAN" ? "PENJUALAN" : "PEMBELIAN";
+      const response = await api.get("/transaksi", {
+        params: {
+          search: formData.nomorTransaksiAsli,
+          jenisTransaksi: expectedType,
+          limit: 10,
         },
-        pelanggan:
-          formData.jenisRetur === "RETUR_PENJUALAN"
-            ? {
-                id: "cus001",
-                namaPelanggan: "John Doe",
-                telepon: "0812345678",
-              }
-            : null,
-        supplier:
-          formData.jenisRetur === "RETUR_PEMBELIAN"
-            ? {
-                id: "sup001",
-                namaSupplier: "PT Supplier Utama",
-                telepon: "0812345678",
-              }
-            : null,
-        items: [
-          {
-            produk_id: "prod001",
-            produkMaster: {
-              namaProduk: "Kemeja Denim",
-              sku: "KD001",
-            },
-            jumlah: 2,
-            harga_satuan: 150000,
-            subtotal: 300000,
-          },
-          {
-            produk_id: "prod002",
-            produkMaster: {
-              namaProduk: "Celana Jeans",
-              sku: "CJ001",
-            },
-            jumlah: 1,
-            harga_satuan: 200000,
-            subtotal: 200000,
-          },
-        ],
-        total: 500000,
-      };
+      });
 
-      setFoundTransaction(dummyTransaction);
+      const transactions = response.data?.data || [];
+      
+      // Find exact match by nomor_transaksi
+      const matchedTransaction = transactions.find(
+        (t) => t.nomor_transaksi.toLowerCase() === formData.nomorTransaksiAsli.toLowerCase()
+      );
+
+      console.log(matchedTransaction);
+
+      if (!matchedTransaction) {
+        toast.error("Transaksi tidak ditemukan");
+        setSearchingTransaction(false);
+        return;
+      }
+
+      // Fetch full transaction detail
+      const detailResponse = await api.get(`/transaksi/${matchedTransaction.transaksi_id}`);
+      const fullTransaction = detailResponse.data?.data;
+
+      if (!fullTransaction) {
+        toast.error("Gagal mengambil detail transaksi");
+        setSearchingTransaction(false);
+        return;
+      }
+
+      setFoundTransaction(fullTransaction);
       setSearchingTransaction(false);
 
       // Prepopulate items from the transaction
+      const transactionItems = fullTransaction.transaksi_detail || [];
       setFormData({
         ...formData,
-        items: dummyTransaction.items.map((item) => ({
+        pelangganId: fullTransaction.pelanggan_id,
+        supplierId: fullTransaction.supplier_id,
+        transaksiAsliId: fullTransaction.transaksi_id,
+        items: transactionItems.map((item) => ({
           produk_id: item.produk_id,
-          namaProduk: item.produkMaster.namaProduk,
-          sku: item.produkMaster.sku,
+          namaProduk: item.produk?.produkMaster?.namaProduk || "Unknown",
+          sku: item.produk?.produkMaster?.sku || "-",
           jumlahAsli: item.jumlah,
           jumlahRetur: 0,
           harga_satuan: item.harga_satuan,
@@ -114,7 +102,11 @@ const GlobalReturnCreate = () => {
       });
 
       toast.success("Transaksi ditemukan");
-    }, 1000);
+    } catch (error) {
+      console.error("Error searching transaction:", error);
+      toast.error(error.response?.data?.message || "Gagal mencari transaksi");
+      setSearchingTransaction(false);
+    }
   };
 
   // Update returned item quantity
@@ -163,7 +155,7 @@ const GlobalReturnCreate = () => {
   };
 
   // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Validate form
@@ -192,19 +184,18 @@ const GlobalReturnCreate = () => {
       return;
     }
 
-    setLoading(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
-      toast.success("Retur berhasil dibuat");
-      navigate("/transactions/returns");
-    }, 1500);
+    try {
+      await createReturMutation.mutateAsync(formData);
+      navigate("/returns");
+    } catch (error) {
+      // Error is already handled in the mutation hook
+      console.error("Error creating return:", error);
+    }
   };
 
   // Go back
   const handleBack = () => {
-    navigate("/transactions/returns");
+    navigate("/returns");
   };
 
   return (
@@ -518,10 +509,10 @@ const GlobalReturnCreate = () => {
             <div className="flex justify-end">
               <button
                 type="submit"
-                disabled={loading}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                disabled={createReturMutation.isPending}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? (
+                {createReturMutation.isPending ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     Memproses...

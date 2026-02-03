@@ -1,188 +1,230 @@
-import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { FaGem, FaCoins, FaGift, FaSave, FaToggleOn, FaToggleOff } from 'react-icons/fa';
-
-const schema = z.object({
-  isActive: z.boolean(),
-  earnRateAmount: z.number().min(1, 'Jumlah belanja minimal harus 1'),
-  earnRatePoints: z.number().min(1, 'Poin minimal harus 1'),
-  redeemRatePoints: z.number().min(1, 'Poin redeem minimal harus 1'),
-  redeemRateAmount: z.number().min(1, 'Nilai tukar minimal Rp 1'),
-  minTransaction: z.number().min(0),
-  expiryDays: z.number().min(0, 'Isi 0 jika tidak ada kadaluarsa'),
-});
+import { useState, useEffect } from "react";
+import { FiSettings, FiSave, FiPercent, FiClock, FiDollarSign, FiToggleLeft, FiToggleRight } from "react-icons/fi";
+import { useLoyaltyConfig, useCreateLoyaltyConfig, useUpdateLoyaltyConfig } from "../../loyalty/hooks/useLoyalty"
 
 const LoyaltyConfigPage = () => {
-  const { register, handleSubmit, watch, setValue, formState: { errors, isDirty } } = useForm({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      isActive: true,
-      earnRateAmount: 10000,
-      earnRatePoints: 1,
-      redeemRatePoints: 100,
-      redeemRateAmount: 1000,
-      minTransaction: 0,
-      expiryDays: 365,
-    }
+  const { data: configData, isLoading } = useLoyaltyConfig();
+  const createConfigMutation = useCreateLoyaltyConfig();
+  const updateConfigMutation = useUpdateLoyaltyConfig();
+
+  const [form, setForm] = useState({
+    point_rate: 10000, // 1 poin per Rp 10.000
+    minimum_transaction: 50000,
+    expiry_days: 365,
+    is_active: true,
+    redeem_rules: { rate: 1, min_points: 10 }
   });
 
-  const isActive = watch('isActive');
+  const [hasConfig, setHasConfig] = useState(false);
+  const [configId, setConfigId] = useState(null);
 
-  const onSubmit = (data) => {
-    console.log('Loyalty Config:', data);
-    alert('Konfigurasi Loyalty Program berhasil disimpan!');
+  useEffect(() => {
+    if (configData?.data) {
+      const config = configData.data;
+      setForm({
+        point_rate: parseInt(config.point_rate) || 10000,
+        minimum_transaction: parseFloat(config.minimum_transaction) || 50000,
+        expiry_days: parseInt(config.expiry_days) || 365,
+        is_active: config.is_active !== false,
+        redeem_rules: config.redeem_rules || { rate: 1, min_points: 10 }
+      });
+      if (config.loyalty_config_id) {
+        setHasConfig(true);
+        setConfigId(config.loyalty_config_id);
+      }
+    }
+  }, [configData]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (hasConfig && configId) {
+      await updateConfigMutation.mutateAsync({ id: configId, data: form });
+    } else {
+      await createConfigMutation.mutateAsync(form);
+    }
   };
 
+  const isSaving = createConfigMutation.isPending || updateConfigMutation.isPending;
+
+  // Calculate example points (point_rate means 1 point per X rupiah)
+  const exampleAmount = 150000;
+  const examplePoints = Math.floor(exampleAmount / form.point_rate);
+
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-           <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-            <FaGem className="text-purple-600" />
-            Konfigurasi Loyalty Program
-           </h1>
-           <p className="text-sm text-gray-500 mt-1">Atur perolehan dan penukaran poin member</p>
-        </div>
-        <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
-           <span className={`text-sm font-medium ${isActive ? 'text-green-600' : 'text-gray-500'}`}>
-             {isActive ? 'Program Aktif' : 'Program Nonaktif'}
-           </span>
-           <button 
-             type="button"
-             onClick={() => setValue('isActive', !isActive, { shouldDirty: true })}
-             className={`text-2xl transition-colors ${isActive ? 'text-green-500' : 'text-gray-300'}`}
-           >
-             {isActive ? <FaToggleOn /> : <FaToggleOff />}
-           </button>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+          <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl">
+            <FiSettings className="text-white" size={28} />
+          </div>
+          Konfigurasi Loyalty
+        </h1>
+        <p className="text-gray-400 mt-2">Atur pengaturan program loyalitas pelanggan</p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        
-        {/* Earning Rules */}
-        <div className={`bg-white p-6 rounded-xl shadow-sm border border-gray-100 transition-opacity ${!isActive ? 'opacity-60 pointer-events-none' : ''}`}>
-           <h2 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-             <FaCoins className="text-yellow-500" />
-             Aturan Perolehan Poin
-           </h2>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-             <div className="space-y-4">
-                <p className="text-sm text-gray-600">Pelanggan akan mendapatkan poin setiap melakukan transaksi dengan kelipatan tertentu.</p>
-                <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <div className="flex-1">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Setiap Belanja (Rp)</label>
-                        <input 
-                           type="number" 
-                           {...register('earnRateAmount', { valueAsNumber: true })}
-                           className="w-full px-3 py-2 bg-white border border-gray-300 rounded font-semibold text-gray-800 focus:ring-purple-500"
-                        />
-                         {errors.earnRateAmount && <p className="text-red-500 text-xs mt-1">{errors.earnRateAmount.message}</p>}
-                    </div>
-                    <span className="text-gray-400 font-bold">=</span>
-                    <div className="flex-1">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Dapat Poin</label>
-                        <input 
-                           type="number" 
-                           {...register('earnRatePoints', { valueAsNumber: true })}
-                           className="w-full px-3 py-2 bg-white border border-gray-300 rounded font-semibold text-purple-600 focus:ring-purple-500"
-                        />
-                         {errors.earnRatePoints && <p className="text-red-500 text-xs mt-1">{errors.earnRatePoints.message}</p>}
-                    </div>
-                </div>
+      {isLoading ? (
+        <div className="text-center py-12">
+          <div className="animate-spin w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full mx-auto" />
+          <p className="text-gray-400 mt-4">Memuat konfigurasi...</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Form Section */}
+          <div className="lg:col-span-2">
+            <form onSubmit={handleSubmit} className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10 space-y-6">
+              {/* Toggle Active */}
+              <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Minimal Transaksi untuk Dapat Poin</label>
-                   <div className="relative">
-                      <span className="absolute left-3 top-2.5 text-gray-500">Rp</span>
-                      <input 
-                         type="number" 
-                         {...register('minTransaction', { valueAsNumber: true })}
-                         className="w-full pl-10 px-4 py-2 border border-gray-300 rounded-lg focus:ring-purple-500"
-                      />
-                   </div>
+                  <h3 className="text-white font-medium">Status Program Loyalty</h3>
+                  <p className="text-gray-400 text-sm">
+                    {form.is_active ? "Program sedang aktif" : "Program dinonaktifkan"}
+                  </p>
                 </div>
-             </div>
-             
-             {/* Preview Card */}
-             <div className="bg-gradient-to-br from-purple-600 to-indigo-700 p-6 rounded-xl text-white shadow-lg">
-                <div className="flex justify-between items-start mb-6">
-                   <div>
-                      <p className="text-purple-200 text-sm">Contoh Simulasi</p>
-                      <h3 className="text-xl font-bold">Transaksi Rp 100.000</h3>
-                   </div>
-                   <FaGem className="text-3xl text-purple-300 opacity-50" />
-                </div>
-                <div className="text-center bg-white/10 rounded-lg p-4 backdrop-blur-sm border border-white/10">
-                   <p className="text-sm text-purple-100 mb-1">Pelanggan akan mendapatkan</p>
-                   <p className="text-4xl font-extrabold text-yellow-300 drop-shadow-md">
-                     {watch('earnRateAmount') > 0 ? Math.floor(100000 / watch('earnRateAmount')) * watch('earnRatePoints') : 0} 
-                     <span className="text-lg ml-1">Poin</span>
-                   </p>
-                </div>
-             </div>
-           </div>
-        </div>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, is_active: !form.is_active })}
+                  className={`p-2 rounded-lg transition-all ${
+                    form.is_active ? "text-green-400" : "text-gray-500"
+                  }`}
+                >
+                  {form.is_active ? (
+                    <FiToggleRight size={32} />
+                  ) : (
+                    <FiToggleLeft size={32} />
+                  )}
+                </button>
+              </div>
 
-        {/* Redemption Rules */}
-        <div className={`bg-white p-6 rounded-xl shadow-sm border border-gray-100 transition-opacity ${!isActive ? 'opacity-60 pointer-events-none' : ''}`}>
-           <h2 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-             <FaGift className="text-red-500" />
-             Aturan Penukaran Poin
-           </h2>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-             <div>
-                <p className="text-sm text-gray-600 mb-4">Tentukan nilai tukar poin menjadi diskon saat checkout.</p>
-                <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <div className="flex-1">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Tukas Poin</label>
-                        <input 
-                           type="number" 
-                           {...register('redeemRatePoints', { valueAsNumber: true })}
-                           className="w-full px-3 py-2 bg-white border border-gray-300 rounded font-semibold text-purple-600 focus:ring-purple-500"
-                        />
-                        {errors.redeemRatePoints && <p className="text-red-500 text-xs mt-1">{errors.redeemRatePoints.message}</p>}
-                    </div>
-                    <span className="text-gray-400 font-bold">=</span>
-                    <div className="flex-1">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Dapat Potongan (Rp)</label>
-                        <input 
-                           type="number" 
-                           {...register('redeemRateAmount', { valueAsNumber: true })}
-                           className="w-full px-3 py-2 bg-white border border-gray-300 rounded font-semibold text-gray-800 focus:ring-purple-500"
-                        />
-                        {errors.redeemRateAmount && <p className="text-red-500 text-xs mt-1">{errors.redeemRateAmount.message}</p>}
-                    </div>
+              {/* Points Rate */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-white font-medium">
+                  <FiPercent className="text-amber-400" />
+                  Point Rate (Rupiah per Poin)
+                </label>
+                <p className="text-gray-400 text-sm">
+                  Berapa Rupiah yang harus dibelanjakan untuk mendapat 1 poin
+                </p>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">Rp</span>
+                  <input
+                    type="number"
+                    value={form.point_rate}
+                    onChange={(e) => setForm({ ...form, point_rate: parseInt(e.target.value) || 1000 })}
+                    className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
+                  />
                 </div>
-             </div>
-             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Masa Berlaku Poin</label>
-                <div className="flex items-center gap-3">
-                   <input 
-                      type="number" 
-                      {...register('expiryDays', { valueAsNumber: true })}
-                      className="w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-purple-500"
-                   />
-                   <span className="text-gray-600">Hari sejak poin didapatkan</span>
+                <div className="text-xs text-gray-500">
+                  Contoh: 10000 berarti 1 poin per Rp 10.000 belanja
                 </div>
-                <p className="text-xs text-gray-500 mt-2">Isi 0 jika poin berlaku selamanya.</p>
-             </div>
-           </div>
-        </div>
+              </div>
 
-        <div className="flex justify-end pt-4">
-            <button
+              {/* Minimum Transaction */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-white font-medium">
+                  <FiDollarSign className="text-green-400" />
+                  Minimum Transaksi untuk Poin
+                </label>
+                <p className="text-gray-400 text-sm">
+                  Transaksi minimal agar pelanggan mendapat poin
+                </p>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">Rp</span>
+                  <input
+                    type="number"
+                    value={form.minimum_transaction}
+                    onChange={(e) => setForm({ ...form, minimum_transaction: parseFloat(e.target.value) || 0 })}
+                    className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-purple-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Points Expiry */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-white font-medium">
+                  <FiClock className="text-blue-400" />
+                  Masa Berlaku Poin (Hari)
+                </label>
+                <p className="text-gray-400 text-sm">
+                  Berapa hari poin berlaku sebelum kadaluarsa. Set 0 untuk tidak pernah expire.
+                </p>
+                <input
+                  type="number"
+                  value={form.expiry_days}
+                  onChange={(e) => setForm({ ...form, expiry_days: parseInt(e.target.value) || 0 })}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-purple-500 outline-none"
+                />
+              </div>
+
+              {/* Submit Button */}
+              <button
                 type="submit"
-                disabled={!isDirty}
-                className={`px-8 py-3 rounded-lg text-white font-medium flex items-center gap-2 shadow-lg transition transform hover:-translate-y-0.5 ${
-                  isDirty ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-400 cursor-not-allowed'
-                }`}
-            >
-                <FaSave /> Simpan Perubahan
-            </button>
-        </div>
+                disabled={isSaving}
+                className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-purple-500/25 transition-all disabled:opacity-50"
+              >
+                <FiSave size={20} />
+                {isSaving ? "Menyimpan..." : "Simpan Konfigurasi"}
+              </button>
+            </form>
+          </div>
 
-      </form>
+          {/* Preview Section */}
+          <div className="space-y-6">
+            {/* Points Calculator */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+              <h3 className="text-white font-semibold mb-4">Simulasi Poin</h3>
+              <div className="space-y-4">
+                <div className="p-4 bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-xl border border-amber-500/30">
+                  <p className="text-gray-300 text-sm">Jika pelanggan belanja:</p>
+                  <p className="text-2xl font-bold text-white mt-1">
+                    Rp {exampleAmount.toLocaleString()}
+                  </p>
+                </div>
+                <div className="flex items-center justify-center">
+                  <div className="w-8 h-8 flex items-center justify-center text-gray-500">↓</div>
+                </div>
+                <div className="p-4 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl border border-green-500/30">
+                  <p className="text-gray-300 text-sm">Poin yang didapat:</p>
+                  <p className="text-3xl font-bold text-green-400 mt-1">
+                    +{examplePoints.toLocaleString()} poin
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Info */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+              <h3 className="text-white font-semibold mb-4">Informasi</h3>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">1 Poin per</span>
+                  <span className="text-white">Rp {form.point_rate.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Min. transaksi</span>
+                  <span className="text-white">Rp {form.minimum_transaction.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Masa berlaku</span>
+                  <span className="text-white">
+                    {form.expiry_days > 0 ? `${form.expiry_days} hari` : "Tidak pernah expire"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Tips */}
+            <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-2xl p-6 border border-blue-500/20">
+              <h3 className="text-blue-400 font-semibold mb-3">💡 Tips</h3>
+              <ul className="text-gray-300 text-sm space-y-2">
+                <li>• Rasio 0.01 = 1% cashback dalam bentuk poin</li>
+                <li>• Set masa berlaku untuk mendorong pelanggan kembali</li>
+                <li>• Minimum transaksi mencegah fraud dari transaksi kecil</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

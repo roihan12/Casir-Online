@@ -24,6 +24,7 @@ import { toast } from "react-hot-toast";
 import pelangganService from "../services/pelangganService";
 import Modal from "../../common/Modal.jsx";
 import Table from "../../common/Table.jsx";
+import CustomerLoyaltyCard from "../components/CustomerLoyaltyCard";
 
 const CustomerDetail = () => {
   const { id } = useParams();
@@ -460,6 +461,11 @@ const CustomerDetail = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Loyalty Card */}
+      <div className="mb-6">
+        <CustomerLoyaltyCard customerId={id} />
       </div>
 
       {/* Tabs */}

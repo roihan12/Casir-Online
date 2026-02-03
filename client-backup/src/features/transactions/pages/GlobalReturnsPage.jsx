@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+import React, { useState, useMemo } from "react";
 import {
   Search,
   FileText,
@@ -21,6 +20,7 @@ import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
 import { useCabang } from "@features/cabang/hooks/useCabang";
 import toast from "react-hot-toast";
+import { useReturList } from "../hooks/useReturQueries";
 
 // Formatter untuk uang
 const formatCurrency = (amount) => {
@@ -35,10 +35,6 @@ const formatCurrency = (amount) => {
 const GlobalReturns = () => {
   const navigate = useNavigate();
   const { selectedCabang, cabangList = [] } = useCabang();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [returns, setReturns] = useState([]);
-  const [totalReturns, setTotalReturns] = useState(0);
 
   // State untuk filter dan pagination
   const [filters, setFilters] = useState({
@@ -49,54 +45,34 @@ const GlobalReturns = () => {
     statusPembayaran: "all",
     search: "",
   });
+  const [appliedFilters, setAppliedFilters] = useState(filters);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  // Fetch retur data
-  const fetchReturns = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = {
-        startDate: filters.startDate.format("YYYY-MM-DD"),
-        endDate: filters.endDate.format("YYYY-MM-DD"),
-        cabangId: filters.cabangId !== "all" ? filters.cabangId : undefined,
-        jenisTransaksi:
-          filters.jenisRetur !== "all"
-            ? filters.jenisRetur
-            : ["RETUR_PENJUALAN", "RETUR_PEMBELIAN"],
-        statusPembayaran:
-          filters.statusPembayaran !== "all"
-            ? filters.statusPembayaran
-            : undefined,
-        search: filters.search || undefined,
-        page: page + 1,
-        limit: rowsPerPage,
-      };
+  // Build query params for API
+  const queryParams = useMemo(() => ({
+    startDate: appliedFilters.startDate.format("YYYY-MM-DD"),
+    endDate: appliedFilters.endDate.format("YYYY-MM-DD"),
+    cabangId: appliedFilters.cabangId !== "all" ? appliedFilters.cabangId : undefined,
+    jenisTransaksi: appliedFilters.jenisRetur !== "all" 
+      ? appliedFilters.jenisRetur 
+      : ["RETUR_PENJUALAN", "RETUR_PEMBELIAN"],
+    statusPembayaran: appliedFilters.statusPembayaran !== "all" 
+      ? appliedFilters.statusPembayaran 
+      : undefined,
+    search: appliedFilters.search || undefined,
+    page: page + 1,
+    limit: rowsPerPage,
+  }), [appliedFilters, page, rowsPerPage]);
 
-      // Menggunakan data dummy untuk demonstrasi
-      setTimeout(() => {
-        setReturns(dummyReturns);
-        setTotalReturns(dummyReturns.length);
-        setLoading(false);
-      }, 700);
+  // Fetch returns using React Query
+  const { data: returnsData, isLoading: loading, isError, error, refetch } = useReturList(queryParams);
 
-      // Uncomment ini jika API sudah siap
-      // const response = await axios.get("/api/transactions/returns", { params });
-      // setReturns(response.data.data);
-      // setTotalReturns(response.data.meta.total);
-    } catch (err) {
-      console.error("Error fetching returns:", err);
-      setError("Gagal memuat data retur. Silakan coba lagi.");
-      toast.error("Gagal memuat data retur");
-      setLoading(false);
-    }
-  };
+  // Extract data from response
+  const returns = returnsData?.transactions || [];
+  const totalReturns = returnsData?.meta?.total || 0;
 
-  // Initial fetch
-  useEffect(() => {
-    fetchReturns();
-  }, [page, rowsPerPage, filters.cabangId]);
+
 
   // Handle filter changes
   const handleFilterChange = (name, value) => {
@@ -109,21 +85,22 @@ const GlobalReturns = () => {
   // Apply filters
   const applyFilters = () => {
     setPage(0); // Reset to first page when applying filters
-    fetchReturns();
+    setAppliedFilters(filters);
   };
 
   // Reset filters
   const resetFilters = () => {
-    setFilters({
+    const defaultFilters = {
       startDate: dayjs().subtract(30, "day"),
       endDate: dayjs(),
       cabangId: "all",
       jenisRetur: "all",
       statusPembayaran: "all",
       search: "",
-    });
+    };
+    setFilters(defaultFilters);
+    setAppliedFilters(defaultFilters);
     setPage(0);
-    fetchReturns();
   };
 
   // Handle page change
@@ -139,7 +116,7 @@ const GlobalReturns = () => {
 
   // View return detail
   const viewReturnDetail = (returnId) => {
-    navigate(`/transactions/returns/${returnId}`);
+    navigate(`/returns/${returnId}`);
   };
 
   // Status badge component
@@ -198,111 +175,6 @@ const GlobalReturns = () => {
     );
   };
 
-  // Dummy data untuk demonstrasi
-  const dummyReturns = [
-    {
-      transaksi_id: "ret001",
-      nomor_transaksi: "RTR-20230501001",
-      jenis_transaksi: "RETUR_PENJUALAN",
-      tanggal: new Date().toISOString(),
-      cabang: {
-        id: "cbg001",
-        namaCabang: "Cabang Pusat",
-      },
-      pelanggan: {
-        id: "cus001",
-        namaPelanggan: "John Doe",
-      },
-      transaksi_asli: {
-        nomor_transaksi: "TRX-20230401001",
-      },
-      total: 150000,
-      status_pembayaran: "LUNAS",
-      user: {
-        id: "usr001",
-        namaLengkap: "Admin Kasir",
-      },
-      alasan_retur: "Barang cacat",
-    },
-    {
-      transaksi_id: "ret002",
-      nomor_transaksi: "RTR-20230501002",
-      jenis_transaksi: "RETUR_PEMBELIAN",
-      tanggal: new Date(
-        new Date().setDate(new Date().getDate() - 2)
-      ).toISOString(),
-      cabang: {
-        id: "cbg001",
-        namaCabang: "Cabang Pusat",
-      },
-      supplier: {
-        id: "sup001",
-        namaSupplier: "PT Supplier Utama",
-      },
-      transaksi_asli: {
-        nomor_transaksi: "TRX-20230401002",
-      },
-      total: 350000,
-      status_pembayaran: "BELUM_LUNAS",
-      user: {
-        id: "usr001",
-        namaLengkap: "Admin Kasir",
-      },
-      alasan_retur: "Barang tidak sesuai pesanan",
-    },
-    {
-      transaksi_id: "ret003",
-      nomor_transaksi: "RTR-20230501003",
-      jenis_transaksi: "RETUR_PENJUALAN",
-      tanggal: new Date(
-        new Date().setDate(new Date().getDate() - 3)
-      ).toISOString(),
-      cabang: {
-        id: "cbg002",
-        namaCabang: "Cabang Timur",
-      },
-      pelanggan: {
-        id: "cus002",
-        namaPelanggan: "Jane Smith",
-      },
-      transaksi_asli: {
-        nomor_transaksi: "TRX-20230401005",
-      },
-      total: 75000,
-      status_pembayaran: "LUNAS",
-      user: {
-        id: "usr002",
-        namaLengkap: "Kasir Cabang",
-      },
-      alasan_retur: "Ukuran tidak sesuai",
-    },
-    {
-      transaksi_id: "ret004",
-      nomor_transaksi: "RTR-20230501004",
-      jenis_transaksi: "RETUR_PEMBELIAN",
-      tanggal: new Date(
-        new Date().setDate(new Date().getDate() - 5)
-      ).toISOString(),
-      cabang: {
-        id: "cbg002",
-        namaCabang: "Cabang Timur",
-      },
-      supplier: {
-        id: "sup002",
-        namaSupplier: "CV Barang Lengkap",
-      },
-      transaksi_asli: {
-        nomor_transaksi: "TRX-20230401007",
-      },
-      total: 220000,
-      status_pembayaran: "DIBATALKAN",
-      user: {
-        id: "usr002",
-        namaLengkap: "Kasir Cabang",
-      },
-      alasan_retur: "Produk kadaluarsa",
-    },
-  ];
 
   return (
     <div className="w-full p-6">
@@ -457,7 +329,7 @@ const GlobalReturns = () => {
       {/* Create Return Button */}
       <div className="mb-6">
         <button
-          onClick={() => navigate("/transactions/returns/create")}
+          onClick={() => navigate("/returns/create")}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
           <RefreshCcw className="mr-2 h-4 w-4" />
@@ -478,7 +350,7 @@ const GlobalReturns = () => {
               <p className="mt-2 text-gray-500">Memuat data...</p>
             </div>
           </div>
-        ) : error ? (
+        ) : isError ? (
           <div className="p-6">
             <div className="bg-red-50 border border-red-200 rounded-md p-4">
               <div className="flex">
@@ -498,7 +370,9 @@ const GlobalReturns = () => {
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">{error}</h3>
+                  <h3 className="text-sm font-medium text-red-800">
+                    {error?.response?.data?.message || "Gagal memuat data retur. Silakan coba lagi."}
+                  </h3>
                 </div>
               </div>
             </div>

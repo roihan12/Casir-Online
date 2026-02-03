@@ -95,11 +95,12 @@ const deletePelanggan = async (id, { userId, ipAddress }) => {
   return { message: "Pelanggan deleted successfully" };
 };
 
-const getAllPelanggan = async ({ page = 1, limit = 10, search = "" }) => {
+const getAllPelanggan = async ({ page = 1, limit = 10, search = "", cabang_id = null }) => {
   const skip = (page - 1) * limit;
-  const whereClause = search
-    ? { namaPelanggan: { contains: search, mode: "insensitive" } }
-    : {};
+  const whereClause = {
+    ...(search && { namaPelanggan: { contains: search, mode: "insensitive" } }),
+    ...(cabang_id && { cabang_id }),
+  };
 
   const [data, total] = await Promise.all([
     prisma.pelanggan.findMany({

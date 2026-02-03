@@ -921,7 +921,7 @@ const GlobalPOS = () => {
     });
 
   const { data: customerSearchResults, isLoading: isLoadingCustomers } =
-    useCustomerSearch(customerSearchQuery, {
+    useCustomerSearch(customerSearchQuery, currentBranch?.id, {
       enabled: customerSearchQuery.length > 2,
     });
 

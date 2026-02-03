@@ -29,8 +29,11 @@ const posService = {
   },
 
   // Pelanggan
-  getCustomers: async (query = "") => {
-    const response = await api.get(`/pelanggan?search=${query}`);
+  getCustomers: async (query = "", cabang_id = null) => {
+    const params = new URLSearchParams();
+    if (query) params.append("search", query);
+    if (cabang_id) params.append("cabang_id", cabang_id);
+    const response = await api.get(`/pelanggan?${params.toString()}`);
     return response.data.data;
   },
 

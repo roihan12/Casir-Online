@@ -170,7 +170,10 @@ const createTransaksiWithPromo = async (data, auditInfo) => {
         ${data.uang_muka || 0}::NUMERIC,
         ${data.manual_discount_persen || null}::NUMERIC,
         ${data.manual_discount_nominal || 0}::NUMERIC,
-        ${data.manual_discount_alasan || null}::VARCHAR
+        ${data.manual_discount_alasan || null}::VARCHAR,
+        ${data.loyalty_reward_id || null}::VARCHAR,
+        ${data.loyalty_discount || 0}::NUMERIC,
+        ${data.points_redeemed || 0}::INTEGER
       )
     `;
 
@@ -309,36 +312,7 @@ const getTransaksiById = async (transaksiId) => {
   return await cacheOrFetch(
     cacheKey,
     async () => {
-      const transaksi = await prisma.transaksi.findUnique({
-        where: { transaksi_id: transaksiId },
-        include: {
-          transaksi_detail: {
-            include: {
-              produk: {
-                include: {
-                  produkMaster: true,
-                },
-              },
-            },
-          },
-          pembayaran: {
-            include: {
-              createdByUser: {
-                select: {
-                  id: true,
-                  namaLengkap: true,
-                },
-              },
-            },
-          },
-          pelanggan: true,
-          supplier: true,
-          cabang: true,
-
-          shift: true,
-          promo: true,
-        },
-      });
+      const transaksi = await receiptService.getTransactionDataForReceipt(transaksiId);
 
       if (!transaksi) {
         throw new ResponseError(404, "Transaksi tidak ditemukan");
@@ -395,7 +369,13 @@ const getTransaksiList = async (filters) => {
       const where = {};
 
       if (cabang_id) where.cabang_id = cabang_id;
-      if (jenis_transaksi) where.jenis_transaksi = jenis_transaksi;
+      if (jenis_transaksi) {
+        if (Array.isArray(jenis_transaksi)) {
+          where.jenis_transaksi = { in: jenis_transaksi };
+        } else {
+          where.jenis_transaksi = jenis_transaksi;
+        }
+      }
       if (status_pembayaran) where.status_pembayaran = status_pembayaran;
       if (pelanggan_id) where.pelanggan_id = pelanggan_id;
       if (supplier_id) where.supplier_id = supplier_id;
@@ -1252,7 +1232,7 @@ const previewPromo = async (data, auditInfo) => {
   }
 };
 
-// Service untuk preview semua diskon (promo + member + manual)
+// Service untuk preview semua diskon (promo + member + manual + loyalty)
 const previewAllDiscounts = async (data, auditInfo) => {
   try {
     const {
@@ -1264,7 +1244,11 @@ const previewAllDiscounts = async (data, auditInfo) => {
       manual_discount_nominal,
       manual_discount_alasan,
       metode_pembayaran,
-      details
+      details,
+      // Loyalty reward input
+      loyalty_discount = 0,
+      loyalty_reward_name = null,
+      points_redeemed = 0
     } = data;
 
     // Validate required fields
@@ -1346,9 +1330,33 @@ const previewAllDiscounts = async (data, auditInfo) => {
 
     const discountResult = result[0]?.result;
 
-    // Return the breakdown with any promo errors
+    // Add loyalty discount to breakdown if provided
+    const loyaltyDiscountValue = parseFloat(loyalty_discount) || 0;
+    let updatedBreakdown = discountResult?.breakdown || [];
+    
+    if (loyaltyDiscountValue > 0) {
+      updatedBreakdown = [
+        ...updatedBreakdown,
+        {
+          tipe: 'LOYALTY_REWARD',
+          amount: loyaltyDiscountValue,
+          reward_name: loyalty_reward_name,
+          points_redeemed: points_redeemed
+        }
+      ];
+    }
+
+    // Calculate new total discount including loyalty
+    const totalDiscountWithLoyalty = parseFloat(discountResult?.total_discount || 0) + loyaltyDiscountValue;
+
+    // Return the breakdown with loyalty discount and promo errors
     return {
       ...discountResult,
+      total_discount: totalDiscountWithLoyalty,
+      discount_loyalty: loyaltyDiscountValue,
+      loyalty_reward_name: loyalty_reward_name,
+      points_redeemed: points_redeemed,
+      breakdown: updatedBreakdown,
       promo_errors: promoErrors,
     };
   } catch (error) {

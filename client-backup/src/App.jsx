@@ -408,8 +408,21 @@ function App() {
             >
               <Route index element={<GlobalTransactions />} />
               <Route path=":id" element={<GlobalTransactionDetail />} />
-              <Route path="returns" element={<GlobalReturns />} />
-              <Route path="returns/:id" element={<GlobalReturnDetail />} />
+            </Route>
+            
+
+            {/* Returns */}
+            <Route
+              path="/returns"
+              element={
+                <ProtectedRoute requiredPermission="transaksi:read">
+                  <DynamicLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<GlobalReturns />} />
+              <Route path="create" element={<GlobalReturnCreate />} />
+              <Route path=":id" element={<GlobalReturnDetail />} />
             </Route>
 
             {/* Invoices */}

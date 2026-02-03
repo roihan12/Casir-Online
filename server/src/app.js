@@ -50,6 +50,7 @@ const pembayaranHutangRoutes = require("./routes/pembayaranHutangRoutes");
 const promoPreviewRoutes = require("./routes/promoPreviewRoutes");
 const promoRoutes = require("./routes/promoRoutes");
 const discountConfigRoutes = require("./routes/discountConfigRoutes");
+const loyaltyRoutes = require("./routes/loyaltyRoutes");
 
 const {
   setupNotificationScheduler,
@@ -145,6 +146,7 @@ app.use("/api/hutang", pembayaranHutangRoutes);
 app.use("/api/transaksi", promoPreviewRoutes);
 app.use("/api/promos", promoRoutes);
 app.use("/api/discount-config", discountConfigRoutes);
+app.use("/api/loyalty", loyaltyRoutes);
 
 // 404 handler
 app.use((req, res) => {

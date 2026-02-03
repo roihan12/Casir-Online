@@ -25,7 +25,7 @@ import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import toast from "react-hot-toast";
 import { useTransactionDetail } from "../hooks/useTransactions";
-import KreditPaymentModal from "../../credit/components/KreditPaymentModal";
+import PelunasanModal from "../components/PelunasanModal";
 import formatDate from "@common/utils/formatDate";
 
 // Formatter untuk uang
@@ -40,7 +40,7 @@ const formatCurrency = (amount) => {
 const GlobalTransactionDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [kreditModalOpen, setKreditModalOpen] = useState(false);
+  const [pelunasanModalOpen, setPelunasanModalOpen] = useState(false);
 
   // Fetch transaction detail using React Query
   const {
@@ -219,16 +219,14 @@ const GlobalTransactionDetail = () => {
             <Download size={16} className="mr-2" />
             Unduh PDF
           </button>
-          {/* Tampilkan tombol pembayaran kredit jika transaksi penjualan, belum lunas, dan memiliki pelanggan */}
-          {displayData.jenis_transaksi?.includes("PENJUALAN") && 
-           displayData.status_pembayaran !== "LUNAS" &&
-           displayData.pelanggan && (
+          {/* Tampilkan tombol pelunasan jika transaksi belum lunas */}
+          {displayData.status_pembayaran === "BELUM_LUNAS" && (
             <button
-              className="flex items-center text-white bg-indigo-600 hover:bg-indigo-700 border border-indigo-600 rounded-md px-4 py-2 text-sm"
-              onClick={() => setKreditModalOpen(true)}
+              className="flex items-center text-white bg-green-600 hover:bg-green-700 border border-green-600 rounded-md px-4 py-2 text-sm"
+              onClick={() => setPelunasanModalOpen(true)}
             >
               <CreditCardIcon size={16} className="mr-2" />
-              Pembayaran Kredit
+              Pelunasan
             </button>
           )}
         </div>
@@ -692,15 +690,17 @@ const GlobalTransactionDetail = () => {
          )}
       </div>
       
-      {/* Kredit Payment Modal */}
-      <KreditPaymentModal
-        isOpen={kreditModalOpen}
-        onClose={() => setKreditModalOpen(false)}
+      {/* Pelunasan Modal */}
+      <PelunasanModal
+        isOpen={pelunasanModalOpen}
+        onClose={() => setPelunasanModalOpen(false)}
         transaksiId={id}
+        totalTagihan={displayData?.total || 0}
+        sisaTagihan={displayData?.total - (displayData?.pembayaran?.reduce((sum, p) => sum + (p?.jumlah_bayar || 0), 0) || 0)}
         onSuccess={() => {
-          setKreditModalOpen(false);
+          setPelunasanModalOpen(false);
           refetch();
-          toast.success("Pembayaran kredit berhasil dibuat");
+          toast.success("Pelunasan berhasil");
         }}
       />
     </div>

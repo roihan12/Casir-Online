@@ -12,6 +12,7 @@ import {
 import formatCurrency from "@common/utils/formatCurrency";
 import PromoSection from "./PromoSection";
 import { cn } from "@common/utils/cn";
+import LoyaltyBadge from "../loyalty/LoyaltyBadge";
 
 const CartSection = ({
   cart,
@@ -34,6 +35,9 @@ const CartSection = ({
   discountBreakdown,
   isCalculatingDiscount,
   className = "",
+  // Loyalty props
+  onShowLoyaltyModal,
+  loyaltyDiscount = 0,
 }) => {
   const [appliedPromos, setAppliedPromos] = useState([]);
   const [promoTotalDiscount, setPromoTotalDiscount] = useState(0);
@@ -117,6 +121,16 @@ const CartSection = ({
           </div>
           <ChevronDown size={18} className="text-gray-300 group-hover:text-indigo-400" />
         </button>
+
+        {/* Loyalty Badge - show when customer is selected */}
+        {customer && onShowLoyaltyModal && (
+          <div className="mt-3">
+            <LoyaltyBadge 
+              customer={customer} 
+              onClick={onShowLoyaltyModal} 
+            />
+          </div>
+        )}
       </div>
 
       {/* Cart items */}

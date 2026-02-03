@@ -1,187 +1,151 @@
 import api from "./api";
 
-// Get customer loyalty information
-const getCustomerLoyaltyInfo = async (pelangganId) => {
-  try {
-    const response = await api.get(`/api/loyalty/customer/${pelangganId}`);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+// ================================================================
+// CONFIG API
+// ================================================================
+
+export const getLoyaltyConfig = async (cabangId = null) => {
+  const params = cabangId ? { cabangId } : {};
+  const response = await api.get("/loyalty/config", { params });
+  return response.data;
 };
 
-// Get all loyalty tiers
-const getLoyaltyTiers = async () => {
-  try {
-    const response = await api.get("/api/loyalty/tiers");
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+export const createLoyaltyConfig = async (data) => {
+  const response = await api.post("/loyalty/config", data);
+  return response.data;
 };
 
-// Create or update loyalty tier
-const saveLoyaltyTier = async (tierData) => {
-  try {
-    if (tierData.id) {
-      const response = await api.put(
-        `/api/loyalty/tiers/${tierData.id}`,
-        tierData
-      );
-      return response.data;
-    } else {
-      const response = await api.post("/api/loyalty/tiers", tierData);
-      return response.data;
-    }
-  } catch (error) {
-    throw error;
-  }
+export const updateLoyaltyConfig = async (id, data) => {
+  const response = await api.put(`/loyalty/config/${id}`, data);
+  return response.data;
 };
 
-// Delete loyalty tier
-const deleteLoyaltyTier = async (tierId) => {
-  try {
-    const response = await api.delete(`/api/loyalty/tiers/${tierId}`);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+// ================================================================
+// TIER API
+// ================================================================
+
+export const getAllTiers = async () => {
+  const response = await api.get("/loyalty/tiers");
+  return response.data;
 };
 
-// Get all rewards
-const getLoyaltyRewards = async () => {
-  try {
-    const response = await api.get("/api/loyalty/rewards");
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+export const getTierById = async (id) => {
+  const response = await api.get(`/loyalty/tiers/${id}`);
+  return response.data;
 };
 
-// Create or update reward
-const saveLoyaltyReward = async (rewardData) => {
-  try {
-    if (rewardData.id) {
-      const response = await api.put(
-        `/api/loyalty/rewards/${rewardData.id}`,
-        rewardData
-      );
-      return response.data;
-    } else {
-      const response = await api.post("/api/loyalty/rewards", rewardData);
-      return response.data;
-    }
-  } catch (error) {
-    throw error;
-  }
+export const createTier = async (data) => {
+  const response = await api.post("/loyalty/tiers", data);
+  return response.data;
 };
 
-// Delete reward
-const deleteLoyaltyReward = async (rewardId) => {
-  try {
-    const response = await api.delete(`/api/loyalty/rewards/${rewardId}`);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+export const updateTier = async (id, data) => {
+  const response = await api.put(`/loyalty/tiers/${id}`, data);
+  return response.data;
 };
 
-// Redeem points for a reward
-const redeemPoints = async (pelangganId, rewardId) => {
-  try {
-    const response = await api.post(`/api/loyalty/redeem`, {
-      pelangganId,
-      rewardId,
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+export const deleteTier = async (id) => {
+  const response = await api.delete(`/loyalty/tiers/${id}`);
+  return response.data;
 };
 
-// Get customer segment rules
-const getSegmentRules = async () => {
-  try {
-    const response = await api.get("/api/loyalty/segments");
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+// ================================================================
+// REWARD API
+// ================================================================
+
+export const getAllRewards = async (onlyActive = true) => {
+  const response = await api.get("/loyalty/rewards", {
+    params: { active: onlyActive }
+  });
+  return response.data;
 };
 
-// Save segment rules
-const saveSegmentRule = async (segmentData) => {
-  try {
-    if (segmentData.id) {
-      const response = await api.put(
-        `/api/loyalty/segments/${segmentData.id}`,
-        segmentData
-      );
-      return response.data;
-    } else {
-      const response = await api.post("/api/loyalty/segments", segmentData);
-      return response.data;
-    }
-  } catch (error) {
-    throw error;
-  }
+export const getRewardById = async (id) => {
+  const response = await api.get(`/loyalty/rewards/${id}`);
+  return response.data;
 };
 
-// Delete segment rule
-const deleteSegmentRule = async (segmentId) => {
-  try {
-    const response = await api.delete(`/api/loyalty/segments/${segmentId}`);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+export const createReward = async (data) => {
+  const response = await api.post("/loyalty/rewards", data);
+  return response.data;
 };
 
-// Run customer segmentation
-const runSegmentation = async () => {
-  try {
-    const response = await api.post("/api/loyalty/segments/run");
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+export const updateReward = async (id, data) => {
+  const response = await api.put(`/loyalty/rewards/${id}`, data);
+  return response.data;
 };
 
-// Get loyalty statistics
-const getLoyaltyStats = async () => {
-  try {
-    const response = await api.get("/api/loyalty/stats");
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+export const deleteReward = async (id) => {
+  const response = await api.delete(`/loyalty/rewards/${id}`);
+  return response.data;
 };
 
-// Get points history for a customer
-const getPointsHistory = async (pelangganId, page = 1, limit = 10) => {
-  try {
-    const response = await api.get(
-      `/api/loyalty/customer/${pelangganId}/history?page=${page}&limit=${limit}`
-    );
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+// ================================================================
+// CUSTOMER LOYALTY API
+// ================================================================
+
+export const getCustomerLoyaltyInfo = async (pelangganId) => {
+  const response = await api.get(`/loyalty/customer/${pelangganId}`);
+  return response.data;
 };
+
+export const getAvailableRewards = async (pelangganId) => {
+  const response = await api.get(`/loyalty/customer/${pelangganId}/rewards`);
+  return response.data;
+};
+
+export const getPointsHistory = async (pelangganId, limit = 50, offset = 0) => {
+  const response = await api.get(`/loyalty/customer/${pelangganId}/history`, {
+    params: { limit, offset }
+  });
+  return response.data;
+};
+
+export const redeemReward = async (pelangganId, rewardId, transaksiId = null) => {
+  const response = await api.post("/loyalty/redeem", {
+    pelangganId,
+    rewardId,
+    transaksiId
+  });
+  return response.data;
+};
+
+// ================================================================
+// STATISTICS API
+// ================================================================
+
+export const getLoyaltyStats = async (cabangId = null) => {
+  const params = cabangId ? { cabangId } : {};
+  const response = await api.get("/loyalty/stats", { params });
+  return response.data;
+};
+
+// ================================================================
+// HOOKS EXPORTS (for React Query)
+// ================================================================
 
 export default {
+  // Config
+  getLoyaltyConfig,
+  createLoyaltyConfig,
+  updateLoyaltyConfig,
+  // Tiers
+  getAllTiers,
+  getTierById,
+  createTier,
+  updateTier,
+  deleteTier,
+  // Rewards
+  getAllRewards,
+  getRewardById,
+  createReward,
+  updateReward,
+  deleteReward,
+  // Customer
   getCustomerLoyaltyInfo,
-  getLoyaltyTiers,
-  saveLoyaltyTier,
-  deleteLoyaltyTier,
-  getLoyaltyRewards,
-  saveLoyaltyReward,
-  deleteLoyaltyReward,
-  redeemPoints,
-  getSegmentRules,
-  saveSegmentRule,
-  deleteSegmentRule,
-  runSegmentation,
-  getLoyaltyStats,
+  getAvailableRewards,
   getPointsHistory,
+  redeemReward,
+  // Stats
+  getLoyaltyStats
 };

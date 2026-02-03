@@ -12,6 +12,9 @@ const createTransaksiValidation = Joi.object({
   shift_id: Joi.string().allow(null, ""),
   promo_id: Joi.string().allow(null, ""),
   promo_codes: Joi.array().items(Joi.string()).allow(null),
+  loyalty_discount: Joi.number().precision(2).min(0).allow(null),
+  loyalty_reward_id: Joi.string().allow(null, ""),
+  points_redeemed: Joi.number().integer().min(0).allow(null),
   details: Joi.array()
     .items(
       Joi.object({
@@ -87,11 +90,9 @@ const updateQrisStatusValidation = Joi.object({
 // Validasi untuk mendapatkan daftar transaksi
 const getTransaksiListValidation = Joi.object({
   cabang_id: Joi.string(),
-  jenis_transaksi: Joi.string().valid(
-    "PENJUALAN",
-    "PEMBELIAN",
-    "RETUR_PENJUALAN",
-    "RETUR_PEMBELIAN"
+  jenis_transaksi: Joi.alternatives().try(
+    Joi.string().valid("PENJUALAN", "PEMBELIAN", "RETUR_PENJUALAN", "RETUR_PEMBELIAN"),
+    Joi.array().items(Joi.string().valid("PENJUALAN", "PEMBELIAN", "RETUR_PENJUALAN", "RETUR_PEMBELIAN"))
   ),
   status_pembayaran: Joi.string().valid("LUNAS", "BELUM_LUNAS", "DIBATALKAN"),
   pelanggan_id: Joi.string(),
@@ -191,6 +192,9 @@ const previewDiscountValidation = Joi.object({
   manual_discount_persen: Joi.number().precision(2).min(0).max(100).allow(null),
   manual_discount_nominal: Joi.number().precision(2).min(0).allow(null),
   manual_discount_alasan: Joi.string().allow(null, ""),
+  loyalty_discount: Joi.number().precision(2).min(0).allow(null),
+  loyalty_reward_name: Joi.string().allow(null, ""),
+  points_redeemed: Joi.number().integer().min(0).allow(null),
   metode_pembayaran: Joi.string().allow(null, ""),
    details: Joi.array()
     .items(

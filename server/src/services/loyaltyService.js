@@ -1,232 +1,419 @@
 const prisma = require("../config/db");
 const { ResponseError } = require("../error/responseError");
+const { sanitizeBigInt } = require("../utils/bigintSerializer");
 
-// Point calculation constants
-const POINTS_PER_AMOUNT = 0.01; // 1 point per 100 currency units
-const MIN_AMOUNT_FOR_POINTS = 10000; // Minimum purchase amount to earn points
+// ================================================================
+// CONFIG OPERATIONS
+// ================================================================
 
-// Add points from transaction
-const addPointsFromTransaction = async (
-  pelangganId,
-  transaksiId,
-  amount,
-  auditInfo
-) => {
-  // Check if customer exists
-  const pelanggan = await prisma.pelanggan.findUnique({
-    where: { id: pelangganId },
-  });
-
-  if (!pelanggan) {
-    throw new ResponseError(404, "Pelanggan tidak ditemukan");
-  }
-
-  // Only add points if amount exceeds minimum
-  if (amount < MIN_AMOUNT_FOR_POINTS) {
-    return { poin: 0, total: pelanggan.poin || 0 };
-  }
-
-  // Calculate points to add (rounded down)
-  const pointsToAdd = Math.floor(amount * POINTS_PER_AMOUNT);
-
-  // Update customer points
-  const updatedPelanggan = await prisma.pelanggan.update({
-    where: { id: pelangganId },
-    data: {
-      poin: {
-        increment: pointsToAdd,
-      },
-    },
-  });
-
-  // In a real implementation, you would log this to a points_history table
-  // We'll add audit log for now
-  await prisma.auditLog.create({
-    data: {
-      user_id: auditInfo.userId,
-      ip_address: auditInfo.ipAddress,
-      action: "ADD_LOYALTY_POINTS",
-      table_name: "pelanggan",
-      record_id: pelangganId,
-      old_values: JSON.stringify({ poin: pelanggan.poin || 0 }),
-      new_values: JSON.stringify({
-        poin: updatedPelanggan.poin,
-        added: pointsToAdd,
-        transaksi_id: transaksiId,
-      }),
-    },
-  });
-
-  return {
-    poin: pointsToAdd,
-    total: updatedPelanggan.poin,
+const getLoyaltyConfig = async (cabangId = null) => {
+  const query = `
+    SELECT * FROM loyalty_config 
+    WHERE (cabang_id = $1 OR cabang_id IS NULL)
+    AND is_active = TRUE
+    ORDER BY cabang_id NULLS LAST
+    LIMIT 1
+  `;
+  const result = await prisma.$queryRawUnsafe(query, cabangId);
+  return result[0] || {
+    points_per_amount: 0.01,
+    min_transaction_for_points: 10000,
+    points_expiry_days: 365,
+    is_active: true
   };
 };
 
-// Reverse points from transaction (used when canceling transaction)
-const reversePointsFromTransaction = async (
-  pelangganId,
-  transaksiId,
-  reason,
-  auditInfo
-) => {
-  // This is a simplified implementation
-  // In a real app, you would look up the exact points awarded for the transaction from history
-
-  // Get transaction amount
-  const transaksi = await prisma.transaksi.findUnique({
-    where: { transaksi_id: transaksiId },
-  });
-
-  if (!transaksi) {
-    throw new ResponseError(404, "Transaksi tidak ditemukan");
-  }
-
-  // Check if customer exists
-  const pelanggan = await prisma.pelanggan.findUnique({
-    where: { id: pelangganId },
-  });
-
-  if (!pelanggan) {
-    throw new ResponseError(404, "Pelanggan tidak ditemukan");
-  }
-
-  // Calculate points to reverse
-  const pointsToReverse = Math.floor(
-    Number(transaksi.total) * POINTS_PER_AMOUNT
+const updateLoyaltyConfig = async (configId, data, userId) => {
+  const query = `
+    UPDATE loyalty_config SET
+      points_per_amount = $2,
+      min_transaction_for_points = $3,
+      points_expiry_days = $4,
+      is_active = $5,
+      updated_at = NOW(),
+      updated_by = $6
+    WHERE loyalty_config_id = $1
+    RETURNING *
+  `;
+  const result = await prisma.$queryRawUnsafe(
+    query,
+    configId,
+    data.points_per_amount,
+    data.min_transaction_for_points,
+    data.points_expiry_days,
+    data.is_active,
+    userId
   );
-
-  // Don't reverse if transaction was too small to earn points
-  if (transaksi.total < MIN_AMOUNT_FOR_POINTS) {
-    return { poin: 0, total: pelanggan.poin || 0 };
-  }
-
-  // Update customer points (don't let it go below 0)
-  const newPoints = Math.max(0, (pelanggan.poin || 0) - pointsToReverse);
-
-  const updatedPelanggan = await prisma.pelanggan.update({
-    where: { id: pelangganId },
-    data: {
-      poin: newPoints,
-    },
-  });
-
-  // Log the reversal
-  await prisma.auditLog.create({
-    data: {
-      user_id: auditInfo.userId,
-      ip_address: auditInfo.ipAddress,
-      action: "REVERSE_LOYALTY_POINTS",
-      table_name: "pelanggan",
-      record_id: pelangganId,
-      old_values: JSON.stringify({ poin: pelanggan.poin || 0 }),
-      new_values: JSON.stringify({
-        poin: updatedPelanggan.poin,
-        reversed: pointsToReverse,
-        transaksi_id: transaksiId,
-        reason,
-      }),
-    },
-  });
-
-  return {
-    poin: -pointsToReverse,
-    total: updatedPelanggan.poin,
-  };
+  return result[0];
 };
 
-// Get customer loyalty info
+const createLoyaltyConfig = async (data, userId) => {
+  const query = `
+    INSERT INTO loyalty_config (
+      cabang_id, points_per_amount, min_transaction_for_points,
+      points_expiry_days, is_active, created_by
+    ) VALUES ($1, $2, $3, $4, $5, $6)
+    ON CONFLICT (cabang_id) DO UPDATE SET
+      points_per_amount = $2,
+      min_transaction_for_points = $3,
+      points_expiry_days = $4,
+      is_active = $5,
+      updated_at = NOW(),
+      updated_by = $6
+    RETURNING *
+  `;
+  const result = await prisma.$queryRawUnsafe(
+    query,
+    data.cabang_id || null,
+    data.points_per_amount || 0.01,
+    data.min_transaction_for_points || 10000,
+    data.points_expiry_days || 365,
+    data.is_active !== false,
+    userId
+  );
+  return result[0];
+};
+
+// ================================================================
+// TIER OPERATIONS
+// ================================================================
+
+const getAllTiers = async () => {
+  const query = `
+    SELECT * FROM loyalty_tier 
+    WHERE is_active = TRUE
+    ORDER BY tier_order ASC
+  `;
+  const result = await prisma.$queryRawUnsafe(query);
+  return result;
+};
+
+const getTierById = async (tierId) => {
+  const query = `SELECT * FROM loyalty_tier WHERE loyalty_tier_id = $1`;
+  const result = await prisma.$queryRawUnsafe(query, tierId);
+  return result[0];
+};
+
+const createTier = async (data, userId) => {
+  // Get max tier_order
+  const maxOrderResult = await prisma.$queryRawUnsafe(
+    `SELECT COALESCE(MAX(tier_order), 0) + 1 as next_order FROM loyalty_tier`
+  );
+  const nextOrder = maxOrderResult[0]?.next_order || 1;
+
+  const query = `
+    INSERT INTO loyalty_tier (
+      name, min_points, max_points, discount_percent, benefits,
+      color, icon, tier_order, is_active, created_by
+    ) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9, $10)
+    RETURNING *
+  `;
+  const result = await prisma.$queryRawUnsafe(
+    query,
+    data.name,
+    data.min_points || 0,
+    data.max_points || null,
+    data.discount_percent || 0,
+    JSON.stringify(data.benefits || []),
+    data.color || '#6B7280',
+    data.icon || 'star',
+    data.tier_order || nextOrder,
+    data.is_active !== false,
+    userId
+  );
+  return result[0];
+};
+
+const updateTier = async (tierId, data, userId) => {
+  const query = `
+    UPDATE loyalty_tier SET
+      name = COALESCE($2, name),
+      min_points = COALESCE($3, min_points),
+      max_points = $4,
+      discount_percent = COALESCE($5, discount_percent),
+      benefits = COALESCE($6::jsonb, benefits),
+      color = COALESCE($7, color),
+      icon = COALESCE($8, icon),
+      tier_order = COALESCE($9, tier_order),
+      is_active = COALESCE($10, is_active),
+      updated_at = NOW(),
+      updated_by = $11
+    WHERE loyalty_tier_id = $1
+    RETURNING *
+  `;
+  const result = await prisma.$queryRawUnsafe(
+    query,
+    tierId,
+    data.name,
+    data.min_points,
+    data.max_points,
+    data.discount_percent,
+    data.benefits ? JSON.stringify(data.benefits) : null,
+    data.color,
+    data.icon,
+    data.tier_order,
+    data.is_active,
+    userId
+  );
+  return result[0];
+};
+
+const deleteTier = async (tierId) => {
+  const query = `
+    UPDATE loyalty_tier SET is_active = FALSE, updated_at = NOW()
+    WHERE loyalty_tier_id = $1
+    RETURNING *
+  `;
+  const result = await prisma.$queryRawUnsafe(query, tierId);
+  return result[0];
+};
+
+// ================================================================
+// REWARD OPERATIONS
+// ================================================================
+
+const getAllRewards = async (onlyActive = true) => {
+  let query = `SELECT * FROM loyalty_reward`;
+  if (onlyActive) {
+    query += ` WHERE is_active = TRUE`;
+  }
+  query += ` ORDER BY points_required ASC`;
+  const result = await prisma.$queryRawUnsafe(query);
+  return result;
+};
+
+const getRewardById = async (rewardId) => {
+  const query = `SELECT * FROM loyalty_reward WHERE loyalty_reward_id = $1`;
+  const result = await prisma.$queryRawUnsafe(query, rewardId);
+  return result[0];
+};
+
+const createReward = async (data, userId) => {
+  const query = `
+    INSERT INTO loyalty_reward (
+      name, description, points_required, reward_type, reward_value,
+      produk_master_id, max_redeem_per_customer, total_stock,
+      valid_from, valid_until, min_tier_id, is_active, created_by
+    ) VALUES ($1, $2, $3, $4::loyalty_reward_type, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    RETURNING *
+  `;
+  const result = await prisma.$queryRawUnsafe(
+    query,
+    data.name,
+    data.description || null,
+    data.points_required,
+    data.reward_type || 'DISCOUNT',
+    data.reward_value,
+    data.produk_master_id || null,
+    data.max_redeem_per_customer || null,
+    data.total_stock || null,
+    data.valid_from || null,
+    data.valid_until || null,
+    data.min_tier_id || null,
+    data.is_active !== false,
+    userId
+  );
+  return result[0];
+};
+
+const updateReward = async (rewardId, data, userId) => {
+  const query = `
+    UPDATE loyalty_reward SET
+      name = COALESCE($2, name),
+      description = COALESCE($3, description),
+      points_required = COALESCE($4, points_required),
+      reward_type = COALESCE($5::loyalty_reward_type, reward_type),
+      reward_value = COALESCE($6, reward_value),
+      max_redeem_per_customer = $7,
+      total_stock = $8,
+      valid_from = $9,
+      valid_until = $10,
+      min_tier_id = $11,
+      is_active = COALESCE($12, is_active),
+      updated_at = NOW(),
+      updated_by = $13
+    WHERE loyalty_reward_id = $1
+    RETURNING *
+  `;
+  const result = await prisma.$queryRawUnsafe(
+    query,
+    rewardId,
+    data.name,
+    data.description,
+    data.points_required,
+    data.reward_type,
+    data.reward_value,
+    data.max_redeem_per_customer,
+    data.total_stock,
+    data.valid_from,
+    data.valid_until,
+    data.min_tier_id,
+    data.is_active,
+    userId
+  );
+  return result[0];
+};
+
+const deleteReward = async (rewardId) => {
+  const query = `
+    UPDATE loyalty_reward SET is_active = FALSE, updated_at = NOW()
+    WHERE loyalty_reward_id = $1
+    RETURNING *
+  `;
+  const result = await prisma.$queryRawUnsafe(query, rewardId);
+  return result[0];
+};
+
+// ================================================================
+// CUSTOMER LOYALTY OPERATIONS
+// ================================================================
+
 const getCustomerLoyaltyInfo = async (pelangganId) => {
-  // Check if customer exists
-  const pelanggan = await prisma.pelanggan.findUnique({
-    where: { id: pelangganId },
-  });
+  const query = `SELECT * FROM get_customer_loyalty_info($1)`;
+  const result = await prisma.$queryRawUnsafe(query, pelangganId);
+  return result[0]?.get_customer_loyalty_info;
+};
 
-  if (!pelanggan) {
-    throw new ResponseError(404, "Pelanggan tidak ditemukan");
-  }
+const getAvailableRewards = async (pelangganId) => {
+  const query = `SELECT * FROM get_available_rewards($1)`;
+  const result = await prisma.$queryRawUnsafe(query, pelangganId);
+  return result[0]?.get_available_rewards;
+};
 
-  // In a real implementation, you would get more detailed loyalty info
-  // including transaction history, points history, available rewards, etc.
+const redeemReward = async (pelangganId, rewardId, transaksiId, userId) => {
+  const query = `SELECT * FROM redeem_loyalty_reward($1, $2, $3, $4)`;
+  const result = await prisma.$queryRawUnsafe(
+    query,
+    pelangganId,
+    rewardId,
+    transaksiId,
+    userId
+  );
+  return result[0]?.redeem_loyalty_reward;
+};
 
-  // Calculate customer tier based on points
-  let tier = "Regular";
-  if (pelanggan.poin >= 1000) tier = "Silver";
-  if (pelanggan.poin >= 5000) tier = "Gold";
-  if (pelanggan.poin >= 10000) tier = "Platinum";
-
+const getPointsHistory = async (pelangganId, limit = 50, offset = 0) => {
+  const query = `
+    SELECT 
+      lph.*,
+      t.nomor_transaksi,
+      lr.name as reward_name
+    FROM loyalty_point_history lph
+    LEFT JOIN transaksi t ON t.transaksi_id = lph.transaksi_id
+    LEFT JOIN loyalty_reward lr ON lr.loyalty_reward_id = lph.reward_id
+    WHERE lph.pelanggan_id = $1
+    ORDER BY lph.created_at DESC
+    LIMIT $2 OFFSET $3
+  `;
+  const result = await prisma.$queryRawUnsafe(query, pelangganId, limit, offset);
+  
+  // Get total count
+  const countQuery = `
+    SELECT COUNT(*) as total FROM loyalty_point_history WHERE pelanggan_id = $1
+  `;
+  const countResult = await prisma.$queryRawUnsafe(countQuery, pelangganId);
+  
   return {
-    customer_id: pelanggan.id,
-    points: pelanggan.poin || 0,
-    tier,
-    points_expiry: null, // In a real app, you might track point expiration
-    membership_since: pelanggan.createdAt,
-    // You could add available rewards, etc.
+    data: result,
+    total: parseInt(countResult[0]?.total || 0),
+    limit,
+    offset
   };
 };
 
-// Redeem points for a reward
-const redeemPoints = async (
-  pelangganId,
-  rewardId,
-  pointsRequired,
-  auditInfo
-) => {
-  // Check if customer exists and has enough points
-  const pelanggan = await prisma.pelanggan.findUnique({
-    where: { id: pelangganId },
-  });
+// ================================================================
+// STATISTICS
+// ================================================================
 
-  if (!pelanggan) {
-    throw new ResponseError(404, "Pelanggan tidak ditemukan");
+const getLoyaltyStats = async (cabangId = null) => {
+  // Total members with points
+  let membersQuery = `
+    SELECT 
+      COUNT(*) FILTER (WHERE poin > 0) as active_members,
+      COUNT(*) as total_customers,
+      SUM(COALESCE(poin, 0)) as total_points_balance,
+      SUM(COALESCE(lifetime_points, 0)) as total_points_earned
+    FROM pelanggan
+    WHERE status = 'aktif'
+  `;
+  if (cabangId) {
+    membersQuery += ` AND cabang_id = '${cabangId}'`;
   }
+  
+  // Tier distribution
+  const tierQuery = `
+    SELECT 
+      lt.name as tier_name,
+      lt.color,
+      COUNT(p.pelanggan_id) as member_count
+    FROM loyalty_tier lt
+    LEFT JOIN pelanggan p ON p.loyalty_tier_id = lt.loyalty_tier_id AND p.status = 'aktif'
+    WHERE lt.is_active = TRUE
+    GROUP BY lt.loyalty_tier_id, lt.name, lt.color, lt.tier_order
+    ORDER BY lt.tier_order
+  `;
+  
+  // Points activity this month
+  const activityQuery = `
+    SELECT 
+      SUM(CASE WHEN type = 'EARN' THEN point_didapatkan ELSE 0 END) as points_earned,
+      SUM(CASE WHEN type = 'REDEEM' THEN ABS(point_didapatkan ) ELSE 0 END) as points_redeemed,
+      COUNT(CASE WHEN type = 'EARN' THEN 1 END) as earn_transactions,
+      COUNT(CASE WHEN type = 'REDEEM' THEN 1 END) as redeem_transactions
+    FROM loyalty_point_history
+    WHERE created_at >= date_trunc('month', CURRENT_DATE)
+  `;
+  
+  // Top redeemed rewards
+  const topRewardsQuery = `
+    SELECT 
+      lr.name,
+      lr.points_required,
+      lr.reward_value,
+      lr.current_redeemed as total_redeemed
+    FROM loyalty_reward lr
+    WHERE lr.is_active = TRUE
+    ORDER BY lr.current_redeemed DESC
+    LIMIT 5
+  `;
 
-  if ((pelanggan.poin || 0) < pointsRequired) {
-    throw new ResponseError(400, "Poin tidak mencukupi");
-  }
+  const [members, tiers, activity, topRewards] = await Promise.all([
+    prisma.$queryRawUnsafe(membersQuery),
+    prisma.$queryRawUnsafe(tierQuery),
+    prisma.$queryRawUnsafe(activityQuery),
+    prisma.$queryRawUnsafe(topRewardsQuery)
+  ]);
 
-  // In a real implementation, you would validate the reward exists
-  // and confirm the points required matches the reward
-
-  // Update customer points
-  const updatedPelanggan = await prisma.pelanggan.update({
-    where: { id: pelangganId },
-    data: {
-      poin: {
-        decrement: pointsRequired,
-      },
-    },
+  return sanitizeBigInt({
+    members: members[0],
+    tier_distribution: tiers,
+    monthly_activity: activity[0],
+    top_rewards: topRewards
   });
-
-  // Log the redemption
-  await prisma.auditLog.create({
-    data: {
-      user_id: auditInfo.userId,
-      ip_address: auditInfo.ipAddress,
-      action: "REDEEM_LOYALTY_POINTS",
-      table_name: "pelanggan",
-      record_id: pelangganId,
-      old_values: JSON.stringify({ poin: pelanggan.poin || 0 }),
-      new_values: JSON.stringify({
-        poin: updatedPelanggan.poin,
-        redeemed: pointsRequired,
-        reward_id: rewardId,
-      }),
-    },
-  });
-
-  return {
-    success: true,
-    points_redeemed: pointsRequired,
-    remaining_points: updatedPelanggan.poin,
-    reward_id: rewardId,
-    // In a real app, you would include reward details
-  };
 };
 
 module.exports = {
-  addPointsFromTransaction,
-  reversePointsFromTransaction,
+  // Config
+  getLoyaltyConfig,
+  updateLoyaltyConfig,
+  createLoyaltyConfig,
+  // Tiers
+  getAllTiers,
+  getTierById,
+  createTier,
+  updateTier,
+  deleteTier,
+  // Rewards
+  getAllRewards,
+  getRewardById,
+  createReward,
+  updateReward,
+  deleteReward,
+  // Customer
   getCustomerLoyaltyInfo,
-  redeemPoints,
+  getAvailableRewards,
+  redeemReward,
+  getPointsHistory,
+  // Stats
+  getLoyaltyStats
 };

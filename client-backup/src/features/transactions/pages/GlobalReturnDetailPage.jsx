@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
 import {
   ArrowLeft,
   Calendar,
@@ -18,10 +17,13 @@ import {
   AlertCircle,
   Package,
   DollarSign,
+  CreditCard as CreditCardIcon,
 } from "lucide-react";
 import { format } from "date-fns";
-import { id } from "date-fns/locale";
+import { id as localeId } from "date-fns/locale";
 import toast from "react-hot-toast";
+import { useReturById } from "../hooks/useReturQueries";
+import PelunasanModal from "../components/PelunasanModal";
 
 // Formatter untuk uang
 const formatCurrency = (amount) => {
@@ -35,35 +37,15 @@ const formatCurrency = (amount) => {
 const GlobalReturnDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [pelunasanModalOpen, setPelunasanModalOpen] = useState(false);
 
-  const [returnData, setReturnData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  // Fetch return detail
-  useEffect(() => {
-    const fetchReturnDetail = async () => {
-      try {
-        setLoading(true);
-        // Uncomment this when API is ready
-        // const response = await axios.get(`/api/transactions/returns/${id}`);
-        // setReturnData(response.data);
-
-        // For demo using dummy data
-        setTimeout(() => {
-          setReturnData(dummyReturnData);
-          setLoading(false);
-        }, 700);
-      } catch (err) {
-        console.error("Error fetching return detail:", err);
-        setError("Gagal memuat detail retur. Silakan coba lagi.");
-        setLoading(false);
-        toast.error("Gagal memuat detail retur");
-      }
-    };
-
-    fetchReturnDetail();
-  }, [id]);
+  // Fetch return detail using React Query
+  const {
+    data: returnData,
+    isLoading: loading,
+    error,
+    refetch,
+  } = useReturById(id);
 
   // Return type badge component
   const ReturnTypeBadge = ({ type }) => {
@@ -129,7 +111,7 @@ const GlobalReturnDetail = () => {
 
   // Go back to returns list
   const handleBack = () => {
-    navigate("/transactions/returns");
+    navigate("/returns");
   };
 
   // Print receipt
@@ -182,84 +164,8 @@ const GlobalReturnDetail = () => {
     );
   }
 
-  // Dummy data for demo
-  const dummyReturnData = {
-    transaksi_id: id,
-    nomor_transaksi: `RTR-${Math.floor(10000000 + Math.random() * 90000000)}`,
-    jenis_transaksi: "RETUR_PENJUALAN",
-    tanggal: new Date().toISOString(),
-    tanggal_selesai: new Date().toISOString(),
-    cabang: {
-      id: "cbg123",
-      namaCabang: "Cabang Pusat",
-    },
-    pelanggan: {
-      id: "cst123",
-      namaPelanggan: "John Doe",
-      telepon: "081234567890",
-    },
-    user: {
-      id: "usr123",
-      namaLengkap: "Admin Kasir",
-    },
-    transaksi_asli: {
-      transaksi_id: "tr001",
-      nomor_transaksi: "TRX-20230401001",
-      tanggal: new Date(
-        new Date().setDate(new Date().getDate() - 5)
-      ).toISOString(),
-    },
-    alasan_retur: "Produk rusak dan tidak berfungsi dengan baik",
-    subtotal: 200000,
-    biaya_tambahan: 0,
-    total: 200000,
-    status_pembayaran: "LUNAS",
-    keterangan: "Pengembalian dana tunai",
-    return_detail: [
-      {
-        return_detail_id: "rd123",
-        produk: {
-          id: "prod123",
-          produkMaster: {
-            namaProduk: "Kemeja Denim",
-            sku: "KD001",
-            barcode: "8997123456789",
-          },
-        },
-        jumlah: 1,
-        harga_satuan: 150000,
-        alasan: "Ukuran tidak sesuai",
-        kondisi: "Baik",
-        subtotal: 150000,
-      },
-      {
-        return_detail_id: "rd124",
-        produk: {
-          id: "prod124",
-          produkMaster: {
-            namaProduk: "Kaos Katun",
-            sku: "KK001",
-            barcode: "8997123456790",
-          },
-        },
-        jumlah: 1,
-        harga_satuan: 50000,
-        alasan: "Warna tidak sesuai pesanan",
-        kondisi: "Baik",
-        subtotal: 50000,
-      },
-    ],
-    refund: {
-      refund_id: "ref123",
-      metode_refund: "TUNAI",
-      jumlah_refund: 200000,
-      tanggal_refund: new Date().toISOString(),
-      status: "SELESAI",
-    },
-  };
-
-  // Use data from API or dummy
-  const displayData = returnData || dummyReturnData;
+  // Use data from API
+  const displayData = returnData;
 
   return (
     <div className="w-full p-6">
@@ -290,7 +196,7 @@ const GlobalReturnDetail = () => {
             Cetak
           </button>
           <button
-            className="flex items-center text-white bg-indigo-600 hover:bg-indigo-700 rounded-md px-4 py-2 text-sm"
+            className="flex items-center text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-md px-4 py-2 text-sm"
             onClick={() =>
               toast.success(
                 "Fitur unduh tanda terima retur akan segera tersedia"
@@ -300,6 +206,16 @@ const GlobalReturnDetail = () => {
             <Download size={16} className="mr-2" />
             Unduh PDF
           </button>
+          {/* Tampilkan tombol pelunasan jika retur belum lunas */}
+          {displayData.status_pembayaran === "BELUM_LUNAS" && (
+            <button
+              className="flex items-center text-white bg-green-600 hover:bg-green-700 rounded-md px-4 py-2 text-sm"
+              onClick={() => setPelunasanModalOpen(true)}
+            >
+              <CreditCardIcon size={16} className="mr-2" />
+              Pelunasan
+            </button>
+          )}
         </div>
       </div>
 
@@ -334,7 +250,7 @@ const GlobalReturnDetail = () => {
                       new Date(displayData.tanggal),
                       "dd MMMM yyyy, HH:mm",
                       {
-                        locale: id,
+                        locale: localeId,
                       }
                     )}
                   </p>
@@ -361,7 +277,7 @@ const GlobalReturnDetail = () => {
                 </p>
                 <div className="mt-1 p-2 bg-gray-50 rounded-md">
                   <p className="text-sm text-gray-900">
-                    {displayData.alasan_retur || "-"}
+                    {displayData.keterangan || "-"}
                   </p>
                 </div>
               </div>
@@ -400,7 +316,7 @@ const GlobalReturnDetail = () => {
                             new Date(displayData.transaksi_asli.tanggal),
                             "dd MMM yyyy",
                             {
-                              locale: id,
+                              locale: localeId,
                             }
                           )
                         : "-"}
@@ -446,31 +362,36 @@ const GlobalReturnDetail = () => {
 
               <div className="mt-6">
                 <p className="text-sm font-medium text-gray-500 mb-4">
-                  Informasi Refund
+                  Informasi Pembayaran
                 </p>
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <div>
-                    <p className="text-sm font-medium">
-                      Metode: {displayData.refund?.metode_refund || "-"}
-                    </p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Jumlah:{" "}
-                      {formatCurrency(displayData.refund?.jumlah_refund || 0)}
-                    </p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Status: {displayData.refund?.status || "-"}
-                    </p>
-                    {displayData.refund?.tanggal_refund && (
-                      <p className="text-sm text-gray-600 mt-1">
-                        Tanggal:{" "}
-                        {format(
-                          new Date(displayData.refund.tanggal_refund),
-                          "dd MMM yyyy",
-                          { locale: id }
+                  {displayData.pembayaran?.length > 0 ? (
+                    displayData.pembayaran.map((payment, index) => (
+                      <div key={payment.pembayaran_id || index} className="mb-2 last:mb-0">
+                        <p className="text-sm font-medium">
+                          Metode: {payment.metode_pembayaran?.replace("_", " ") || "-"}
+                        </p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Jumlah: {formatCurrency(payment.jumlah_bayar || 0)}
+                        </p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Status: {payment.status || "-"}
+                        </p>
+                        {payment.tanggal_pembayaran && (
+                          <p className="text-sm text-gray-600 mt-1">
+                            Tanggal:{" "}
+                            {format(
+                              new Date(payment.tanggal_pembayaran),
+                              "dd MMM yyyy",
+                              { locale: localeId }
+                            )}
+                          </p>
                         )}
-                      </p>
-                    )}
-                  </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500">Belum ada pembayaran</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -534,8 +455,8 @@ const GlobalReturnDetail = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {displayData.return_detail?.map((item) => (
-                <tr key={item.return_detail_id}>
+              {displayData.transaksi_detail?.map((item) => (
+                <tr key={item.transaksi_detail_id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10 bg-gray-100 rounded-md flex items-center justify-center">
@@ -620,7 +541,7 @@ const GlobalReturnDetail = () => {
                     ),
                     "dd MMMM yyyy, HH:mm",
                     {
-                      locale: id,
+                      locale: localeId,
                     }
                   )}
                 </div>
@@ -635,24 +556,24 @@ const GlobalReturnDetail = () => {
               </div>
               <div className="ml-4">
                 <div className="text-sm font-medium text-gray-900">
-                  Refund Diproses
+                  Pembayaran {displayData.status_pembayaran === "LUNAS" ? "Lunas" : "Pending"}
                 </div>
                 <div className="mt-1 text-sm text-gray-500">
-                  {displayData.refund?.tanggal_refund
+                  {displayData.pembayaran?.[0]?.tanggal_pembayaran
                     ? format(
-                        new Date(displayData.refund.tanggal_refund),
+                        new Date(displayData.pembayaran[0].tanggal_pembayaran),
                         "dd MMMM yyyy, HH:mm",
                         {
-                          locale: id,
+                          locale: localeId,
                         }
                       )
                     : "-"}
                 </div>
                 <div className="mt-1 text-sm text-gray-500">
                   {`Metode: ${
-                    displayData.refund?.metode_refund || "-"
+                    displayData.pembayaran?.[0]?.metode_pembayaran?.replace("_", " ") || "-"
                   }, Jumlah: ${formatCurrency(
-                    displayData.refund?.jumlah_refund || 0
+                    displayData.pembayaran?.[0]?.jumlah_bayar || 0
                   )}`}
                 </div>
               </div>
@@ -673,18 +594,32 @@ const GlobalReturnDetail = () => {
                     new Date(displayData.tanggal),
                     "dd MMMM yyyy, HH:mm",
                     {
-                      locale: id,
+                      locale: localeId,
                     }
                   )}
                 </div>
                 <div className="mt-1 text-sm text-gray-500">
-                  {`Alasan: ${displayData.alasan_retur || "-"}`}
+                  {`Alasan: ${displayData.keterangan || "-"}`}
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Pelunasan Modal */}
+      <PelunasanModal
+        isOpen={pelunasanModalOpen}
+        onClose={() => setPelunasanModalOpen(false)}
+        transaksiId={id}
+        totalTagihan={displayData?.total || 0}
+        sisaTagihan={displayData?.total - (displayData?.pembayaran?.reduce((sum, p) => sum + (p?.jumlah_bayar || 0), 0) || 0)}
+        onSuccess={() => {
+          setPelunasanModalOpen(false);
+          refetch();
+          toast.success("Pelunasan berhasil dibuat");
+        }}
+      />
     </div>
   );
 };

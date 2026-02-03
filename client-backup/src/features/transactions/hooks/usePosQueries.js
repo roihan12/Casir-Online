@@ -47,10 +47,10 @@ export const usePopularProducts = (branchId, limit = 10, options = {}) => {
 };
 
 // Hook untuk pencarian pelanggan
-export const useCustomerSearch = (query, options = {}) => {
+export const useCustomerSearch = (query, cabang_id = null, options = {}) => {
   return useQuery({
-    queryKey: ["customers", "search", query],
-    queryFn: () => posService.getCustomers(query),
+    queryKey: ["customers", "search", query, cabang_id],
+    queryFn: () => posService.getCustomers(query, cabang_id),
     enabled: query.length > 2, // Hanya jalankan jika query lebih dari 2 karakter
     staleTime: 30 * 1000, // 30 detik
     ...options,

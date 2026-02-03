@@ -50,6 +50,7 @@ import ReceiptModal from "../components/receipt/ReceiptModal";
 import { getReceiptData } from "@/services/receiptService";
 import KeyboardShortcutsHelp from "../components/modals/KeyboardShortcutsHelp";
 import PaymentModal from "../components/payment/PaymentModal";
+import LoyaltyRedeemModal from "../components/loyalty/LoyaltyRedeemModal";
 
 // Color mapping for categories
 const categoryColors = [
@@ -141,6 +142,11 @@ const POSPage = () => {
   // State for shortcuts help
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
 
+  // State for loyalty
+  const [showLoyaltyModal, setShowLoyaltyModal] = useState(false);
+  const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
+  const [redeemedReward, setRedeemedReward] = useState(null);
+
   // State for products
   const [productSearch, setProductSearch] = useState("");
   const debouncedProductSearch = useDebounce(productSearch, 500);
@@ -187,7 +193,7 @@ const POSPage = () => {
     });
 
   const { data: customerSearchResults, isLoading: isLoadingCustomers } =
-    useCustomerSearch(debouncedCustomerSearch, {
+    useCustomerSearch(debouncedCustomerSearch, currentBranch?.id, {
       enabled: debouncedCustomerSearch.length > 2,
     });
 
@@ -298,12 +304,13 @@ const POSPage = () => {
     }
   }, [cabangList, selectedCabang, user, setSelectedCabangById]);
 
-  // Calculate discounts when cart, sale mode, discounts, promos, or customer change
+  // Calculate discounts when cart, sale mode, discounts, promos, customer, or loyalty changes
   // Using debouncedDiscount to prevent API calls on every keystroke
   // Added customer to trigger recalculation when customer is selected (for member discount)
+  // Added loyaltyDiscount to recalculate when loyalty reward is redeemed
   useEffect(() => {
     calculateDiscounts();
-  }, [cart, saleMode, debouncedDiscount, discountType, promoCodes, paymentMethod, customer]);
+  }, [cart, saleMode, debouncedDiscount, discountType, promoCodes, paymentMethod, customer, loyaltyDiscount, redeemedReward]);
 
   // Filter branches based on search query
   useEffect(() => {
@@ -412,6 +419,10 @@ const POSPage = () => {
             ? (item.wholesale_price || 0) 
             : (item.retail_price || 0),
         })),
+        // Loyalty reward discount
+        loyalty_discount: loyaltyDiscount || 0,
+        loyalty_reward_name: redeemedReward?.rewardName || null,
+        points_redeemed: redeemedReward?.pointsUsed || 0,
       }, {
         signal: abortControllerRef.current.signal, // For request cancellation
       });
@@ -700,6 +711,10 @@ const POSPage = () => {
             manual_discount_persen: discountType === "percentage" ? Math.max(0, discount || 0) : null,
             manual_discount_nominal: discountType === "fixed" ? Math.max(0, discount || 0) : 0,
             manual_discount_alasan: (discount || 0) > 0 ? "Diskon manual POS" : null,
+            // Loyalty reward integration
+            loyalty_reward_id: redeemedReward?.rewardId || null,
+            loyalty_discount: loyaltyDiscount || 0,
+            points_redeemed: redeemedReward?.pointsUsed || 0,
           };
 
           if (saleMode === "wholesale" && !customer?.id) {
@@ -783,6 +798,10 @@ const POSPage = () => {
             manual_discount_persen: discountType === "percentage" ? Math.max(0, discount || 0) : null,
             manual_discount_nominal: discountType === "fixed" ? Math.max(0, discount || 0) : 0,
             manual_discount_alasan: (discount || 0) > 0 ? "Diskon manual POS" : null,
+            // Loyalty reward integration
+            loyalty_reward_id: redeemedReward?.rewardId || null,
+            loyalty_discount: loyaltyDiscount || 0,
+            points_redeemed: redeemedReward?.pointsUsed || 0,
           };
 
           if (saleMode === "wholesale" && !customer?.id) {
@@ -1263,6 +1282,9 @@ const POSPage = () => {
             onPromosChange={handlePromosChange}
             discountBreakdown={discountBreakdown}
             isCalculatingDiscount={isCalculatingDiscount}
+            // Loyalty integration
+            onShowLoyaltyModal={() => setShowLoyaltyModal(true)}
+            loyaltyDiscount={loyaltyDiscount}
             // Add extra padding bottom for mobile nav
             className="pb-20 lg:pb-0"
           />
@@ -1511,6 +1533,19 @@ const POSPage = () => {
         onClose={handleCloseReceipt}
         data={receiptData}
         onPrint={handlePrintReceipt}
+      />
+
+      {/* Loyalty Redeem Modal */}
+      <LoyaltyRedeemModal
+        isOpen={showLoyaltyModal}
+        onClose={() => setShowLoyaltyModal(false)}
+        customer={customer}
+        onRedeemSuccess={(reward) => {
+          setRedeemedReward(reward);
+          setLoyaltyDiscount(reward.rewardValue || 0);
+          toast.success(`🎁 Reward "${reward.rewardName}" berhasil ditukar!`);
+          setShowLoyaltyModal(false);
+        }}
       />
     </div>
   );

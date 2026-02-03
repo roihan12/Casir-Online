@@ -56,11 +56,12 @@ const deletePelanggan = async (req, res, next) => {
 
 const getAllPelanggan = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10, search = "" } = req.query;
+    const { page = 1, limit = 10, search = "", cabang_id } = req.query;
     const result = await pelangganService.getAllPelanggan({
       page: parseInt(page),
       limit: parseInt(limit),
       search,
+      cabang_id,
     });
 
     return res.status(200).json({
