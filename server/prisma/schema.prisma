@@ -22,6 +22,7 @@ model Cabang {
   absensiPegawai      AbsensiPegawai[]
   BotConfig           BotConfig[]
   hutang              Hutang[]
+  Invoice             Invoice[]
   InventoryMovement   InventoryMovement[]
   jadwalKerja         JadwalKerja[]
   lokasiAbsensi       LokasiAbsensi[]
@@ -525,6 +526,7 @@ model Pelanggan {
   BotSession                  BotSession[]
   CustomerCampaignInteraction CustomerCampaignInteraction[]
   hutang                      Hutang[]
+  Invoice                     Invoice[]
   KreditNotifikasi            KreditNotifikasi[]
   KreditRekomendasi           KreditRekomendasi[]
   kreditSettings              KreditSetting[]
@@ -786,6 +788,7 @@ model Transaksi {
   kreditTransaksi     KreditTransaksi[]     @relation("KreditTransaksi")
   LoyaltyPointHistory LoyaltyPointHistory[]
   pembayaran          Pembayaran[]
+  invoice             Invoice?
   cabang              Cabang?               @relation(fields: [cabang_id], references: [id])
   campaign            MarketingCampaign?    @relation("CampaignTransaksi", fields: [campaignId], references: [id])
   createdByUser       User?                 @relation("TransaksiCreatedByUserId", fields: [created_by_user_Id], references: [id])
@@ -1646,6 +1649,31 @@ model RoleMenu {
   @@map("role_menu")
 }
 
+model Invoice {
+  id                  String               @id @default(uuid())
+  nomor_invoice       String               @unique @map("nomor_invoice") @db.VarChar(50)
+  tanggal_invoice     DateTime             @default(now()) @map("tanggal_invoice")
+  tanggal_jatuh_tempo DateTime?            @map("tanggal_jatuh_tempo")
+  total               Decimal              @db.Decimal(15, 2)
+  status              InvoiceStatus        @default(BELUM_LUNAS)
+  catatan             String?
+  transaksi_id        String               @unique @map("transaksi_id") @db.VarChar(36)
+  cabang_id           String               @map("cabang_id") @db.VarChar(36)
+  pelanggan_id        String?              @map("pelanggan_id") @db.VarChar(36)
+  created_at          DateTime             @default(now()) @map("created_at")
+  updated_at          DateTime             @updatedAt @map("updated_at")
+
+  transaksi Transaksi @relation(fields: [transaksi_id], references: [transaksi_id])
+  cabang    Cabang    @relation(fields: [cabang_id], references: [id])
+  pelanggan Pelanggan? @relation(fields: [pelanggan_id], references: [id])
+
+  @@index([cabang_id], map: "idx_invoice_cabang_id"])
+  @@index([pelanggan_id], map: "idx_invoice_pelanggan_id"])
+  @@index([status], map: "idx_invoice_status"])
+  @@index([tanggal_invoice], map: "idx_invoice_tanggal"])
+  @@map("invoice")
+}
+
 enum PermissionAction {
   create
   read
@@ -1713,6 +1741,13 @@ enum StatusPembayaranProvider {
   SUKSES
   GAGAL
   PENDING
+}
+
+enum InvoiceStatus {
+  DRAFT
+  BELUM_LUNAS
+  LUNAS
+  BATAL
 }
 
 enum CabangStatus {

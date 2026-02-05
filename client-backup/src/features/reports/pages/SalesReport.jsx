@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -15,7 +15,6 @@ import {
   Cell,
 } from "recharts";
 import {
-  Download,
   RefreshCcw,
   BarChart2,
   PieChart as PieChartIcon,
@@ -23,8 +22,8 @@ import {
   Map,
   ListFilter,
 } from "lucide-react";
-import id from "date-fns/locale/id";
 import { useCabang } from "@features/cabang/hooks/useCabang";
+import { useSalesReport, useSalesSummary, useTopProducts, useSalesByCategory, useBranchReport } from "../hooks/useReports";
 import formatCurrency from "@common/utils/formatCurrency";
 import {
   Card,
@@ -38,45 +37,8 @@ import {
   FormSelect,
   Button,
   Divider,
-} from "../../../features/reports/components/ReportComponents";
-
-// Mock data - replace with actual API calls
-const generateMockSalesData = (days = 30) => {
-  const data = [];
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-
-  for (let i = 0; i < days; i++) {
-    date.setDate(date.getDate() + 1);
-    data.push({
-      date: new Date(date),
-      sales: Math.floor(Math.random() * 10000000) + 1000000,
-      transactions: Math.floor(Math.random() * 100) + 10,
-    });
-  }
-  return data;
-};
-
-const generateMockProductData = () => {
-  const products = [
-    "Beras Premium 5kg",
-    "Minyak Goreng 2L",
-    "Gula Pasir 1kg",
-    "Telur Ayam 1kg",
-    "Tepung Terigu 1kg",
-    "Kopi Instant 200gr",
-    "Susu UHT 1L",
-    "Mie Instant",
-    "Sabun Mandi",
-    "Deterjen",
-  ];
-
-  return products.map((product) => ({
-    name: product,
-    sales: Math.floor(Math.random() * 5000000) + 500000,
-    quantity: Math.floor(Math.random() * 500) + 50,
-  }));
-};
+} from "../components/ReportComponents";
+import ExportDropdown from "../components/ExportDropdown";
 
 const COLORS = [
   "#0088FE",
@@ -92,7 +54,6 @@ const COLORS = [
 ];
 
 const SalesReport = () => {
-  const [loading, setLoading] = useState(false);
   const [tabValue, setTabValue] = useState(0);
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
@@ -102,125 +63,41 @@ const SalesReport = () => {
   const [endDate, setEndDate] = useState(new Date());
   const [viewType, setViewType] = useState("daily");
   const [cabangFilter, setCabangFilter] = useState("all");
-  const [salesData, setSalesData] = useState([]);
-  const [topProducts, setTopProducts] = useState([]);
-  const [topCategories, setTopCategories] = useState([]);
-  const [reportMetrics, setReportMetrics] = useState({
-    totalSales: 0,
-    totalTransactions: 0,
-    averageTransaction: 0,
-    salesGrowth: 0,
-  });
   const { allCabang } = useCabang();
 
-  // Fetch data effect
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        // Replace with actual API calls
-        setTimeout(() => {
-          const mockSalesData = generateMockSalesData(30);
-          setSalesData(mockSalesData);
-          setTopProducts(generateMockProductData());
-
-          // Calculate summary metrics
-          const totalSales = mockSalesData.reduce(
-            (sum, item) => sum + item.sales,
-            0
-          );
-          const totalTransactions = mockSalesData.reduce(
-            (sum, item) => sum + item.transactions,
-            0
-          );
-
-          setReportMetrics({
-            totalSales,
-            totalTransactions,
-            averageTransaction: totalSales / totalTransactions,
-            salesGrowth: 7.5, // Mock growth percentage
-          });
-
-          // Mock category data
-          setTopCategories([
-            { name: "Bahan Pokok", value: 3500000 },
-            { name: "Minuman", value: 2500000 },
-            { name: "Makanan Ringan", value: 1800000 },
-            { name: "Produk Kebersihan", value: 1200000 },
-            { name: "Produk Perawatan", value: 800000 },
-          ]);
-
-          setLoading(false);
-        }, 1000);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setLoading(false);
-      }
+  // Format dates for API
+  const apiParams = useMemo(() => {
+    const formatDate = (date) => {
+      const d = new Date(date);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     };
+    return {
+      startDate: formatDate(startDate),
+      endDate: formatDate(endDate),
+      cabangId: cabangFilter,
+    };
+  }, [startDate, endDate, cabangFilter]);
 
-    fetchData();
-  }, [startDate, endDate, viewType, cabangFilter]);
+  const salesParams = { ...apiParams, viewType };
+
+  // Fetch data using real API
+  const { data: salesReportData, isLoading: loadingSales, refetch: refetchSales } = useSalesReport(salesParams);
+  const { data: summaryData, isLoading: loadingSummary } = useSalesSummary(apiParams);
+  const { data: topProductsData, isLoading: loadingProducts } = useTopProducts(apiParams);
+  const { data: categoriesData, isLoading: loadingCategories } = useSalesByCategory(apiParams);
+  const { data: branchData, isLoading: loadingBranch } = useBranchReport(apiParams);
+
+  const loading = loadingSales || loadingSummary || loadingProducts || loadingCategories || loadingBranch;
+
+  // Format dates for export params
+  const exportParams = apiParams;
 
   const handleChangeTab = (newValue) => {
     setTabValue(newValue);
   };
 
-  const handleExportReport = () => {
-    // Implementation for exporting report
-    alert("Export functionality will be implemented here");
-  };
-
   const handleRefreshData = () => {
-    // Refresh data
-    setSalesData([]);
-    setTopProducts([]);
-    setTopCategories([]);
-    setReportMetrics({
-      totalSales: 0,
-      totalTransactions: 0,
-      averageTransaction: 0,
-      salesGrowth: 0,
-    });
-
-    // Re-fetch data
-    const mockSalesData = generateMockSalesData(30);
-    setSalesData(mockSalesData);
-    setTopProducts(generateMockProductData());
-
-    // Calculate summary metrics
-    const totalSales = mockSalesData.reduce((sum, item) => sum + item.sales, 0);
-    const totalTransactions = mockSalesData.reduce(
-      (sum, item) => sum + item.transactions,
-      0
-    );
-
-    setReportMetrics({
-      totalSales,
-      totalTransactions,
-      averageTransaction: totalSales / totalTransactions,
-      salesGrowth: Math.random() * 10, // Random growth percentage
-    });
-
-    // Mock category data
-    setTopCategories([
-      {
-        name: "Bahan Pokok",
-        value: Math.floor(Math.random() * 4000000) + 1000000,
-      },
-      { name: "Minuman", value: Math.floor(Math.random() * 3000000) + 1000000 },
-      {
-        name: "Makanan Ringan",
-        value: Math.floor(Math.random() * 2000000) + 1000000,
-      },
-      {
-        name: "Produk Kebersihan",
-        value: Math.floor(Math.random() * 1500000) + 500000,
-      },
-      {
-        name: "Produk Perawatan",
-        value: Math.floor(Math.random() * 1000000) + 500000,
-      },
-    ]);
+    refetchSales();
   };
 
   // Format date for display in charts
@@ -264,6 +141,26 @@ const SalesReport = () => {
       : []),
   ];
 
+  // Prepare chart data
+  const salesTrendData = salesReportData?.data?.trend?.map((t) => ({
+    date: new Date(t.date),
+    sales: Number(t.total) || 0,
+    transactions: t.transactions || 0,
+  })) || [];
+
+  const summaryMetrics = summaryData?.data || {
+    totalSales: 0,
+    totalTransactions: 0,
+    averageTransaction: 0,
+    salesGrowth: 0,
+  };
+
+  const topProducts = topProductsData?.data || [];
+
+  const topCategories = categoriesData?.data || [];
+
+  const branchComparison = branchData?.data?.branches || [];
+
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-2">Laporan Penjualan Global</h1>
@@ -283,13 +180,11 @@ const SalesReport = () => {
               >
                 Refresh
               </Button>
-              <Button
-                onClick={handleExportReport}
-                variant="primary"
-                icon={<Download size={16} />}
-              >
-                Export
-              </Button>
+              <ExportDropdown
+                reportType="sales"
+                params={exportParams}
+                disabled={loading}
+              />
             </div>
           </div>
 
@@ -345,25 +240,21 @@ const SalesReport = () => {
         <MetricCard
           title="Total Penjualan"
           value={
-            loading ? (
+            loadingSummary ? (
               <LoadingIndicator size="sm" />
             ) : (
-              formatCurrency(reportMetrics.totalSales)
+              formatCurrency(summaryMetrics.totalSales)
             )
           }
           trend={
-            reportMetrics.salesGrowth >= 0
+            summaryMetrics.salesGrowth >= 0
               ? {
                   positive: true,
-                  value: `${reportMetrics.salesGrowth.toFixed(
-                    2
-                  )}% dari periode sebelumnya`,
+                  value: `${summaryMetrics.salesGrowth.toFixed(2)}% dari periode sebelumnya`,
                 }
               : {
                   positive: false,
-                  value: `${reportMetrics.salesGrowth.toFixed(
-                    2
-                  )}% dari periode sebelumnya`,
+                  value: `${summaryMetrics.salesGrowth.toFixed(2)}% dari periode sebelumnya`,
                 }
           }
         />
@@ -371,10 +262,10 @@ const SalesReport = () => {
         <MetricCard
           title="Total Transaksi"
           value={
-            loading ? (
+            loadingSummary ? (
               <LoadingIndicator size="sm" />
             ) : (
-              reportMetrics.totalTransactions.toLocaleString()
+              summaryMetrics.totalTransactions.toLocaleString()
             )
           }
         />
@@ -382,10 +273,10 @@ const SalesReport = () => {
         <MetricCard
           title="Rata-rata Nilai Transaksi"
           value={
-            loading ? (
+            loadingSummary ? (
               <LoadingIndicator size="sm" />
             ) : (
-              formatCurrency(reportMetrics.averageTransaction)
+              formatCurrency(summaryMetrics.averageTransaction)
             )
           }
         />
@@ -393,12 +284,10 @@ const SalesReport = () => {
         <MetricCard
           title="Jumlah Produk Terjual"
           value={
-            loading ? (
+            loadingProducts ? (
               <LoadingIndicator size="sm" />
             ) : (
-              topProducts
-                .reduce((sum, item) => sum + item.quantity, 0)
-                .toLocaleString()
+              topProducts.reduce((sum, item) => sum + item.quantity, 0).toLocaleString()
             )
           }
         />
@@ -414,11 +303,11 @@ const SalesReport = () => {
             <h3 className="text-lg font-medium mb-4">Trend Penjualan</h3>
             {loading ? (
               <LoadingIndicator />
-            ) : (
+            ) : salesTrendData.length > 0 ? (
               <div className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
-                    data={salesData}
+                    data={salesTrendData}
                     margin={{
                       top: 5,
                       right: 30,
@@ -448,6 +337,8 @@ const SalesReport = () => {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
+            ) : (
+              <p className="text-gray-600 text-center py-8">Tidak ada data untuk ditampilkan</p>
             )}
           </CardContent>
         </Card>
@@ -460,7 +351,7 @@ const SalesReport = () => {
             <h3 className="text-lg font-medium mb-4">Produk Terlaris</h3>
             {loading ? (
               <LoadingIndicator />
-            ) : (
+            ) : topProducts.length > 0 ? (
               <>
                 <div className="h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -514,7 +405,7 @@ const SalesReport = () => {
                       header: "Kontribusi (%)",
                       cell: (row) =>
                         `${(
-                          (row.sales / reportMetrics.totalSales) *
+                          (row.sales / summaryMetrics.totalSales) *
                           100
                         ).toFixed(2)}%`,
                       cellClassName: "text-right",
@@ -523,6 +414,8 @@ const SalesReport = () => {
                   data={topProducts}
                 />
               </>
+            ) : (
+              <p className="text-gray-600 text-center py-8">Tidak ada data untuk ditampilkan</p>
             )}
           </CardContent>
         </Card>
@@ -535,7 +428,7 @@ const SalesReport = () => {
             <h3 className="text-lg font-medium mb-4">Penjualan per Kategori</h3>
             {loading ? (
               <LoadingIndicator />
-            ) : (
+            ) : topCategories.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -590,15 +483,7 @@ const SalesReport = () => {
                       },
                       {
                         header: "Persentase",
-                        cell: (row) => {
-                          const totalValue = topCategories.reduce(
-                            (sum, cat) => sum + cat.value,
-                            0
-                          );
-                          return `${((row.value / totalValue) * 100).toFixed(
-                            2
-                          )}%`;
-                        },
+                        cell: (row) => `${row.percentage.toFixed(2)}%`,
                         cellClassName: "text-right",
                       },
                     ]}
@@ -606,6 +491,8 @@ const SalesReport = () => {
                   />
                 </div>
               </div>
+            ) : (
+              <p className="text-gray-600 text-center py-8">Tidak ada data untuk ditampilkan</p>
             )}
           </CardContent>
         </Card>
@@ -620,105 +507,74 @@ const SalesReport = () => {
             </h3>
             {loading ? (
               <LoadingIndicator />
-            ) : (
+            ) : branchComparison.length > 0 ? (
               <>
-                {allCabang && allCabang.length > 0 ? (
-                  <>
-                    <div className="h-[400px] mb-6">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={allCabang.map((c) => ({
-                            name: c.namaCabang,
-                            sales:
-                              Math.floor(Math.random() * 10000000) + 1000000,
-                            transactions: Math.floor(Math.random() * 500) + 50,
-                          }))}
-                          margin={{
-                            top: 5,
-                            right: 30,
-                            left: 20,
-                            bottom: 5,
-                          }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" />
-                          <YAxis
-                            tickFormatter={(value) =>
-                              `${(value / 1000000).toFixed(0)}jt`
-                            }
-                          />
-                          <RechartsTooltip
-                            formatter={(value) => formatCurrency(value)}
-                          />
-                          <Legend />
-                          <Bar
-                            dataKey="sales"
-                            name="Penjualan"
-                            fill="#8884d8"
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
+                <div className="h-[400px] mb-6">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={branchComparison}
+                      margin={{
+                        top: 5,
+                        right: 30,
+                        left: 20,
+                        bottom: 5,
+                      }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="namaCabang" />
+                      <YAxis
+                        tickFormatter={(value) =>
+                          `${(value / 1000000).toFixed(0)}jt`
+                        }
+                      />
+                      <RechartsTooltip
+                        formatter={(value) => formatCurrency(value)}
+                      />
+                      <Legend />
+                      <Bar
+                        dataKey="totalPenjualan"
+                        name="Penjualan"
+                        fill="#8884d8"
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
 
-                    <Divider />
+                <Divider />
 
-                    <h3 className="text-lg font-medium mb-4">
-                      Detail Penjualan per Cabang
-                    </h3>
-                    <DataTable
-                      columns={[
-                        { header: "Cabang", accessor: "namaCabang" },
-                        {
-                          header: "Total Penjualan",
-                          cell: (cabang) => {
-                            const sales =
-                              Math.floor(Math.random() * 10000000) + 1000000;
-                            return formatCurrency(sales);
-                          },
-                          cellClassName: "text-right",
-                        },
-                        {
-                          header: "Jumlah Transaksi",
-                          cell: () => {
-                            const transactions =
-                              Math.floor(Math.random() * 500) + 50;
-                            return transactions;
-                          },
-                          cellClassName: "text-right",
-                        },
-                        {
-                          header: "Rata-rata Transaksi",
-                          cell: () => {
-                            const sales =
-                              Math.floor(Math.random() * 10000000) + 1000000;
-                            const transactions =
-                              Math.floor(Math.random() * 500) + 50;
-                            return formatCurrency(sales / transactions);
-                          },
-                          cellClassName: "text-right",
-                        },
-                        {
-                          header: "Kontribusi (%)",
-                          cell: () => {
-                            const sales =
-                              Math.floor(Math.random() * 10000000) + 1000000;
-                            return `${(
-                              (sales / reportMetrics.totalSales) *
-                              100
-                            ).toFixed(2)}%`;
-                          },
-                          cellClassName: "text-right",
-                        },
-                      ]}
-                      data={allCabang}
-                    />
-                  </>
-                ) : (
-                  <p className="text-gray-600">
-                    Tidak ada data cabang tersedia
-                  </p>
-                )}
+                <h3 className="text-lg font-medium mb-4">
+                  Detail Penjualan per Cabang
+                </h3>
+                <DataTable
+                  columns={[
+                    { header: "Cabang", accessor: "namaCabang" },
+                    {
+                      header: "Total Penjualan",
+                      cell: (cabang) => formatCurrency(cabang.totalPenjualan),
+                      cellClassName: "text-right",
+                    },
+                    {
+                      header: "Jumlah Transaksi",
+                      accessor: "totalTransaksi",
+                      cell: (val) => val?.totalTransaksi || "0",
+                      cellClassName: "text-right",
+                    },
+                    {
+                      header: "Rata-rata Transaksi",
+                      cell: (cabang) => formatCurrency(cabang.rataRata),
+                      cellClassName: "text-right",
+                    },
+                    {
+                      header: "Kontribusi (%)",
+                      cell: (cabang) => `${cabang.kontribusi.toFixed(2)}%`,
+                      cellClassName: "text-right",
+                    },
+                  ]}
+                  data={branchComparison}
+                />
               </>
+            ) : (
+              <p className="text-gray-600 text-center py-8">Tidak ada data cabang tersedia</p>
             )}
           </CardContent>
         </Card>

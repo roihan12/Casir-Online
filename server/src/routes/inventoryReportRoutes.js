@@ -23,4 +23,18 @@ router.get(
   inventoryReportController.getInventoryMovementReport
 );
 
+// GET - Mendapatkan laporan produk kadaluarsa
+router.get(
+  "/expiring",
+  hasPermission(["inventory:read"], { checkBranch: true }),
+  inventoryReportController.getExpiringProductsReport
+);
+
+// GET - Mendapatkan ringkasan produk kadaluarsa per kategori
+router.get(
+  "/expiring/by-category",
+  hasPermission(["inventory:read"], { checkBranch: true }),
+  inventoryReportController.getExpiringByCategory
+);
+
 module.exports = router;

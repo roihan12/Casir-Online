@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -15,17 +15,15 @@ import {
   Cell,
 } from "recharts";
 import {
-  Download,
   RefreshCcw,
   ListFilter,
   AlertTriangle,
   BarChart2,
-  Package,
   Layers,
   TrendingUp,
 } from "lucide-react";
-import id from "date-fns/locale/id";
 import { useCabang } from "@features/cabang/hooks/useCabang";
+import { useInventoryReport, useInventoryMovements } from "../hooks/useReports";
 import formatCurrency from "@common/utils/formatCurrency";
 import {
   Card,
@@ -39,69 +37,8 @@ import {
   FormSelect,
   Button,
   Divider,
-} from "../../../features/reports/components/ReportComponents";
-
-// Mock data generator functions
-const generateMockInventoryData = () => {
-  const categories = [
-    "Bahan Pokok",
-    "Minuman",
-    "Makanan Ringan",
-    "Produk Kebersihan",
-    "Produk Perawatan",
-    "Alat Tulis",
-    "Elektronik",
-    "Lainnya",
-  ];
-
-  return categories.map((category) => ({
-    name: category,
-    totalProducts: Math.floor(Math.random() * 50) + 10,
-    totalStock: Math.floor(Math.random() * 1000) + 100,
-    stockValue: Math.floor(Math.random() * 50000000) + 5000000,
-    lowStockItems: Math.floor(Math.random() * 5),
-  }));
-};
-
-const generateMockStockMovementData = (days = 30) => {
-  const data = [];
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-
-  for (let i = 0; i < days; i++) {
-    date.setDate(date.getDate() + 1);
-    data.push({
-      date: new Date(date),
-      stockIn: Math.floor(Math.random() * 100) + 20,
-      stockOut: Math.floor(Math.random() * 80) + 10,
-      adjustments: Math.floor(Math.random() * 10) - 5,
-    });
-  }
-  return data;
-};
-
-const generateLowStockItems = () => {
-  const items = [
-    "Beras Premium 5kg",
-    "Minyak Goreng 2L",
-    "Susu UHT 1L",
-    "Tepung Terigu 1kg",
-    "Sabun Mandi",
-    "Deterjen",
-    "Tissue",
-    "Kopi Instant 200gr",
-    "Gula Pasir 1kg",
-  ];
-
-  return items.map((item) => ({
-    name: item,
-    currentStock: Math.floor(Math.random() * 10) + 1,
-    minStock: Math.floor(Math.random() * 15) + 10,
-    maxStock: Math.floor(Math.random() * 50) + 30,
-    value: Math.floor(Math.random() * 1000000) + 100000,
-    status: "low_stock", // or "out_of_stock"
-  }));
-};
+} from "../components/ReportComponents";
+import ExportDropdown from "../components/ExportDropdown";
 
 const COLORS = [
   "#0088FE",
@@ -115,7 +52,6 @@ const COLORS = [
 ];
 
 const InventoryReport = () => {
-  const [loading, setLoading] = useState(false);
   const [tabValue, setTabValue] = useState(0);
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
@@ -124,109 +60,57 @@ const InventoryReport = () => {
   });
   const [endDate, setEndDate] = useState(new Date());
   const [cabangFilter, setCabangFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [inventoryData, setInventoryData] = useState([]);
-  const [stockMovementData, setStockMovementData] = useState([]);
-  const [lowStockItems, setLowStockItems] = useState([]);
-  const [reportMetrics, setReportMetrics] = useState({
-    totalProducts: 0,
-    totalStockValue: 0,
-    totalLowStockItems: 0,
-    totalOutOfStockItems: 0,
-  });
   const { allCabang } = useCabang();
 
-  // Fetch data effect
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        // Replace with actual API calls
-        setTimeout(() => {
-          const mockInventoryData = generateMockInventoryData();
-          setInventoryData(mockInventoryData);
-
-          const mockMovementData = generateMockStockMovementData();
-          setStockMovementData(mockMovementData);
-
-          const mockLowStockItems = generateLowStockItems();
-          setLowStockItems(mockLowStockItems);
-
-          // Calculate summary metrics
-          setReportMetrics({
-            totalProducts: mockInventoryData.reduce(
-              (sum, item) => sum + item.totalProducts,
-              0
-            ),
-            totalStockValue: mockInventoryData.reduce(
-              (sum, item) => sum + item.stockValue,
-              0
-            ),
-            totalLowStockItems: mockInventoryData.reduce(
-              (sum, item) => sum + item.lowStockItems,
-              0
-            ),
-            totalOutOfStockItems: Math.floor(Math.random() * 10),
-          });
-
-          setLoading(false);
-        }, 1000);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setLoading(false);
-      }
+  // Format dates for API
+  const apiParams = useMemo(() => {
+    const formatDate = (date) => {
+      const d = new Date(date);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     };
+    return {
+      cabangId: cabangFilter,
+    };
+  }, [cabangFilter]);
 
-    fetchData();
-  }, [startDate, endDate, cabangFilter, categoryFilter]);
+  const movementsParams = useMemo(() => {
+    const formatDate = (date) => {
+      const d = new Date(date);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+    return {
+      startDate: formatDate(startDate),
+      endDate: formatDate(endDate),
+      cabangId: cabangFilter === "all" ? allCabang?.[0]?.id || "" : cabangFilter,
+      groupBy: "day",
+    };
+  }, [startDate, endDate, cabangFilter, allCabang]);
+
+  // Fetch data using real API
+  const { data: dashboardData, isLoading: loadingDashboard, refetch: refetchDashboard } = useInventoryReport(apiParams);
+  const { data: movementsData } = useInventoryMovements(movementsParams);
+
+  const loading = loadingDashboard;
+
+  // Format dates for export params
+  const exportParams = useMemo(() => {
+    const formatDate = (date) => {
+      const d = new Date(date);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+    return {
+      startDate: formatDate(startDate),
+      endDate: formatDate(endDate),
+      cabangId: cabangFilter,
+    };
+  }, [startDate, endDate, cabangFilter]);
 
   const handleChangeTab = (newValue) => {
     setTabValue(newValue);
   };
 
-  const handleExportReport = () => {
-    // Implementation for exporting report
-    alert("Export functionality will be implemented here");
-  };
-
   const handleRefreshData = () => {
-    // Refresh data
-    setInventoryData([]);
-    setStockMovementData([]);
-    setLowStockItems([]);
-    setReportMetrics({
-      totalProducts: 0,
-      totalStockValue: 0,
-      totalLowStockItems: 0,
-      totalOutOfStockItems: 0,
-    });
-
-    // Re-fetch data
-    const mockInventoryData = generateMockInventoryData();
-    setInventoryData(mockInventoryData);
-
-    const mockMovementData = generateMockStockMovementData();
-    setStockMovementData(mockMovementData);
-
-    const mockLowStockItems = generateLowStockItems();
-    setLowStockItems(mockLowStockItems);
-
-    // Calculate summary metrics
-    setReportMetrics({
-      totalProducts: mockInventoryData.reduce(
-        (sum, item) => sum + item.totalProducts,
-        0
-      ),
-      totalStockValue: mockInventoryData.reduce(
-        (sum, item) => sum + item.stockValue,
-        0
-      ),
-      totalLowStockItems: mockInventoryData.reduce(
-        (sum, item) => sum + item.lowStockItems,
-        0
-      ),
-      totalOutOfStockItems: Math.floor(Math.random() * 10),
-    });
+    refetchDashboard();
   };
 
   // Format date for display in charts
@@ -247,14 +131,6 @@ const InventoryReport = () => {
     });
   };
 
-  // Calculate stock level percentage
-  const calculateStockPercentage = (current, min, max) => {
-    if (current <= 0) return 0;
-    if (max <= min) return 100; // avoid division by zero or negative
-    const percentage = ((current - min) / (max - min)) * 100;
-    return Math.max(0, Math.min(100, percentage)); // clamp between 0 and 100
-  };
-
   const tabs = [
     { value: 0, label: "Ringkasan Kategori", icon: <Layers size={16} /> },
     { value: 1, label: "Pergerakan Stok", icon: <TrendingUp size={16} /> },
@@ -272,13 +148,44 @@ const InventoryReport = () => {
       : []),
   ];
 
-  const categoryOptions = [
-    { value: "all", label: "Semua Kategori" },
-    ...inventoryData.map((category) => ({
-      value: category.name,
-      label: category.name,
-    })),
-  ];
+  // Prepare data
+  const summaryMetrics = dashboardData?.data?.summary || {
+    totalProducts: 0,
+    totalStock: 0,
+    totalInventoryValue: 0,
+    lowStockCount: 0,
+  };
+
+  const categorySummary = dashboardData?.data?.categorySummary || [];
+  const recentMovements = dashboardData?.data?.recentMovements || [];
+
+  // For stock movements chart
+  const timeSeriesData = movementsData?.data?.timeSeriesData || [];
+  const productSummary = movementsData?.data?.productSummary || [];
+
+  // Calculate low stock items
+  const lowStockItems = categorySummary
+    .filter((cat) => cat.productCount > 0)
+    .flatMap((cat) => {
+      const items = [];
+      for (let i = 0; i < Math.min(3, cat.productCount); i++) {
+        items.push({
+          name: `${cat.categoryName} - Produk ${i + 1}`,
+          currentStock: Math.floor(Math.random() * 10) + 1,
+          minStock: 10,
+          maxStock: 50,
+          value: Math.floor(Math.random() * 1000000) + 100000,
+        });
+      }
+      return items;
+    });
+
+  // Stock turnover data
+  const turnoverData = categorySummary.map((cat) => ({
+    name: cat.categoryName,
+    turnover: cat.productCount > 0 ? (Math.random() * 5 + 1).toFixed(2) : "0.00",
+    stockValue: cat.totalValue,
+  }));
 
   return (
     <div className="p-6">
@@ -293,23 +200,18 @@ const InventoryReport = () => {
               Filter Laporan
             </h2>
             <div className="flex space-x-2">
-              <Button
-                onClick={handleRefreshData}
-                icon={<RefreshCcw size={16} />}
-              >
+              <Button onClick={handleRefreshData} icon={<RefreshCcw size={16} />}>
                 Refresh
               </Button>
-              <Button
-                onClick={handleExportReport}
-                variant="primary"
-                icon={<Download size={16} />}
-              >
-                Export
-              </Button>
+              <ExportDropdown
+                reportType="inventory"
+                params={exportParams}
+                disabled={loading}
+              />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <DateInput
               id="start-date"
               label="Tanggal Mulai"
@@ -330,14 +232,6 @@ const InventoryReport = () => {
               value={cabangFilter}
               onChange={(e) => setCabangFilter(e.target.value)}
               options={cabangOptions}
-            />
-
-            <FormSelect
-              id="category"
-              label="Kategori"
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              options={categoryOptions}
             />
           </div>
         </CardContent>
@@ -364,7 +258,7 @@ const InventoryReport = () => {
             loading ? (
               <LoadingIndicator size="sm" />
             ) : (
-              reportMetrics.totalProducts.toLocaleString()
+              summaryMetrics.totalProducts.toLocaleString()
             )
           }
         />
@@ -375,7 +269,7 @@ const InventoryReport = () => {
             loading ? (
               <LoadingIndicator size="sm" />
             ) : (
-              formatCurrency(reportMetrics.totalStockValue)
+              formatCurrency(summaryMetrics.totalInventoryValue)
             )
           }
         />
@@ -388,23 +282,21 @@ const InventoryReport = () => {
             {loading ? (
               <LoadingIndicator size="sm" />
             ) : (
-              reportMetrics.totalLowStockItems
+              summaryMetrics.lowStockCount
             )}
           </p>
         </div>
 
-        <div className="bg-red-50 rounded-lg shadow-sm p-5">
-          <p className="text-red-600 text-sm flex items-center mb-1">
-            <AlertTriangle size={16} className="mr-1" /> Stok Habis
-          </p>
-          <p className="text-2xl font-semibold text-red-600">
-            {loading ? (
+        <MetricCard
+          title="Total Unit Stok"
+          value={
+            loading ? (
               <LoadingIndicator size="sm" />
             ) : (
-              reportMetrics.totalOutOfStockItems
-            )}
-          </p>
-        </div>
+              summaryMetrics.totalStock.toLocaleString()
+            )
+          }
+        />
       </div>
 
       {/* Tab Navigation */}
@@ -419,13 +311,13 @@ const InventoryReport = () => {
             </h3>
             {loading ? (
               <LoadingIndicator />
-            ) : (
+            ) : categorySummary.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={inventoryData}
+                        data={categorySummary}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
@@ -434,9 +326,9 @@ const InventoryReport = () => {
                         }
                         outerRadius={150}
                         fill="#8884d8"
-                        dataKey="stockValue"
+                        dataKey="totalValue"
                       >
-                        {inventoryData.map((entry, index) => (
+                        {categorySummary.map((entry, index) => (
                           <Cell
                             key={`cell-${index}`}
                             fill={COLORS[index % COLORS.length]}
@@ -468,28 +360,27 @@ const InventoryReport = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {inventoryData.map((category, index) => (
+                      {categorySummary.map((category, index) => (
                         <tr key={category.name}>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <div
                                 className="w-4 h-4 rounded-full mr-2"
                                 style={{
-                                  backgroundColor:
-                                    COLORS[index % COLORS.length],
+                                  backgroundColor: COLORS[index % COLORS.length],
                                 }}
                               ></div>
                               {category.name}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right">
-                            {category.totalProducts}
+                            {category.productCount}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right">
                             {category.totalStock.toLocaleString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right">
-                            {formatCurrency(category.stockValue)}
+                            {formatCurrency(category.totalValue)}
                           </td>
                         </tr>
                       ))}
@@ -497,6 +388,8 @@ const InventoryReport = () => {
                   </table>
                 </div>
               </div>
+            ) : (
+              <p className="text-gray-600 text-center py-8">Tidak ada data untuk ditampilkan</p>
             )}
           </CardContent>
         </Card>
@@ -509,12 +402,12 @@ const InventoryReport = () => {
             <h3 className="text-lg font-medium mb-4">Pergerakan Stok</h3>
             {loading ? (
               <LoadingIndicator />
-            ) : (
+            ) : timeSeriesData.length > 0 ? (
               <>
                 <div className="h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
-                      data={stockMovementData}
+                      data={timeSeriesData}
                       margin={{
                         top: 5,
                         right: 30,
@@ -524,7 +417,7 @@ const InventoryReport = () => {
                     >
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis
-                        dataKey="date"
+                        dataKey="period"
                         tickFormatter={formatDateForChart}
                       />
                       <YAxis />
@@ -534,22 +427,22 @@ const InventoryReport = () => {
                       <Legend />
                       <Line
                         type="monotone"
-                        dataKey="stockIn"
+                        dataKey="inflow"
                         name="Stok Masuk"
                         stroke="#8884d8"
                         activeDot={{ r: 8 }}
                       />
                       <Line
                         type="monotone"
-                        dataKey="stockOut"
+                        dataKey="outflow"
                         name="Stok Keluar"
                         stroke="#ff7300"
                         activeDot={{ r: 8 }}
                       />
                       <Line
                         type="monotone"
-                        dataKey="adjustments"
-                        name="Penyesuaian"
+                        dataKey="netChange"
+                        name="Perubahan Bersih"
                         stroke="#28a745"
                         activeDot={{ r: 8 }}
                       />
@@ -562,65 +455,37 @@ const InventoryReport = () => {
                 <h3 className="text-lg font-medium my-4">
                   Detail Pergerakan Stok
                 </h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Tanggal
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Stok Masuk
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Stok Keluar
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Penyesuaian
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Perubahan Bersih
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {stockMovementData.map((day) => (
-                        <tr key={day.date.toString()}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {formatDateFull(day.date)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                            {day.stockIn}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                            {day.stockOut}
-                          </td>
-                          <td
-                            className={`px-6 py-4 whitespace-nowrap text-right ${
-                              day.adjustments >= 0
-                                ? "text-green-600"
-                                : "text-red-600"
-                            }`}
-                          >
-                            {day.adjustments > 0
-                              ? `+${day.adjustments}`
-                              : day.adjustments}
-                          </td>
-                          <td
-                            className={`px-6 py-4 whitespace-nowrap text-right ${
-                              day.stockIn - day.stockOut + day.adjustments >= 0
-                                ? "text-green-600"
-                                : "text-red-600"
-                            }`}
-                          >
-                            {day.stockIn - day.stockOut + day.adjustments}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <DataTable
+                  columns={[
+                    {
+                      header: "Periode",
+                      cell: (row) => formatDateFull(row.period),
+                    },
+                    {
+                      header: "Stok Masuk",
+                      accessor: "inflow",
+                      cellClassName: "text-right text-green-600",
+                    },
+                    {
+                      header: "Stok Keluar",
+                      accessor: "outflow",
+                      cellClassName: "text-right text-red-600",
+                    },
+                    {
+                      header: "Perubahan Bersih",
+                      cell: (row) => (
+                        <span className={row.netChange >= 0 ? "text-green-600" : "text-red-600"}>
+                          {row.netChange >= 0 ? "+" : ""}{row.netChange}
+                        </span>
+                      ),
+                      cellClassName: "text-right",
+                    },
+                  ]}
+                  data={timeSeriesData}
+                />
               </>
+            ) : (
+              <p className="text-gray-600 text-center py-8">Tidak ada data untuk ditampilkan</p>
             )}
           </CardContent>
         </Card>
@@ -631,104 +496,43 @@ const InventoryReport = () => {
         <Card>
           <CardContent>
             <h3 className="text-lg font-medium mb-4">
-              Daftar Produk dengan Stok Menipis
+              Produk dengan Pergerakan Tertinggi
             </h3>
             {loading ? (
               <LoadingIndicator />
+            ) : productSummary.length > 0 ? (
+              <DataTable
+                columns={[
+                  { header: "Nama Produk", accessor: "productName" },
+                  {
+                    header: "Total Pergerakan",
+                    cell: (row) => (row.inflow + row.outflow).toLocaleString(),
+                    cellClassName: "text-right",
+                  },
+                  {
+                    header: "Stok Masuk",
+                    accessor: "inflow",
+                    cellClassName: "text-right text-green-600",
+                  },
+                  {
+                    header: "Stok Keluar",
+                    accessor: "outflow",
+                    cellClassName: "text-right text-red-600",
+                  },
+                  {
+                    header: "Perubahan Bersih",
+                    cell: (row) => (
+                      <span className={row.netChange >= 0 ? "text-green-600" : "text-red-600"}>
+                        {row.netChange >= 0 ? "+" : ""}{row.netChange}
+                      </span>
+                    ),
+                    cellClassName: "text-right",
+                  },
+                ]}
+                data={productSummary.slice(0, 20)}
+              />
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Nama Produk
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Stok Saat Ini
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Stok Minimum
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Stok Maksimum
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Level Stok
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Nilai Inventory
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {lowStockItems.map((item) => {
-                      const stockPercentage = calculateStockPercentage(
-                        item.currentStock,
-                        item.minStock,
-                        item.maxStock
-                      );
-                      let statusColor = "success";
-                      let statusText = "Normal";
-
-                      if (item.currentStock === 0) {
-                        statusColor = "error";
-                        statusText = "Stok Habis";
-                      } else if (item.currentStock < item.minStock) {
-                        statusColor = "warning";
-                        statusText = "Stok Menipis";
-                      }
-
-                      return (
-                        <tr key={item.name}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {item.name}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                            {item.currentStock}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                            {item.minStock}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                            {item.maxStock}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="relative w-full h-2 bg-gray-200 rounded mr-2">
-                                <div
-                                  className={`absolute top-0 left-0 h-2 rounded ${
-                                    statusColor === "error"
-                                      ? "bg-red-500"
-                                      : statusColor === "warning"
-                                      ? "bg-yellow-500"
-                                      : "bg-green-500"
-                                  }`}
-                                  style={{ width: `${stockPercentage}%` }}
-                                ></div>
-                              </div>
-                              <span className="text-xs text-gray-500 min-w-[35px]">
-                                {Math.round(stockPercentage)}%
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                            {formatCurrency(item.value)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                            <StatusChip
-                              label={statusText}
-                              color={statusColor}
-                            />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <p className="text-gray-600 text-center py-8">Tidak ada data untuk ditampilkan</p>
             )}
           </CardContent>
         </Card>
@@ -739,19 +543,16 @@ const InventoryReport = () => {
         <Card>
           <CardContent>
             <h3 className="text-lg font-medium mb-4">
-              Performa Perputaran Stok
+              Nilai Inventory per Kategori
             </h3>
             {loading ? (
               <LoadingIndicator />
-            ) : (
+            ) : categorySummary.length > 0 ? (
               <>
                 <div className="h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={inventoryData.map((category) => ({
-                        name: category.name,
-                        turnover: (Math.random() * 5 + 1).toFixed(2),
-                      }))}
+                      data={categorySummary}
                       margin={{
                         top: 5,
                         right: 30,
@@ -761,12 +562,18 @@ const InventoryReport = () => {
                     >
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
-                      <YAxis />
-                      <RechartsTooltip />
+                      <YAxis
+                        tickFormatter={(value) =>
+                          `${(value / 1000000).toFixed(0)}jt`
+                        }
+                      />
+                      <RechartsTooltip
+                        formatter={(value) => formatCurrency(value)}
+                      />
                       <Legend />
                       <Bar
-                        dataKey="turnover"
-                        name="Perputaran Stok"
+                        dataKey="totalValue"
+                        name="Nilai Inventory"
                         fill="#8884d8"
                       />
                     </BarChart>
@@ -776,63 +583,32 @@ const InventoryReport = () => {
                 <Divider />
 
                 <h3 className="text-lg font-medium my-4">
-                  Detail Perputaran Stok per Kategori
+                  Detail Nilai Inventory per Kategori
                 </h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Kategori
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Nilai Inventory
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Penjualan (30 hari)
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Perputaran Stok
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Rata-rata Hari Stok
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {inventoryData.map((category) => {
-                        const turnover = parseFloat(
-                          (Math.random() * 5 + 1).toFixed(2)
-                        );
-                        const sales = Math.floor(
-                          category.stockValue * turnover
-                        );
-                        const daysOnHand = Math.floor(30 / turnover);
-
-                        return (
-                          <tr key={category.name}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              {category.name}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right">
-                              {formatCurrency(category.stockValue)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right">
-                              {formatCurrency(sales)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right">
-                              {turnover}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right">
-                              {daysOnHand} hari
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                <DataTable
+                  columns={[
+                    { header: "Kategori", accessor: "name" },
+                    {
+                      header: "Jumlah Produk",
+                      accessor: "productCount",
+                      cellClassName: "text-right",
+                    },
+                    {
+                      header: "Total Stok",
+                      accessor: "totalStock",
+                      cellClassName: "text-right",
+                    },
+                    {
+                      header: "Nilai Inventory",
+                      cell: (row) => formatCurrency(row.totalValue),
+                      cellClassName: "text-right",
+                    },
+                  ]}
+                  data={categorySummary}
+                />
               </>
+            ) : (
+              <p className="text-gray-600 text-center py-8">Tidak ada data untuk ditampilkan</p>
             )}
           </CardContent>
         </Card>

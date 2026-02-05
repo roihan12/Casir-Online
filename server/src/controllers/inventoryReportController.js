@@ -1,11 +1,12 @@
 const inventoryReportService = require("../services/inventoryReportService");
+const expiringProductsReportService = require("../services/expiringProductsReportService");
 const { ResponseError } = require("../error/responseError");
 
 // Controller untuk mendapatkan laporan nilai inventaris
 const getInventoryValueReport = async (req, res, next) => {
   try {
     const filters = {
-      cabangId: req.params.cabangId,
+      cabangId: req.query.cabangId,
       kategoriId: req.query.kategoriId,
       calculateCost: req.query.valueType !== "retail",
       includeLowStock: req.query.includeLowStock === "true",
@@ -63,7 +64,53 @@ const getInventoryMovementReport = async (req, res, next) => {
   }
 };
 
+// Controller untuk mendapatkan laporan produk kadaluarsa
+const getExpiringProductsReport = async (req, res, next) => {
+  try {
+    const filters = {
+      cabangId: req.query.cabangId,
+      kategoriId: req.query.kategoriId,
+      daysThreshold: req.query.daysThreshold,
+      statusKadaluarsa: req.query.statusKadaluarsa,
+      page: req.query.page,
+      limit: req.query.limit,
+    };
+
+    const result = await expiringProductsReportService.getExpiringProductsReport(filters);
+
+    res.status(200).json({
+      status: true,
+      message: "Laporan produk kadaluarsa berhasil diambil",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Controller untuk mendapatkan ringkasan produk kadaluarsa per kategori
+const getExpiringByCategory = async (req, res, next) => {
+  try {
+    const filters = {
+      cabangId: req.query.cabangId,
+      daysThreshold: req.query.daysThreshold,
+    };
+
+    const result = await expiringProductsReportService.getExpiringByCategory(filters);
+
+    res.status(200).json({
+      status: true,
+      message: "Ringkasan kategori produk kadaluarsa berhasil diambil",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getInventoryValueReport,
   getInventoryMovementReport,
+  getExpiringProductsReport,
+  getExpiringByCategory,
 };

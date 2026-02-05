@@ -1,36 +1,19 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
+  BarChart,
+  Bar,
   CartesianGrid,
   Tooltip as RechartsTooltip,
   Legend,
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar,
 } from "recharts";
 import {
-  Download,
   RefreshCcw,
   ListFilter,
   BarChart2,
-  TrendingUp,
   Target,
-  GitBranch,
-  MapPin,
 } from "lucide-react";
-import id from "date-fns/locale/id";
-import { useCabang } from "../../../features/cabang/hooks/useCabang";
+import { useBranchReport } from "../hooks/useReports";
 import formatCurrency from "@common/utils/formatCurrency";
 import {
   Card,
@@ -41,12 +24,11 @@ import {
   LoadingIndicator,
   MetricCard,
   DateInput,
-  FormSelect,
   Button,
   Divider,
-} from "../../../features/reports/components/ReportComponents";
+} from "../components/ReportComponents";
+import ExportDropdown from "../components/ExportDropdown";
 
-// Colors
 const COLORS = [
   "#0088FE",
   "#00C49F",
@@ -54,62 +36,13 @@ const COLORS = [
   "#FF8042",
   "#8884d8",
   "#82ca9d",
+  "#ffc658",
+  "#8dd1e1",
+  "#a4de6c",
+  "#d0ed57",
 ];
 
-// Generate mock branch data
-const generateBranchMetrics = (branchCount = 5) => {
-  const branches = [];
-  for (let i = 0; i < branchCount; i++) {
-    const revenue = Math.floor(Math.random() * 100000000) + 20000000;
-    const expenses = Math.floor(Math.random() * 50000000) + 10000000;
-    const profit = revenue - expenses;
-
-    branches.push({
-      id: `branch-${i + 1}`,
-      name: `Cabang ${i + 1}`,
-      location: `Kota ${i + 1}`,
-      revenue,
-      expenses,
-      profit,
-      profitMargin: (profit / revenue) * 100,
-      transactions: Math.floor(Math.random() * 2000) + 500,
-      avgBasketSize: Math.floor(Math.random() * 200000) + 50000,
-      employees: Math.floor(Math.random() * 20) + 5,
-      customers: Math.floor(Math.random() * 1000) + 200,
-      stockTurnover: Math.random() * 5 + 2,
-      growth: Math.random() * 20 - 5,
-      customerSatisfaction: Math.random() * 5,
-    });
-  }
-  return branches;
-};
-
-// Generate performance data over time
-const generatePerformanceData = (days = 30, branchCount = 5) => {
-  const data = [];
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-
-  for (let i = 0; i < days; i++) {
-    date.setDate(date.getDate() + 1);
-
-    const dailyData = {
-      date: new Date(date),
-    };
-
-    // Add data for each branch
-    for (let j = 0; j < branchCount; j++) {
-      dailyData[`branch${j + 1}`] =
-        Math.floor(Math.random() * 5000000) + 1000000;
-    }
-
-    data.push(dailyData);
-  }
-  return data;
-};
-
 const BranchReport = () => {
-  const [loading, setLoading] = useState(false);
   const [tabValue, setTabValue] = useState(0);
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
@@ -117,65 +50,38 @@ const BranchReport = () => {
     return date;
   });
   const [endDate, setEndDate] = useState(new Date());
-  const [comparisonType, setComparisonType] = useState("revenue");
-  const [selectedBranch, setSelectedBranch] = useState("all");
-  const [branchData, setBranchData] = useState([]);
-  const [performanceData, setPerformanceData] = useState([]);
-  const { allCabang } = useCabang();
+  const [comparisonType, setComparisonType] = useState("totalPenjualan");
 
-  // Fetch data effect
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        // Replace with actual API calls
-        setTimeout(() => {
-          const mockBranchData = generateBranchMetrics(5);
-          setBranchData(mockBranchData);
-
-          const mockPerformanceData = generatePerformanceData(30, 5);
-          setPerformanceData(mockPerformanceData);
-
-          setLoading(false);
-        }, 1000);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setLoading(false);
-      }
+  // Format dates for API
+  const apiParams = useMemo(() => {
+    const formatDate = (date) => {
+      const d = new Date(date);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     };
+    return {
+      startDate: formatDate(startDate),
+      endDate: formatDate(endDate),
+    };
+  }, [startDate, endDate]);
 
-    fetchData();
-  }, [startDate, endDate, comparisonType, selectedBranch]);
+  // Fetch data using real API
+  const { data: branchReportData, isLoading, refetch } = useBranchReport(apiParams);
+
+  const branchData = branchReportData?.data?.branches || [];
+  const summaryData = branchReportData?.data?.summary || {};
+
+  // Format dates for export params
+  const exportParams = apiParams;
 
   const handleChangeTab = (newValue) => {
     setTabValue(newValue);
   };
 
-  const handleExportReport = () => {
-    // Implementation for exporting report
-    alert("Export functionality will be implemented here");
-  };
-
   const handleRefreshData = () => {
-    // Refresh data
-    setBranchData([]);
-    setPerformanceData([]);
-
-    // Re-fetch data
-    const mockBranchData = generateBranchMetrics(5);
-    setBranchData(mockBranchData);
-
-    const mockPerformanceData = generatePerformanceData(30, 5);
-    setPerformanceData(mockPerformanceData);
+    refetch();
   };
 
-  // Format date for display
-  const formatDateForChart = (date) => {
-    if (!date) return "";
-    const d = new Date(date);
-    return d.toLocaleDateString("id-ID", { day: "2-digit", month: "short" });
-  };
-
+  // Format date full
   const formatDateFull = (date) => {
     if (!date) return "";
     const d = new Date(date);
@@ -191,7 +97,7 @@ const BranchReport = () => {
     if (!branchData.length) return { best: null, worst: null };
 
     const sortedBranches = [...branchData].sort(
-      (a, b) => b.profitMargin - a.profitMargin
+      (a, b) => b.totalPenjualan - a.totalPenjualan
     );
     return {
       best: sortedBranches[0],
@@ -202,26 +108,21 @@ const BranchReport = () => {
   const { best, worst } = getBestAndWorstBranches();
 
   const comparisonOptions = [
-    { value: "revenue", label: "Pendapatan" },
-    { value: "profit", label: "Keuntungan" },
-    { value: "transactions", label: "Jumlah Transaksi" },
-    { value: "growth", label: "Pertumbuhan" },
-  ];
-
-  const branchOptions = [
-    { value: "all", label: "Semua Cabang" },
-    ...branchData.map((branch) => ({
-      value: branch.id,
-      label: branch.name,
-    })),
+    { value: "totalPenjualan", label: "Total Penjualan" },
+    { value: "totalTransaksi", label: "Jumlah Transaksi" },
+    { value: "rataRata", label: "Rata-rata Transaksi" },
+    { value: "kontribusi", label: "Kontribusi" },
   ];
 
   const tabs = [
     { value: 0, label: "Perbandingan Cabang", icon: <BarChart2 size={16} /> },
-    { value: 1, label: "Trend Performa", icon: <TrendingUp size={16} /> },
-    { value: 2, label: "Matriks Performa", icon: <Target size={16} /> },
-    { value: 3, label: "Detail Cabang", icon: <GitBranch size={16} /> },
+    { value: 1, label: "Detail Cabang", icon: <Target size={16} /> },
   ];
+
+  const getComparisonLabel = (value) => {
+    const option = comparisonOptions.find((opt) => opt.value === value);
+    return option?.label || value;
+  };
 
   return (
     <div className="p-6">
@@ -236,23 +137,14 @@ const BranchReport = () => {
               Filter Laporan
             </h2>
             <div className="flex space-x-2">
-              <Button
-                onClick={handleRefreshData}
-                icon={<RefreshCcw size={16} />}
-              >
+              <Button onClick={handleRefreshData} icon={<RefreshCcw size={16} />}>
                 Refresh
               </Button>
-              <Button
-                onClick={handleExportReport}
-                variant="primary"
-                icon={<Download size={16} />}
-              >
-                Export
-              </Button>
+              <ExportDropdown reportType="branch" params={exportParams} disabled={isLoading} />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <DateInput
               id="start-date"
               label="Tanggal Mulai"
@@ -267,21 +159,18 @@ const BranchReport = () => {
               onChange={(e) => setEndDate(new Date(e.target.value))}
             />
 
-            <FormSelect
+            <select
               id="comparison"
-              label="Perbandingan"
               value={comparisonType}
               onChange={(e) => setComparisonType(e.target.value)}
-              options={comparisonOptions}
-            />
-
-            <FormSelect
-              id="branch"
-              label="Cabang"
-              value={selectedBranch}
-              onChange={(e) => setSelectedBranch(e.target.value)}
-              options={branchOptions}
-            />
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            >
+              {comparisonOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
         </CardContent>
       </Card>
@@ -295,51 +184,45 @@ const BranchReport = () => {
 
       {/* Top Performers Highlight */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {best && (
-          <div className="bg-green-50 rounded-lg shadow-sm p-5">
-            <p className="text-green-600 text-sm flex items-center mb-1">
-              <Target size={16} className="mr-1" /> Cabang Terbaik
-            </p>
-            <h3 className="text-xl font-bold text-green-600 mb-2">
-              {loading ? <LoadingIndicator size="sm" /> : best.name}
-            </h3>
-            <Divider className="my-2" />
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <p className="text-sm text-gray-600">Profit Margin</p>
-                <p className="font-semibold">{best.profitMargin.toFixed(2)}%</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Pendapatan</p>
-                <p className="font-semibold">{formatCurrency(best.revenue)}</p>
-              </div>
+        <div className="bg-green-50 rounded-lg shadow-sm p-5">
+          <p className="text-green-600 text-sm flex items-center mb-1">
+            <Target size={16} className="mr-1" /> Cabang Terbaik
+          </p>
+          <h3 className="text-xl font-bold text-green-600 mb-2">
+            {isLoading ? <LoadingIndicator size="sm" /> : best?.namaCabang || "-"}
+          </h3>
+          <Divider className="my-2" />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <p className="text-sm text-gray-600">Total Penjualan</p>
+              <p className="font-semibold">{isLoading ? "-" : formatCurrency(best?.totalPenjualan || 0)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Jumlah Transaksi</p>
+              <p className="font-semibold">{isLoading ? "-" : (best?.totalTransaksi || 0).toLocaleString()}</p>
             </div>
           </div>
-        )}
+        </div>
 
-        {worst && (
-          <div className="bg-red-50 rounded-lg shadow-sm p-5">
-            <p className="text-red-600 text-sm flex items-center mb-1">
-              <Target size={16} className="mr-1" /> Cabang Perlu Perhatian
-            </p>
-            <h3 className="text-xl font-bold text-red-600 mb-2">
-              {loading ? <LoadingIndicator size="sm" /> : worst.name}
-            </h3>
-            <Divider className="my-2" />
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <p className="text-sm text-gray-600">Profit Margin</p>
-                <p className="font-semibold">
-                  {worst.profitMargin.toFixed(2)}%
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Pendapatan</p>
-                <p className="font-semibold">{formatCurrency(worst.revenue)}</p>
-              </div>
+        <div className="bg-blue-50 rounded-lg shadow-sm p-5">
+          <p className="text-blue-600 text-sm flex items-center mb-1">
+            <Target size={16} className="mr-1" /> Total Penjualan Global
+          </p>
+          <h3 className="text-xl font-bold text-blue-600 mb-2">
+            {isLoading ? <LoadingIndicator size="sm" /> : formatCurrency(summaryData.grandTotalPenjualan || 0)}
+          </h3>
+          <Divider className="my-2" />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <p className="text-sm text-gray-600">Total Transaksi</p>
+              <p className="font-semibold">{isLoading ? "-" : (summaryData.totalTransaksi || 0).toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Jumlah Cabang</p>
+              <p className="font-semibold">{isLoading ? "-" : (summaryData.totalBranches || 0)}</p>
             </div>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Tab Navigation */}
@@ -352,9 +235,9 @@ const BranchReport = () => {
             <h3 className="text-lg font-medium mb-4">
               Perbandingan Performa Antar Cabang
             </h3>
-            {loading ? (
+            {isLoading ? (
               <LoadingIndicator />
-            ) : (
+            ) : branchData.length > 0 ? (
               <>
                 <div className="h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -368,37 +251,31 @@ const BranchReport = () => {
                       }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
+                      <XAxis dataKey="namaCabang" />
                       <YAxis
                         tickFormatter={(value) =>
-                          comparisonType === "revenue" ||
-                          comparisonType === "profit"
+                          comparisonType === "totalPenjualan" || comparisonType === "rataRata"
                             ? `${(value / 1000000).toFixed(0)}jt`
+                            : comparisonType === "kontribusi"
+                            ? `${value.toFixed(1)}%`
                             : value
                         }
                       />
                       <RechartsTooltip
-                        formatter={(value) =>
-                          comparisonType === "revenue" ||
-                          comparisonType === "profit"
-                            ? formatCurrency(value)
-                            : comparisonType === "growth"
-                            ? `${value.toFixed(2)}%`
-                            : value
-                        }
+                        formatter={(value, name) => {
+                          if (comparisonType === "totalPenjualan" || comparisonType === "rataRata") {
+                            return [formatCurrency(value), getComparisonLabel(comparisonType)];
+                          }
+                          if (comparisonType === "kontribusi") {
+                            return [`${value.toFixed(2)}%`, getComparisonLabel(comparisonType)];
+                          }
+                          return [value, getComparisonLabel(comparisonType)];
+                        }}
                       />
                       <Legend />
                       <Bar
                         dataKey={comparisonType}
-                        name={
-                          comparisonType === "revenue"
-                            ? "Pendapatan"
-                            : comparisonType === "profit"
-                            ? "Keuntungan"
-                            : comparisonType === "transactions"
-                            ? "Jumlah Transaksi"
-                            : "Pertumbuhan"
-                        }
+                        name={getComparisonLabel(comparisonType)}
                         fill="#8884d8"
                       />
                     </BarChart>
@@ -407,366 +284,113 @@ const BranchReport = () => {
 
                 <Divider />
 
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Cabang
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Pendapatan
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Keuntungan
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Profit Margin
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Transaksi
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Nilai Transaksi Rata-rata
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Pertumbuhan
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {branchData.map((branch) => (
-                        <tr key={branch.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {branch.name}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                            {formatCurrency(branch.revenue)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                            {formatCurrency(branch.profit)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                            {branch.profitMargin.toFixed(2)}%
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                            {branch.transactions}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                            {formatCurrency(branch.avgBasketSize)}
-                          </td>
-                          <td
-                            className={`px-6 py-4 whitespace-nowrap text-right ${
-                              branch.growth >= 0
-                                ? "text-green-600"
-                                : "text-red-600"
-                            }`}
-                          >
-                            {branch.growth >= 0 ? "+" : ""}
-                            {branch.growth.toFixed(2)}%
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <DataTable
+                  columns={[
+                    { header: "Cabang", accessor: "namaCabang" },
+                    {
+                      header: "Alamat",
+                      accessor: "alamat",
+                      cell: (val) => val || "-",
+                    },
+                    {
+                      header: "Total Penjualan",
+                      cell: (row) => formatCurrency(row.totalPenjualan),
+                      cellClassName: "text-right",
+                    },
+                    {
+                      header: "Total Transaksi",
+                      accessor: "totalTransaksi",
+                      cellClassName: "text-right",
+                    },
+                    {
+                      header: "Rata-rata Transaksi",
+                      cell: (row) => formatCurrency(row.rataRata),
+                      cellClassName: "text-right",
+                    },
+                    {
+                      header: "Kontribusi",
+                      cell: (row) => `${row.kontribusi.toFixed(2)}%`,
+                      cellClassName: "text-right",
+                    },
+                  ]}
+                  data={branchData}
+                />
               </>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Performance Trend Tab */}
-      {tabValue === 1 && (
-        <Card>
-          <CardContent>
-            <h3 className="text-lg font-medium mb-4">Trend Performa Cabang</h3>
-            {loading ? (
-              <LoadingIndicator />
             ) : (
-              <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={performanceData}
-                    margin={{
-                      top: 5,
-                      right: 30,
-                      left: 20,
-                      bottom: 5,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tickFormatter={formatDateForChart} />
-                    <YAxis
-                      tickFormatter={(value) =>
-                        `${(value / 1000000).toFixed(0)}jt`
-                      }
-                    />
-                    <RechartsTooltip
-                      formatter={(value) => formatCurrency(value)}
-                      labelFormatter={(label) => formatDateFull(label)}
-                    />
-                    <Legend />
-                    {branchData.map((branch, index) => (
-                      <Line
-                        key={branch.id}
-                        type="monotone"
-                        dataKey={`branch${index + 1}`}
-                        name={branch.name}
-                        stroke={COLORS[index % COLORS.length]}
-                        activeDot={{ r: 8 }}
-                      />
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Performance Matrix Tab */}
-      {tabValue === 2 && (
-        <Card>
-          <CardContent>
-            <h3 className="text-lg font-medium mb-4">
-              Matriks Performa Cabang
-            </h3>
-            {loading ? (
-              <LoadingIndicator />
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="h-[400px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart
-                      outerRadius={150}
-                      data={branchData.map((branch) => ({
-                        subject: branch.name,
-                        A: branch.profitMargin / 20, // scale to 0-5
-                        B: branch.stockTurnover / 2, // scale to 0-5
-                        C: branch.customerSatisfaction,
-                        D: branch.growth / 5 + 2.5, // scale to 0-5
-                        E: branch.transactions / 500, // scale to 0-5
-                      }))}
-                    >
-                      <PolarGrid />
-                      <PolarAngleAxis dataKey="subject" />
-                      <PolarRadiusAxis angle={30} domain={[0, 5]} />
-                      <Radar
-                        name="Profit Margin"
-                        dataKey="A"
-                        stroke="#8884d8"
-                        fill="#8884d8"
-                        fillOpacity={0.6}
-                      />
-                      <Radar
-                        name="Stock Turnover"
-                        dataKey="B"
-                        stroke="#82ca9d"
-                        fill="#82ca9d"
-                        fillOpacity={0.6}
-                      />
-                      <Radar
-                        name="Customer Satisfaction"
-                        dataKey="C"
-                        stroke="#ffc658"
-                        fill="#ffc658"
-                        fillOpacity={0.6}
-                      />
-                      <Radar
-                        name="Growth"
-                        dataKey="D"
-                        stroke="#ff8042"
-                        fill="#ff8042"
-                        fillOpacity={0.6}
-                      />
-                      <Radar
-                        name="Transaction Volume"
-                        dataKey="E"
-                        stroke="#0088FE"
-                        fill="#0088FE"
-                        fillOpacity={0.6}
-                      />
-                      <Legend />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Cabang
-                        </th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Profit Margin
-                        </th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Turnover
-                        </th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Kepuasan Pelanggan
-                        </th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Pertumbuhan
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {branchData.map((branch) => (
-                        <tr key={branch.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {branch.name}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-center">
-                            {branch.profitMargin.toFixed(2)}%
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-center">
-                            {branch.stockTurnover.toFixed(2)}x
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-center">
-                            <div className="flex justify-center">
-                              {/* Replace Rating with stars visualization */}
-                              {[...Array(5)].map((_, i) => (
-                                <span
-                                  key={i}
-                                  className={`text-lg ${
-                                    i < Math.round(branch.customerSatisfaction)
-                                      ? "text-yellow-400"
-                                      : "text-gray-300"
-                                  }`}
-                                >
-                                  ★
-                                </span>
-                              ))}
-                            </div>
-                          </td>
-                          <td
-                            className={`px-6 py-4 whitespace-nowrap text-center ${
-                              branch.growth >= 0
-                                ? "text-green-600"
-                                : "text-red-600"
-                            }`}
-                          >
-                            {branch.growth >= 0 ? "+" : ""}
-                            {branch.growth.toFixed(2)}%
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <p className="text-gray-600 text-center py-8">Tidak ada data untuk ditampilkan</p>
             )}
           </CardContent>
         </Card>
       )}
 
       {/* Branch Details Tab */}
-      {tabValue === 3 && (
+      {tabValue === 1 && (
         <Card>
           <CardContent>
             <h3 className="text-lg font-medium mb-4">Detail Cabang</h3>
-            {loading ? (
+            {isLoading ? (
               <LoadingIndicator />
-            ) : (
+            ) : branchData.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {branchData.map((branch) => (
+                {branchData.map((branch, index) => (
                   <div
                     key={branch.id}
                     className="border border-gray-200 rounded-lg overflow-hidden"
                   >
                     <div className="p-5">
-                      <div className="flex items-center mb-2">
-                        <MapPin size={20} className="mr-2 text-gray-500" />
-                        <h4 className="text-lg font-medium">{branch.name}</h4>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-lg font-medium">{branch.namaCabang}</h4>
+                        <div
+                          className="w-4 h-4 rounded-full"
+                          style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                        ></div>
                       </div>
 
                       <p className="text-gray-500 text-sm mb-4">
-                        {branch.location}
+                        {branch.alamat || "-"}
                       </p>
 
                       <Divider className="my-3" />
 
-                      <div className="grid grid-cols-2 gap-y-3">
-                        <div>
-                          <p className="text-xs text-gray-500">Pendapatan:</p>
-                          <p className="font-medium">
-                            {formatCurrency(branch.revenue)}
-                          </p>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-xs text-gray-500">Total Penjualan:</span>
+                          <span className="font-medium">{formatCurrency(branch.totalPenjualan)}</span>
                         </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Keuntungan:</p>
-                          <p className="font-medium">
-                            {formatCurrency(branch.profit)}
-                          </p>
+                        <div className="flex justify-between">
+                          <span className="text-xs text-gray-500">Total Transaksi:</span>
+                          <span className="font-medium">{branch.totalTransaksi.toLocaleString()}</span>
                         </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Margin:</p>
-                          <p className="font-medium">
-                            {branch.profitMargin.toFixed(2)}%
-                          </p>
+                        <div className="flex justify-between">
+                          <span className="text-xs text-gray-500">Rata-rata Transaksi:</span>
+                          <span className="font-medium">{formatCurrency(branch.rataRata)}</span>
                         </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Transaksi:</p>
-                          <p className="font-medium">{branch.transactions}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500">
-                            Rata-rata Transaksi:
-                          </p>
-                          <p className="font-medium">
-                            {formatCurrency(branch.avgBasketSize)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Pertumbuhan:</p>
-                          <p
-                            className={`font-medium ${
-                              branch.growth >= 0
-                                ? "text-green-600"
-                                : "text-red-600"
-                            }`}
-                          >
-                            {branch.growth >= 0 ? "+" : ""}
-                            {branch.growth.toFixed(2)}%
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Karyawan:</p>
-                          <p className="font-medium">{branch.employees}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Pelanggan:</p>
-                          <p className="font-medium">{branch.customers}</p>
+                        <div className="flex justify-between">
+                          <span className="text-xs text-gray-500">Kontribusi:</span>
+                          <span className="font-medium">{branch.kontribusi.toFixed(2)}%</span>
                         </div>
                       </div>
 
                       <Divider className="my-3" />
 
                       <div>
-                        <p className="text-xs text-gray-500 mb-1">
-                          Kepuasan Pelanggan:
-                        </p>
-                        <div className="flex">
-                          {[...Array(5)].map((_, i) => (
-                            <span
-                              key={i}
-                              className={`text-lg ${
-                                i < Math.round(branch.customerSatisfaction)
-                                  ? "text-yellow-400"
-                                  : "text-gray-300"
-                              }`}
-                            >
-                              ★
-                            </span>
-                          ))}
+                        <p className="text-xs text-gray-500 mb-1">Kontribusi:</p>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-indigo-600 h-2 rounded-full"
+                            style={{ width: `${Math.min(branch.kontribusi, 100)}%` }}
+                          ></div>
                         </div>
+                        <p className="text-right text-xs text-gray-500 mt-1">
+                          {branch.kontribusi.toFixed(2)}%
+                        </p>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
+            ) : (
+              <p className="text-gray-600 text-center py-8">Tidak ada data untuk ditampilkan</p>
             )}
           </CardContent>
         </Card>

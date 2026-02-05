@@ -29,13 +29,14 @@ class FinancialReportService {
       whereClause +=
         " AND transaction_date BETWEEN $" +
         (params.length + 1) +
-        " AND $" +
-        (params.length + 2);
+        "::date AND $" +
+        (params.length + 2) +
+        "::date";
       params.push(startDate, endDate);
     }
 
     // Query the materialized view
-    const summaryData = await prisma.$queryRaw`
+    const query = `
       SELECT 
         SUM(total_pendapatan) AS total_pendapatan,
         SUM(total_pengeluaran) AS total_pengeluaran,
@@ -49,9 +50,11 @@ class FinancialReportService {
         SUM(total_biaya_layanan) AS total_biaya_layanan,
         SUM(total_transaksi_penjualan) AS total_transaksi_penjualan,
         SUM(total_transaksi_pembelian) AS total_transaksi_pembelian
-      FROM mv_financial_summary
+      FROM vw_financial_summary
       WHERE ${whereClause}
     `;
+    
+    const summaryData = await prisma.$queryRawUnsafe(query, ...params);
 
     return summaryData[0];
   }
@@ -80,13 +83,14 @@ class FinancialReportService {
       whereClause +=
         " AND transaction_date BETWEEN $" +
         (params.length + 1) +
-        " AND $" +
-        (params.length + 2);
+        "::date AND $" +
+        (params.length + 2) +
+        "::date";
       params.push(startDate, endDate);
     }
 
     // Query the materialized view
-    const trendData = await prisma.$queryRaw`
+    const query = `
       SELECT 
         transaction_date,
         pendapatan,
@@ -96,6 +100,8 @@ class FinancialReportService {
       WHERE ${whereClause}
       ORDER BY transaction_date
     `;
+    
+    const trendData = await prisma.$queryRawUnsafe(query, ...params);
 
     return trendData;
   }
@@ -124,13 +130,14 @@ class FinancialReportService {
       whereClause +=
         " AND transaction_date BETWEEN $" +
         (params.length + 1) +
-        " AND $" +
-        (params.length + 2);
+        "::date AND $" +
+        (params.length + 2) +
+        "::date";
       params.push(startDate, endDate);
     }
 
     // Query the materialized view for aggregate data per payment method
-    const paymentData = await prisma.$queryRaw`
+    const query = `
       SELECT 
         metode_pembayaran,
         SUM(total_amount) AS total_amount,
@@ -142,6 +149,8 @@ class FinancialReportService {
       GROUP BY metode_pembayaran
       ORDER BY total_amount DESC
     `;
+    
+    const paymentData = await prisma.$queryRawUnsafe(query, ...params);
 
     return paymentData;
   }
@@ -165,7 +174,7 @@ class FinancialReportService {
     }
 
     // Query the materialized view
-    const expenseData = await prisma.$queryRaw`
+    const query = `
       SELECT 
         expense_category,
         total_amount,
@@ -174,6 +183,8 @@ class FinancialReportService {
       WHERE ${whereClause}
       ORDER BY total_amount DESC
     `;
+    
+    const expenseData = await prisma.$queryRawUnsafe(query, ...params);
 
     return expenseData;
   }
@@ -197,7 +208,7 @@ class FinancialReportService {
     }
 
     // Query the materialized view
-    const taxData = await prisma.$queryRaw`
+    const query1 = `
       SELECT 
         total_tax,
         total_fees,
@@ -208,9 +219,11 @@ class FinancialReportService {
       FROM mv_tax_and_fees
       WHERE ${whereClause}
     `;
+    
+    const taxData = await prisma.$queryRawUnsafe(query1, ...params);
 
     // Query transaction fees by payment method
-    const feesByPayment = await prisma.$queryRaw`
+    const query2 = `
       SELECT 
         metode_pembayaran,
         total_amount,
@@ -221,6 +234,8 @@ class FinancialReportService {
       WHERE ${whereClause}
       ORDER BY total_amount DESC
     `;
+    
+    const feesByPayment = await prisma.$queryRawUnsafe(query2, ...params);
 
     return {
       taxSummary: taxData[0],
@@ -262,8 +277,9 @@ class FinancialReportService {
       whereClause +=
         " AND transaction_date BETWEEN $" +
         (params.length + 1) +
-        " AND $" +
-        (params.length + 2);
+        "::date AND $" +
+        (params.length + 2) +
+        "::date";
       params.push(startDate, endDate);
     }
 
@@ -276,7 +292,7 @@ class FinancialReportService {
     const offset = (page - 1) * limit;
 
     // Query the materialized view for transactions with pagination
-    const transactions = await prisma.$queryRaw`
+    const query = `
       SELECT 
         transaksi_id,
         cabang_id,
@@ -295,18 +311,22 @@ class FinancialReportService {
         margin_persen,
         nama_pelanggan,
         nama_supplier
-      FROM mv_financial_detail
+      FROM vw_financial_detail
       WHERE ${whereClause}
       ORDER BY transaction_date DESC
-      LIMIT ${limit} OFFSET ${offset}
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `;
+    
+    const transactions = await prisma.$queryRawUnsafe(query, ...params, limit, offset);
 
     // Count total records for pagination
-    const countResult = await prisma.$queryRaw`
+    const countQuery = `
       SELECT COUNT(*) AS total
-      FROM mv_financial_detail
+      FROM vw_financial_detail
       WHERE ${whereClause}
     `;
+    
+    const countResult = await prisma.$queryRawUnsafe(countQuery, ...params);
 
     const totalCount = parseInt(countResult[0].total);
     const totalPages = Math.ceil(totalCount / limit);
@@ -353,7 +373,7 @@ class FinancialReportService {
     }
 
     // Query the profit loss main view
-    const profitLossData = await prisma.$queryRaw`
+    const query1 = `
       SELECT 
         period_month,
         total_revenue,
@@ -372,9 +392,11 @@ class FinancialReportService {
       WHERE ${whereClause}
       ORDER BY period_month
     `;
+    
+    const profitLossData = await prisma.$queryRawUnsafe(query1, ...params);
 
     // Query the expense breakdown by category
-    const expenseBreakdown = await prisma.$queryRaw`
+    const query2 = `
       SELECT 
         period_month,
         expense_category,
@@ -384,6 +406,8 @@ class FinancialReportService {
       WHERE ${whereClause}
       ORDER BY period_month, category_expense DESC
     `;
+    
+    const expenseBreakdown = await prisma.$queryRawUnsafe(query2, ...params);
 
     // Organize expense breakdown by period
     const expensesByPeriod = {};
@@ -468,11 +492,28 @@ class FinancialReportService {
     const formatDate = (date) => date.toISOString().split("T")[0];
 
     // Define query conditions
-    let whereClause = "cabang_id = $1";
-    const params = [cabangId];
+    let whereClause = "TRUE";
+    const params = [];
+
+    if (cabangId !== "all") {
+      whereClause += " AND cabang_id = $1";
+      params.push(cabangId);
+    }
+
+    if (year) {
+      if (month) {
+        // Filter for specific month of specific year
+        whereClause += ` AND EXTRACT(YEAR FROM period_month) = $${params.length + 1} AND EXTRACT(MONTH FROM period_month) = $${params.length + 2}`;
+        params.push(year, month);
+      } else {
+        // Filter for all months of specific year
+        whereClause += ` AND EXTRACT(YEAR FROM period_month) = $${params.length + 1}`;
+        params.push(year);
+      }
+    }
 
     // Query current period data
-    const currentPeriodData = await prisma.$queryRaw`
+    const query1 = `
       SELECT 
         SUM(total_revenue) AS total_revenue,
         SUM(total_cogs) AS total_cogs,
@@ -491,13 +532,18 @@ class FinancialReportService {
         END AS net_profit_margin
       FROM mv_profit_loss_report
       WHERE ${whereClause}
-      AND period_month BETWEEN ${formatDate(
-        currentPeriodStart
-      )}::date AND ${formatDate(currentPeriodEnd)}::date
+      AND period_month BETWEEN $${params.length + 1}::date AND $${params.length + 2}::date
     `;
+    
+    const currentPeriodData = await prisma.$queryRawUnsafe(
+      query1,
+      ...params,
+      formatDate(currentPeriodStart),
+      formatDate(currentPeriodEnd)
+    );
 
     // Query previous period data
-    const previousPeriodData = await prisma.$queryRaw`
+    const query2 = `
       SELECT 
         SUM(total_revenue) AS total_revenue,
         SUM(total_cogs) AS total_cogs,
@@ -516,10 +562,15 @@ class FinancialReportService {
         END AS net_profit_margin
       FROM mv_profit_loss_report
       WHERE ${whereClause}
-      AND period_month BETWEEN ${formatDate(
-        previousPeriodStart
-      )}::date AND ${formatDate(previousPeriodEnd)}::date
+      AND period_month BETWEEN $${params.length + 1}::date AND $${params.length + 2}::date
     `;
+    
+    const previousPeriodData = await prisma.$queryRawUnsafe(
+      query2,
+      ...params,
+      formatDate(previousPeriodStart),
+      formatDate(previousPeriodEnd)
+    );
 
     // Calculate percentage changes
     const calculateChange = (current, previous) => {
@@ -610,13 +661,43 @@ class FinancialReportService {
       ]);
 
     // Return consolidated data
-    return {
+    return this.formatResponseData({
       summary,
       trend,
       paymentMethods,
       expenseAnalysis,
       taxAndFees,
-    };
+    });
+  }
+
+
+  static formatResponseData(data) {
+    if (data === null || data === undefined) {
+      return data;
+    }
+
+    if (typeof data === "bigint") {
+      return data.toString(); // Convert BigInt to String
+    }
+
+    // Handle Date objects - must check before Array and Object checks
+    if (data instanceof Date) {
+      return data; // Return Date as-is, JSON.stringify will handle it
+    }
+
+    if (Array.isArray(data)) {
+      return data.map((item) => this.formatResponseData(item));
+    }
+
+    if (typeof data === "object") {
+      const formattedData = {};
+      for (const key in data) {
+        formattedData[key] = this.formatResponseData(data[key]);
+      }
+      return formattedData;
+    }
+
+    return data;
   }
 
   /**

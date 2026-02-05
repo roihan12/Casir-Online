@@ -165,7 +165,54 @@ const GlobalReturnDetail = () => {
   }
 
   // Use data from API
-  const displayData = returnData;
+  const displayData = returnData ? {
+    ...returnData,
+    // Map new fields to legacy ones for compatibility
+    nomor_transaksi: returnData.number,
+    tanggal: returnData.date,
+    jenis_transaksi: returnData.type,
+    status_pembayaran: returnData.status,
+    total: returnData.total,
+    keterangan: returnData.notes,
+    cabang: {
+        namaCabang: returnData.branchName,
+        alamat: returnData.branchAddress,
+        telepon: returnData.branchPhone
+    },
+    user: {
+        namaLengkap: returnData.cashierName
+    },
+    pelanggan: returnData.customerInfo ? {
+        ...returnData.customerInfo,
+        namaPelanggan: returnData.customerInfo.name,
+        telepon: returnData.customerInfo.contact
+    } : null,
+    supplier: returnData.supplierInfo ? { // Assuming supplierInfo might exist for RETUR_PEMBELIAN
+        ...returnData.supplierInfo,
+        namaSupplier: returnData.supplierInfo.name,
+        telepon: returnData.supplierInfo.contact
+    } : null,
+    transaksi_detail: returnData.items?.map(item => ({
+        ...item,
+        jumlah: item.quantity,
+        harga_satuan: item.price,
+        subtotal: item.subtotal,
+        produk: {
+            produkMaster: {
+                namaProduk: item.name
+            }
+        },
+        transaksi_detail_id: item.id
+    })),
+    pembayaran: returnData.payments?.map(p => ({
+        ...p,
+        pembayaran_id: p.id,
+        metode_pembayaran: p.method,
+        jumlah_bayar: p.amount,
+        tanggal_pembayaran: p.date,
+        status: "LUNAS" // Formatted payments are successful
+    }))
+  } : null;
 
   return (
     <div className="w-full p-6">

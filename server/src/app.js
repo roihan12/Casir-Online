@@ -51,6 +51,8 @@ const promoPreviewRoutes = require("./routes/promoPreviewRoutes");
 const promoRoutes = require("./routes/promoRoutes");
 const discountConfigRoutes = require("./routes/discountConfigRoutes");
 const loyaltyRoutes = require("./routes/loyaltyRoutes");
+const reportRoutes = require("./routes/reportRoutes");
+const reportExportRoutes = require("./routes/reportExportRoutes");
 
 const {
   setupNotificationScheduler,
@@ -147,6 +149,8 @@ app.use("/api/transaksi", promoPreviewRoutes);
 app.use("/api/promos", promoRoutes);
 app.use("/api/discount-config", discountConfigRoutes);
 app.use("/api/loyalty", loyaltyRoutes);
+app.use("/api/reports", reportRoutes);
+app.use("/api/reports/export", reportExportRoutes);
 
 // 404 handler
 app.use((req, res) => {

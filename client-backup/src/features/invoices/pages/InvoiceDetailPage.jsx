@@ -20,7 +20,7 @@ import {
   Loader,
 } from "lucide-react";
 import { format } from "date-fns";
-import { id } from "date-fns/locale";
+import { id as idLocale } from "date-fns/locale";
 import toast from "react-hot-toast";
 import { useInvoiceDetail, useGenerateInvoicePdf, useSendInvoice } from "../hooks/useInvoices";
 
@@ -57,8 +57,68 @@ const InvoiceDetail = () => {
     isLoading: isSendingInvoice
   } = useSendInvoice();
 
-  // Extract invoice from query result
-  const invoice = invoiceData?.data;
+  // Extract invoice from query result and map snake_case to camelCase
+  const invoice = invoiceData?.data ? {
+    id: invoiceData.data.id,
+    nomorInvoice: invoiceData.data.nomor_invoice,
+    tanggalInvoice: invoiceData.data.tanggal_invoice,
+    tanggalJatuhTempo: invoiceData.data.tanggal_jatuh_tempo,
+    total: invoiceData.data.total,
+    status: invoiceData.data.status,
+    catatan: invoiceData.data.catatan,
+    transaksiId: invoiceData.data.transaksi_id,
+    cabangId: invoiceData.data.cabang_id,
+    pelangganId: invoiceData.data.pelanggan_id,
+    createdAt: invoiceData.data.created_at,
+    updatedAt: invoiceData.data.updated_at,
+    // Map items if available
+    items: invoiceData.data.items?.map(item => ({
+      transaksiDetailId: item.transaksiDetailId,
+      namaProduk: item.namaProduk,
+      sku: item.sku,
+      jumlah: item.jumlah,
+      hargaSatuan: item.hargaSatuan,
+      diskonNominal: item.diskonNominal,
+      subtotal: item.subtotal,
+    })) || [],
+    // Map payments if available
+    payments: invoiceData.data.payments?.map(payment => ({
+      pembayaranId: payment.pembayaranId,
+      metodePembayaran: payment.metodePembayaran,
+      provider: payment.provider,
+      jumlahBayar: payment.jumlahBayar,
+      jumlahKembali: payment.jumlahKembali,
+      nomorReferensi: payment.nomorReferensi,
+      status: payment.status,
+    })) || [],
+    transaksi: invoiceData.data.transaksi ? {
+      transaksiId: invoiceData.data.transaksi.transaksi_id,
+      nomorTransaksi: invoiceData.data.transaksi.nomorTransaksi,
+      jenisTransaksi: invoiceData.data.transaksi.jenisTransaksi,
+      tanggal: invoiceData.data.transaksi.tanggal,
+      subtotal: invoiceData.data.transaksi.subtotal,
+      diskon: invoiceData.data.transaksi.diskon,
+      pajak: invoiceData.data.transaksi.pajak,
+      biayaTambahan: invoiceData.data.transaksi.biayaTambahan,
+      total: invoiceData.data.transaksi.total,
+      statusPembayaran: invoiceData.data.transaksi.statusPembayaran,
+      keterangan: invoiceData.data.transaksi.keterangan,
+    } : null,
+    cabang: invoiceData.data.cabang ? {
+      id: invoiceData.data.cabang.id,
+      namaCabang: invoiceData.data.cabang.namaCabang,
+      alamat: invoiceData.data.cabang.alamat,
+      telepon: invoiceData.data.cabang.telepon,
+      email: invoiceData.data.cabang.email,
+    } : null,
+    pelanggan: invoiceData.data.pelanggan ? {
+      id: invoiceData.data.pelanggan.id,
+      namaPelanggan: invoiceData.data.pelanggan.namaPelanggan,
+      alamat: invoiceData.data.pelanggan.alamat,
+      telepon: invoiceData.data.pelanggan.telepon,
+      email: invoiceData.data.pelanggan.email,
+    } : null,
+  } : null;
 
   // Handle error
   React.useEffect(() => {
@@ -226,16 +286,16 @@ const InvoiceDetail = () => {
   const displayData = {
     ...invoice,
     tanggalInvoice: format(new Date(invoice.tanggalInvoice), "dd MMMM yyyy", {
-      locale: id,
+      locale: idLocale,
     }),
     tanggalJatuhTempo: invoice.tanggalJatuhTempo
       ? format(new Date(invoice.tanggalJatuhTempo), "dd MMMM yyyy", {
-          locale: id,
+          locale: idLocale,
         })
       : "-",
     tanggalTransaksi: invoice.transaksi?.tanggal
       ? format(new Date(invoice.transaksi.tanggal), "dd MMMM yyyy", {
-          locale: id,
+          locale: idLocale,
         })
       : "-",
   };
@@ -388,19 +448,19 @@ const InvoiceDetail = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {displayData.transaksi?.items?.map((item, index) => (
+                  {displayData.items?.map((item, index) => (
                     <tr key={index}>
                       <td className="px-4 py-3 text-sm text-gray-900">
-                        {item.produk?.namaProduk || item.namaProduk || "Produk"}
+                        {item.namaProduk || "Produk"}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900 text-right">
-                        {formatCurrency(item.harga)}
+                        {formatCurrency(item.hargaSatuan)}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900 text-right">
                         {item.jumlah}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900 text-right">
-                        {formatCurrency(item.diskon || 0)}
+                        {formatCurrency(item.diskonNominal || 0)}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">
                         {formatCurrency(item.subtotal)}
@@ -418,7 +478,7 @@ const InvoiceDetail = () => {
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">
                       {formatCurrency(
-                        displayData.transaksi?.items?.reduce(
+                        displayData.items?.reduce(
                           (sum, item) => sum + item.subtotal,
                           0
                         ) || 0
@@ -468,7 +528,8 @@ const InvoiceDetail = () => {
                 <div>
                   <p className="text-sm text-gray-500">Metode Pembayaran</p>
                   <p className="text-gray-800 font-medium">
-                    {displayData.transaksi?.pembayaran?.[0]?.metodePembayaran ||
+                    {displayData.payments?.[0]?.metodePembayaran ||
+                      displayData.transaksi?.pembayaran?.[0]?.metodePembayaran ||
                       "-"}
                   </p>
                 </div>

@@ -50,6 +50,145 @@ const GlobalTransactionDetail = () => {
     refetch
   } = useTransactionDetail(id);
 
+  // Use data from API
+  const displayData = transaction ? {
+    ...transaction,
+    // Map new fields to legacy ones if needed or use new fields directly in UI
+    nomor_transaksi: transaction.number,
+    tanggal: transaction.date,
+    jenis_transaksi: transaction.type,
+    status_pembayaran: transaction.status,
+    total_harga: transaction.total,
+    transaksi_detail: transaction.items?.map(item => ({
+        ...item,
+        jumlah: item.quantity,
+        harga_satuan: item.price,
+        subtotal: item.subtotal,
+        produk: {
+            produkMaster: {
+                namaProduk: item.name,
+                // sku is not in the item directly in new structure provided? 
+                // Wait, user provided items array has id, name, quantity, price, discount, subtotal, tax, total.
+                // It does not seem to have 'sku'. I might need to check if backend provides it or just show name.
+                // Assuming name is enough for now or it's just not in the sample.
+            }
+        },
+        // Legacy support
+        transaksi_detail_id: item.id
+    })),
+    pelanggan: transaction.customerInfo ? {
+        ...transaction.customerInfo,
+        namaPelanggan: transaction.customerInfo.name,
+        telepon: transaction.customerInfo.contact
+    } : null,
+    user: {
+        namaLengkap: transaction.cashierName
+    },
+    cabang: {
+        namaCabang: transaction.branchName,
+        alamat: transaction.branchAddress,
+        telepon: transaction.branchPhone
+    },
+    pembayaran: transaction.payments?.map(p => ({
+        ...p,
+        metode_pembayaran: p.method,
+        jumlah_bayar: p.amount,
+        tanggal_pembayaran: p.date,
+        status: "LUNAS" // implied since it's in payments array? or check status
+    })),
+    keterangan: transaction.notes,
+    subtotal: transaction.subtotal,
+    biaya_tambahan: transaction.additionalFee,
+    pajak: transaction.tax,
+    diskon: transaction.discount,
+    discountBreakdown: transaction.discountBreakdown // Map discount breakdown
+  } : null;
+
+  // Helper to render discount rows
+  const renderDiscountRows = () => {
+    if (!displayData.discountBreakdown) {
+      // Fallback to simple discount display if breakdown not available
+      if (displayData.diskon > 0) {
+        return (
+          <tr>
+            <td colSpan={4} className="px-6 py-2 text-sm text-gray-600 text-right">
+              Diskon
+            </td>
+            <td className="px-6 py-2 text-sm text-red-600 text-right">
+              -{formatCurrency(displayData.diskon)}
+            </td>
+          </tr>
+        );
+      }
+      return null;
+    }
+
+    const {
+      diskonMember,
+      diskonPromo,
+      diskonManualNominal,
+      diskonManualPersen,
+      totalDiskonFinal
+    } = displayData.discountBreakdown;
+
+    const rows = [];
+
+    if (diskonMember > 0) {
+      rows.push(
+        <tr key="diskon-member">
+          <td colSpan={4} className="px-6 py-2 text-sm text-gray-600 text-right">
+            Diskon Member
+          </td>
+          <td className="px-6 py-2 text-sm text-red-600 text-right">
+            -{formatCurrency(diskonMember)}
+          </td>
+        </tr>
+      );
+    }
+
+    if (diskonPromo > 0) {
+      rows.push(
+        <tr key="diskon-promo">
+          <td colSpan={4} className="px-6 py-2 text-sm text-gray-600 text-right">
+            Diskon Promo
+          </td>
+          <td className="px-6 py-2 text-sm text-red-600 text-right">
+            -{formatCurrency(diskonPromo)}
+          </td>
+        </tr>
+      );
+    }
+
+    if (diskonManualNominal > 0) {
+      rows.push(
+        <tr key="diskon-manual">
+          <td colSpan={4} className="px-6 py-2 text-sm text-gray-600 text-right">
+            Diskon Manual {diskonManualPersen > 0 ? `(${diskonManualPersen}%)` : ""}
+          </td>
+          <td className="px-6 py-2 text-sm text-red-600 text-right">
+            -{formatCurrency(diskonManualNominal)}
+          </td>
+        </tr>
+      );
+    }
+    
+    // If we have total discount but no breakdown matches (fallback) or to ensure total line logic matches
+    if (rows.length === 0 && (totalDiskonFinal > 0 || displayData.diskon > 0)) {
+         return (
+          <tr>
+            <td colSpan={4} className="px-6 py-2 text-sm text-gray-600 text-right">
+              Diskon Total
+            </td>
+            <td className="px-6 py-2 text-sm text-red-600 text-right">
+              -{formatCurrency(totalDiskonFinal || displayData.diskon)}
+            </td>
+          </tr>
+        );
+    }
+
+    return rows;
+  };
+
   // Handle error
   React.useEffect(() => {
     if (error) {
@@ -177,11 +316,7 @@ const GlobalTransactionDetail = () => {
     );
   }
 
-  console.log(transaction);
 
-
-  // Use transaction data from API response
-  const displayData = transaction;
 
 
   return (
@@ -263,7 +398,7 @@ const GlobalTransactionDetail = () => {
               <div className="flex items-center text-gray-600">
                 <User size={16} className="mr-2" />
                 <span className="text-sm">
-                  Kasir: {displayData.created_by || "Tidak tersedia"}
+                  Kasir: {displayData.cashierName   || "Tidak tersedia"}
                 </span>
               </div>
             </div>
@@ -278,7 +413,7 @@ const GlobalTransactionDetail = () => {
                   <Check size={16} className="mr-2" />
                   <span className="text-sm">
                     Lunas pada{" "}
-                    {formatDate(displayData.tanggal_lunas)}
+                    {formatDate(displayData.pembayaran[0].tanggal_pembayaran)}
                   </span>
                 </div>
               )}
@@ -411,12 +546,54 @@ const GlobalTransactionDetail = () => {
                     </span>
                   </div>
 
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm text-gray-600">Diskon:</span>
-                    <span className="text-sm text-red-600">
-                      -{formatCurrency(displayData.diskon)}
-                    </span>
-                  </div>
+                  {/* Discount Breakdown */}
+                  {displayData.discountBreakdown ? (
+                    <>
+                      {displayData.discountBreakdown.diskonMember > 0 && (
+                        <div className="flex justify-between mb-2">
+                          <span className="text-sm text-gray-600">Diskon Member:</span>
+                          <span className="text-sm text-red-600">
+                            -{formatCurrency(displayData.discountBreakdown.diskonMember)}
+                          </span>
+                        </div>
+                      )}
+                      {displayData.discountBreakdown.diskonPromo > 0 && (
+                        <div className="flex justify-between mb-2">
+                          <span className="text-sm text-gray-600">Diskon Promo:</span>
+                          <span className="text-sm text-red-600">
+                            -{formatCurrency(displayData.discountBreakdown.diskonPromo)}
+                          </span>
+                        </div>
+                      )}
+                      {displayData.discountBreakdown.diskonManualNominal > 0 && (
+                        <div className="flex justify-between mb-2">
+                          <span className="text-sm text-gray-600">
+                            Diskon Manual {displayData.discountBreakdown.diskonManualPersen > 0 ? `(${displayData.discountBreakdown.diskonManualPersen}%)` : ""}:
+                          </span>
+                          <span className="text-sm text-red-600">
+                            -{formatCurrency(displayData.discountBreakdown.diskonManualNominal)}
+                          </span>
+                        </div>
+                      )}
+                       {((!displayData.discountBreakdown.diskonMember && !displayData.discountBreakdown.diskonPromo && !displayData.discountBreakdown.diskonManualNominal) && displayData.discountBreakdown.totalDiskonFinal > 0) && (
+                         <div className="flex justify-between mb-2">
+                          <span className="text-sm text-gray-600">Diskon Total:</span>
+                          <span className="text-sm text-red-600">
+                            -{formatCurrency(displayData.discountBreakdown.totalDiskonFinal)}
+                          </span>
+                        </div>
+                       )}
+                    </>
+                  ) : (
+                    displayData.diskon > 0 && (
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm text-gray-600">Diskon:</span>
+                        <span className="text-sm text-red-600">
+                          -{formatCurrency(displayData.diskon)}
+                        </span>
+                      </div>
+                    )
+                  )}
 
                   <div className="flex justify-between mb-2">
                     <span className="text-sm text-gray-600">Pajak:</span>

@@ -1,10 +1,10 @@
 // File: src/controllers/invoiceController.js
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
 const ejs = require("ejs");
 const puppeteer = require("puppeteer");
 const path = require("path");
 const fs = require("fs");
+const invoiceService = require("../services/invoiceService");
+const { logger } = require("../utils/logger");
 
 /**
  * @desc    Get list of invoices
@@ -23,85 +23,23 @@ exports.getInvoiceList = async (req, res) => {
       search,
     } = req.query;
 
-    // Build filter object
-    const filter = {};
-
-    // Add date range filter if provided
-    if (startDate && endDate) {
-      filter.tanggalInvoice = {
-        gte: new Date(startDate),
-        lte: new Date(endDate),
-      };
-    }
-
-    // Add cabang filter if provided
-    if (cabangId) {
-      filter.cabangId = cabangId;
-    }
-
-    // Add status filter if provided
-    if (status) {
-      filter.status = status;
-    }
-
-    // Add search filter if provided
-    if (search) {
-      filter.OR = [
-        { nomorInvoice: { contains: search, mode: "insensitive" } },
-        { transaksi: { nomorTransaksi: { contains: search, mode: "insensitive" } } },
-        { pelanggan: { namaPelanggan: { contains: search, mode: "insensitive" } } },
-      ];
-    }
-
-    // Get total count for pagination
-    const total = await prisma.invoice.count({
-      where: filter,
-    });
-
-    // Get invoices with pagination
-    const invoices = await prisma.invoice.findMany({
-      where: filter,
-      include: {
-        transaksi: {
-          select: {
-            nomorTransaksi: true,
-            jenisTransaksi: true,
-            tanggal: true,
-            statusPembayaran: true,
-          },
-        },
-        cabang: {
-          select: {
-            namaCabang: true,
-          },
-        },
-        pelanggan: {
-          select: {
-            namaPelanggan: true,
-            telepon: true,
-            email: true,
-          },
-        },
-      },
-      orderBy: {
-        tanggalInvoice: "desc",
-      },
-      skip: (parseInt(page) - 1) * parseInt(limit),
-      take: parseInt(limit),
+    const result = await invoiceService.getInvoiceList({
+      page,
+      limit,
+      startDate,
+      endDate,
+      cabangId,
+      status,
+      search,
     });
 
     res.status(200).json({
       success: true,
-      data: invoices,
-      pagination: {
-        total,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil(total / parseInt(limit)),
-      },
+      data: result.data,
+      pagination: result.pagination,
     });
   } catch (error) {
-    console.error("Error in getInvoiceList:", error);
+    logger.error("Error in getInvoiceList controller:", error);
     res.status(500).json({
       success: false,
       message: "Terjadi kesalahan saat mengambil daftar invoice",
@@ -119,33 +57,8 @@ exports.getInvoiceById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const invoice = await prisma.invoice.findUnique({
-      where: { id },
-      include: {
-        transaksi: {
-          include: {
-            items: true,
-            pembayaran: true,
-          },
-        },
-        cabang: {
-          select: {
-            namaCabang: true,
-            alamat: true,
-            telepon: true,
-            email: true,
-          },
-        },
-        pelanggan: {
-          select: {
-            namaPelanggan: true,
-            alamat: true,
-            telepon: true,
-            email: true,
-          },
-        },
-      },
-    });
+    // Use getInvoiceWithDetails to include items and payments
+    const invoice = await invoiceService.getInvoiceWithDetails(id);
 
     if (!invoice) {
       return res.status(404).json({
@@ -159,7 +72,7 @@ exports.getInvoiceById = async (req, res) => {
       data: invoice,
     });
   } catch (error) {
-    console.error("Error in getInvoiceById:", error);
+    logger.error("Error in getInvoiceById controller:", error);
     res.status(500).json({
       success: false,
       message: "Terjadi kesalahan saat mengambil detail invoice",
@@ -177,75 +90,27 @@ exports.createInvoice = async (req, res) => {
   try {
     const { transaksiId, tanggalJatuhTempo, catatan } = req.body;
 
-    // Check if transaction exists
-    const transaksi = await prisma.transaksi.findUnique({
-      where: { id: transaksiId },
-      include: {
-        cabang: true,
-        pelanggan: true,
-      },
-    });
-
-    if (!transaksi) {
-      return res.status(404).json({
-        success: false,
-        message: "Transaksi tidak ditemukan",
-      });
-    }
-
-    // Check if invoice already exists for this transaction
-    const existingInvoice = await prisma.invoice.findFirst({
-      where: { transaksiId },
-    });
-
-    if (existingInvoice) {
+    // Validate required fields
+    if (!transaksiId) {
       return res.status(400).json({
         success: false,
-        message: "Invoice untuk transaksi ini sudah ada",
+        message: "transaksiId wajib diisi",
       });
     }
 
-    // Generate invoice number
-    const date = new Date();
-    const year = date.getFullYear().toString().slice(-2);
-    const month = (date.getMonth() + 1).toString().padStart(2, "0");
-    const day = date.getDate().toString().padStart(2, "0");
-    
-    // Get count of invoices for today to generate sequence
-    const todayInvoices = await prisma.invoice.count({
-      where: {
-        tanggalInvoice: {
-          gte: new Date(date.setHours(0, 0, 0, 0)),
-          lte: new Date(date.setHours(23, 59, 59, 999)),
-        },
-      },
-    });
-    
-    const sequence = (todayInvoices + 1).toString().padStart(3, "0");
-    const nomorInvoice = `INV-${year}${month}${day}-${sequence}`;
+    // Extract user info for audit log
+    const userInfo = {
+      userId: req.user?.user_id || req.user?.id,
+      userName: req.user?.username || req.user?.nama_lengkap,
+      ipAddress: req.ip,
+      cabangId: req.user?.cabang_id,
+    };
 
-    // Create invoice
-    const invoice = await prisma.invoice.create({
-      data: {
-        nomorInvoice,
-        tanggalInvoice: new Date(),
-        tanggalJatuhTempo: tanggalJatuhTempo ? new Date(tanggalJatuhTempo) : null,
-        total: transaksi.total,
-        status: transaksi.statusPembayaran === "LUNAS" ? "LUNAS" : "BELUM_LUNAS",
-        catatan,
-        transaksi: {
-          connect: { id: transaksiId },
-        },
-        cabang: {
-          connect: { id: transaksi.cabangId },
-        },
-        pelanggan: transaksi.pelangganId
-          ? {
-              connect: { id: transaksi.pelangganId },
-            }
-          : undefined,
-      },
-    });
+    const invoice = await invoiceService.createInvoice({
+      transaksiId,
+      tanggalJatuhTempo,
+      catatan,
+    }, userInfo);
 
     res.status(201).json({
       success: true,
@@ -253,7 +118,23 @@ exports.createInvoice = async (req, res) => {
       data: invoice,
     });
   } catch (error) {
-    console.error("Error in createInvoice:", error);
+    logger.error("Error in createInvoice controller:", error);
+
+    // Handle specific error messages
+    if (error.message === "Transaksi tidak ditemukan") {
+      return res.status(404).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    if (error.message === "Invoice untuk transaksi ini sudah ada") {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: "Terjadi kesalahan saat membuat invoice",
@@ -272,35 +153,34 @@ exports.updateInvoice = async (req, res) => {
     const { id } = req.params;
     const { tanggalJatuhTempo, status, catatan } = req.body;
 
-    // Check if invoice exists
-    const invoice = await prisma.invoice.findUnique({
-      where: { id },
-    });
+    // Extract user info for audit log
+    const userInfo = {
+      userId: req.user?.user_id || req.user?.id,
+      userName: req.user?.username || req.user?.nama_lengkap,
+      ipAddress: req.ip,
+    };
 
-    if (!invoice) {
-      return res.status(404).json({
-        success: false,
-        message: "Invoice tidak ditemukan",
-      });
-    }
-
-    // Update invoice
-    const updatedInvoice = await prisma.invoice.update({
-      where: { id },
-      data: {
-        tanggalJatuhTempo: tanggalJatuhTempo ? new Date(tanggalJatuhTempo) : undefined,
-        status: status || undefined,
-        catatan: catatan !== undefined ? catatan : undefined,
-      },
-    });
+    const invoice = await invoiceService.updateInvoice(id, {
+      tanggalJatuhTempo,
+      status,
+      catatan,
+    }, userInfo);
 
     res.status(200).json({
       success: true,
       message: "Invoice berhasil diperbarui",
-      data: updatedInvoice,
+      data: invoice,
     });
   } catch (error) {
-    console.error("Error in updateInvoice:", error);
+    logger.error("Error in updateInvoice controller:", error);
+
+    if (error.message === "Invoice tidak ditemukan") {
+      return res.status(404).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: "Terjadi kesalahan saat memperbarui invoice",
@@ -318,29 +198,29 @@ exports.deleteInvoice = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if invoice exists
-    const invoice = await prisma.invoice.findUnique({
-      where: { id },
-    });
+    // Extract user info for audit log
+    const userInfo = {
+      userId: req.user?.user_id || req.user?.id,
+      userName: req.user?.username || req.user?.nama_lengkap,
+      ipAddress: req.ip,
+    };
 
-    if (!invoice) {
-      return res.status(404).json({
-        success: false,
-        message: "Invoice tidak ditemukan",
-      });
-    }
-
-    // Delete invoice
-    await prisma.invoice.delete({
-      where: { id },
-    });
+    await invoiceService.deleteInvoice(id, userInfo);
 
     res.status(200).json({
       success: true,
       message: "Invoice berhasil dihapus",
     });
   } catch (error) {
-    console.error("Error in deleteInvoice:", error);
+    logger.error("Error in deleteInvoice controller:", error);
+
+    if (error.message === "Invoice tidak ditemukan") {
+      return res.status(404).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: "Terjadi kesalahan saat menghapus invoice",
@@ -359,28 +239,8 @@ exports.sendInvoice = async (req, res) => {
     const { id } = req.params;
     const { email, message } = req.body;
 
-    // Check if invoice exists
-    const invoice = await prisma.invoice.findUnique({
-      where: { id },
-      include: {
-        transaksi: {
-          include: {
-            transaksi_detail: {
-              include: {
-                produk: {
-                  include: {
-                    produkMaster: true,
-                  },
-                },
-              },
-            },
-            pembayaran: true,
-          },
-        },
-        cabang: true,
-        pelanggan: true,
-      },
-    });
+    // Get invoice with full details
+    const invoice = await invoiceService.getInvoiceWithDetails(id);
 
     if (!invoice) {
       return res.status(404).json({
@@ -411,24 +271,24 @@ exports.sendInvoice = async (req, res) => {
     }
 
     // Prepare items for template
-    const items = invoice.transaksi.transaksi_detail.map((detail) => ({
-      namaProduk: detail.produk.produkMaster.namaProduk,
-      sku: detail.produk.produkMaster.sku,
-      jumlah: detail.jumlah,
-      hargaSatuan: parseFloat(detail.harga_satuan),
-      diskonNominal: parseFloat(detail.diskon_nominal || 0),
-      subtotal: parseFloat(detail.subtotal),
+    const items = invoice.items.map((item) => ({
+      namaProduk: item.namaProduk,
+      sku: item.sku,
+      jumlah: item.jumlah,
+      hargaSatuan: parseFloat(item.hargaSatuan),
+      diskonNominal: parseFloat(item.diskonNominal || 0),
+      subtotal: parseFloat(item.subtotal),
     }));
 
     // Prepare payments for template
-    const payments = invoice.transaksi.pembayaran
+    const payments = (invoice.payments || [])
       .filter((payment) => payment.status === "SUKSES")
       .map((payment) => ({
-        metodePembayaran: payment.metode_pembayaran,
+        metodePembayaran: payment.metodePembayaran,
         provider: payment.provider,
-        jumlahBayar: parseFloat(payment.jumlah_bayar),
-        jumlahKembali: parseFloat(payment.jumlah_kembali),
-        nomorReferensi: payment.nomor_referensi,
+        jumlahBayar: parseFloat(payment.jumlahBayar),
+        jumlahKembali: parseFloat(payment.jumlahKembali),
+        nomorReferensi: payment.nomorReferensi,
       }));
 
     // Prepare template data
@@ -522,11 +382,11 @@ exports.sendInvoice = async (req, res) => {
     const mailOptions = {
       from: process.env.SMTP_FROM || `"${invoice.cabang.namaCabang}" <noreply@casir-online.com>`,
       to: recipientEmail,
-      subject: `Invoice ${invoice.nomorInvoice} - ${invoice.cabang.namaCabang}`,
+      subject: `Invoice ${invoice.nomor_invoice} - ${invoice.cabang.namaCabang}`,
       html: emailHtml,
       attachments: [
         {
-          filename: `invoice-${invoice.nomorInvoice}.pdf`,
+          filename: `invoice-${invoice.nomor_invoice}.pdf`,
           content: pdfBuffer,
           contentType: "application/pdf",
         },
@@ -535,16 +395,21 @@ exports.sendInvoice = async (req, res) => {
 
     await transporter.sendMail(mailOptions);
 
+    logger.info("Invoice sent successfully", {
+      invoiceId: id,
+      email: recipientEmail,
+    });
+
     res.status(200).json({
       success: true,
       message: "Invoice berhasil dikirim via email",
       data: {
         email: recipientEmail,
-        invoiceNumber: invoice.nomorInvoice,
+        invoiceNumber: invoice.nomor_invoice,
       },
     });
   } catch (error) {
-    console.error("Error in sendInvoice:", error);
+    logger.error("Error in sendInvoice controller:", error);
     res.status(500).json({
       success: false,
       message: "Terjadi kesalahan saat mengirim invoice",
@@ -562,28 +427,8 @@ exports.generateInvoicePdf = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if invoice exists
-    const invoice = await prisma.invoice.findUnique({
-      where: { id },
-      include: {
-        transaksi: {
-          include: {
-            transaksi_detail: {
-              include: {
-                produk: {
-                  include: {
-                    produkMaster: true,
-                  },
-                },
-              },
-            },
-            pembayaran: true,
-          },
-        },
-        cabang: true,
-        pelanggan: true,
-      },
-    });
+    // Get invoice with full details
+    const invoice = await invoiceService.getInvoiceWithDetails(id);
 
     if (!invoice) {
       return res.status(404).json({
@@ -604,24 +449,24 @@ exports.generateInvoicePdf = async (req, res) => {
     }
 
     // Prepare items for template
-    const items = invoice.transaksi.transaksi_detail.map((detail) => ({
-      namaProduk: detail.produk.produkMaster.namaProduk,
-      sku: detail.produk.produkMaster.sku,
-      jumlah: detail.jumlah,
-      hargaSatuan: parseFloat(detail.harga_satuan),
-      diskonNominal: parseFloat(detail.diskon_nominal || 0),
-      subtotal: parseFloat(detail.subtotal),
+    const items = invoice.items.map((item) => ({
+      namaProduk: item.namaProduk,
+      sku: item.sku,
+      jumlah: item.jumlah,
+      hargaSatuan: parseFloat(item.hargaSatuan),
+      diskonNominal: parseFloat(item.diskonNominal || 0),
+      subtotal: parseFloat(item.subtotal),
     }));
 
     // Prepare payments for template
-    const payments = invoice.transaksi.pembayaran
+    const payments = (invoice.payments || [])
       .filter((payment) => payment.status === "SUKSES")
       .map((payment) => ({
-        metodePembayaran: payment.metode_pembayaran,
+        metodePembayaran: payment.metodePembayaran,
         provider: payment.provider,
-        jumlahBayar: parseFloat(payment.jumlah_bayar),
-        jumlahKembali: parseFloat(payment.jumlah_kembali),
-        nomorReferensi: payment.nomor_referensi,
+        jumlahBayar: parseFloat(payment.jumlahBayar),
+        jumlahKembali: parseFloat(payment.jumlahKembali),
+        nomorReferensi: payment.nomorReferensi,
       }));
 
     // Prepare template data
@@ -677,11 +522,11 @@ exports.generateInvoicePdf = async (req, res) => {
 
       // Set headers for PDF download
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `inline; filename="invoice-${invoice.nomorInvoice}.pdf"`);
+      res.setHeader('Content-Disposition', `inline; filename="invoice-${invoice.nomor_invoice}.pdf"`);
 
       return res.send(pdfBuffer);
     } catch (error) {
-      console.error("Error generating PDF:", error);
+      logger.error("Error generating PDF:", error);
       throw error;
     } finally {
       if (browser) {
@@ -689,7 +534,7 @@ exports.generateInvoicePdf = async (req, res) => {
       }
     }
   } catch (error) {
-    console.error("Error in generateInvoicePdf:", error);
+    logger.error("Error in generateInvoicePdf controller:", error);
     res.status(500).json({
       success: false,
       message: "Terjadi kesalahan saat membuat PDF invoice",

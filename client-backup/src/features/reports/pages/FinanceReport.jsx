@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -15,17 +15,15 @@ import {
   Cell,
 } from "recharts";
 import {
-  Download,
   RefreshCcw,
   ListFilter,
   CreditCard,
-  DollarSign,
   TrendingUp,
   PieChart as PieChartIcon,
   BarChart2,
 } from "lucide-react";
-import id from "date-fns/locale/id";
-import { useCabang } from "../../../features/cabang/hooks/useCabang";
+import { useCabang } from "@features/cabang/hooks/useCabang";
+import { useFinancialReport, useFinancialSummary, useFinancialTransactions } from "../hooks/useReports";
 import formatCurrency from "@common/utils/formatCurrency";
 import {
   Card,
@@ -39,45 +37,8 @@ import {
   FormSelect,
   Button,
   Divider,
-} from "../../../features/reports/components/ReportComponents";
-
-// Mock data - replace with actual API calls
-const generateMockRevenueData = (days = 30) => {
-  const data = [];
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-
-  for (let i = 0; i < days; i++) {
-    date.setDate(date.getDate() + 1);
-    const revenue = Math.floor(Math.random() * 10000000) + 1000000;
-    const expenses = Math.floor(Math.random() * 5000000) + 500000;
-
-    data.push({
-      date: new Date(date),
-      revenue: revenue,
-      expenses: expenses,
-      profit: revenue - expenses,
-    });
-  }
-  return data;
-};
-
-const generateMockPaymentMethodData = () => {
-  return [
-    { name: "TUNAI", value: Math.floor(Math.random() * 5000000) + 3000000 },
-    {
-      name: "KARTU_DEBIT",
-      value: Math.floor(Math.random() * 4000000) + 2000000,
-    },
-    {
-      name: "KARTU_KREDIT",
-      value: Math.floor(Math.random() * 3000000) + 1000000,
-    },
-    { name: "TRANSFER", value: Math.floor(Math.random() * 2000000) + 1000000 },
-    { name: "QRIS", value: Math.floor(Math.random() * 3000000) + 1500000 },
-    { name: "E_WALLET", value: Math.floor(Math.random() * 2500000) + 1200000 },
-  ];
-};
+} from "../components/ReportComponents";
+import ExportDropdown from "../components/ExportDropdown";
 
 const COLORS = [
   "#0088FE",
@@ -86,10 +47,11 @@ const COLORS = [
   "#FF8042",
   "#8884d8",
   "#82ca9d",
+  "#ffc658",
+  "#8dd1e1",
 ];
 
 const FinanceReport = () => {
-  const [loading, setLoading] = useState(false);
   const [tabValue, setTabValue] = useState(0);
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
@@ -97,104 +59,38 @@ const FinanceReport = () => {
     return date;
   });
   const [endDate, setEndDate] = useState(new Date());
-  const [viewType, setViewType] = useState("daily");
   const [cabangFilter, setCabangFilter] = useState("all");
-  const [financeData, setFinanceData] = useState([]);
-  const [paymentMethodData, setPaymentMethodData] = useState([]);
-  const [reportMetrics, setReportMetrics] = useState({
-    totalRevenue: 0,
-    totalExpenses: 0,
-    netProfit: 0,
-    profitMargin: 0,
-  });
   const { allCabang } = useCabang();
 
-  // Fetch data effect
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        // Replace with actual API calls
-        setTimeout(() => {
-          const mockFinanceData = generateMockRevenueData(30);
-          setFinanceData(mockFinanceData);
-
-          const mockPaymentData = generateMockPaymentMethodData();
-          setPaymentMethodData(mockPaymentData);
-
-          // Calculate summary metrics
-          const totalRevenue = mockFinanceData.reduce(
-            (sum, item) => sum + item.revenue,
-            0
-          );
-          const totalExpenses = mockFinanceData.reduce(
-            (sum, item) => sum + item.expenses,
-            0
-          );
-          const netProfit = totalRevenue - totalExpenses;
-
-          setReportMetrics({
-            totalRevenue,
-            totalExpenses,
-            netProfit,
-            profitMargin: (netProfit / totalRevenue) * 100,
-          });
-
-          setLoading(false);
-        }, 1000);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setLoading(false);
-      }
+  // Format dates for API
+  const apiParams = useMemo(() => {
+    const formatDate = (date) => {
+      const d = new Date(date);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     };
+    return {
+      startDate: formatDate(startDate),
+      endDate: formatDate(endDate),
+      cabangId: cabangFilter,
+    };
+  }, [startDate, endDate, cabangFilter]);
 
-    fetchData();
-  }, [startDate, endDate, viewType, cabangFilter]);
+  // Fetch data using real API
+  const { data: dashboardData, isLoading: loadingDashboard, refetch: refetchDashboard } = useFinancialReport(apiParams);
+  const { data: summaryData, isLoading: loadingSummary } = useFinancialSummary(apiParams);
+  const { data: transactionsData } = useFinancialTransactions({ ...apiParams, limit: 100 });
+
+  const loading = loadingDashboard || loadingSummary;
+
+  // Format dates for export params
+  const exportParams = apiParams;
 
   const handleChangeTab = (newValue) => {
     setTabValue(newValue);
   };
 
-  const handleExportReport = () => {
-    // Implementation for exporting report
-    alert("Export functionality will be implemented here");
-  };
-
   const handleRefreshData = () => {
-    // Refresh data
-    setFinanceData([]);
-    setPaymentMethodData([]);
-    setReportMetrics({
-      totalRevenue: 0,
-      totalExpenses: 0,
-      netProfit: 0,
-      profitMargin: 0,
-    });
-
-    // Re-fetch data
-    const mockFinanceData = generateMockRevenueData(30);
-    setFinanceData(mockFinanceData);
-
-    const mockPaymentData = generateMockPaymentMethodData();
-    setPaymentMethodData(mockPaymentData);
-
-    // Calculate summary metrics
-    const totalRevenue = mockFinanceData.reduce(
-      (sum, item) => sum + item.revenue,
-      0
-    );
-    const totalExpenses = mockFinanceData.reduce(
-      (sum, item) => sum + item.expenses,
-      0
-    );
-    const netProfit = totalRevenue - totalExpenses;
-
-    setReportMetrics({
-      totalRevenue,
-      totalExpenses,
-      netProfit,
-      profitMargin: (netProfit / totalRevenue) * 100,
-    });
+    refetchDashboard();
   };
 
   // Format date for display in charts
@@ -217,22 +113,15 @@ const FinanceReport = () => {
 
   // Format payment method name
   const formatPaymentMethod = (method) => {
-    switch (method) {
-      case "TUNAI":
-        return "Tunai";
-      case "KARTU_DEBIT":
-        return "Kartu Debit";
-      case "KARTU_KREDIT":
-        return "Kartu Kredit";
-      case "TRANSFER":
-        return "Transfer Bank";
-      case "QRIS":
-        return "QRIS";
-      case "E_WALLET":
-        return "E-Wallet";
-      default:
-        return method;
-    }
+    const methodMap = {
+      "TUNAI": "Tunai",
+      "KARTU_DEBIT": "Kartu Debit",
+      "KARTU_KREDIT": "Kartu Kredit",
+      "TRANSFER": "Transfer Bank",
+      "QRIS": "QRIS",
+      "E_WALLET": "E-Wallet",
+    };
+    return methodMap[method] || method;
   };
 
   const tabs = [
@@ -246,12 +135,6 @@ const FinanceReport = () => {
     { value: 3, label: "Pajak & Biaya", icon: <PieChartIcon size={16} /> },
   ];
 
-  const viewTypeOptions = [
-    { value: "daily", label: "Harian" },
-    { value: "weekly", label: "Mingguan" },
-    { value: "monthly", label: "Bulanan" },
-  ];
-
   const cabangOptions = [
     { value: "all", label: "Semua Cabang" },
     ...(allCabang
@@ -261,6 +144,33 @@ const FinanceReport = () => {
         }))
       : []),
   ];
+
+  // Prepare chart data
+  const trendData = dashboardData?.data?.trend?.map((t) => ({
+    date: new Date(t.transaction_date),
+    revenue: Number(t.pendapatan) || 0,
+    expenses: Number(t.pengeluaran) || 0,
+    profit: Number(t.keuntungan) || 0,
+  })) || [];
+
+  const summaryMetrics = summaryData?.data || {
+    total_pendapatan: 0,
+    total_pengeluaran: 0,
+    keuntungan_bersih: 0,
+    margin_keuntungan: 0,
+  };
+
+  const paymentMethods = dashboardData?.data?.paymentMethods?.map((p) => ({
+    name: p.metode_pembayaran,
+    value: Number(p.total_amount) || 0,
+  })) || [];
+
+  const expenseAnalysis = dashboardData?.data?.expenseAnalysis?.map((e) => ({
+    name: e.expense_category,
+    value: Number(e.total_amount) || 0,
+  })) || [];
+
+  const taxAndFees = dashboardData?.data?.taxAndFees;
 
   return (
     <div className="p-6">
@@ -278,17 +188,15 @@ const FinanceReport = () => {
               <Button onClick={handleRefreshData} icon={<RefreshCcw size={16} />}>
                 Refresh
               </Button>
-              <Button
-                onClick={handleExportReport}
-                variant="primary"
-                icon={<Download size={16} />}
-              >
-                Export
-              </Button>
+              <ExportDropdown
+                reportType="financial"
+                params={exportParams}
+                disabled={loading}
+              />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <DateInput
               id="start-date"
               label="Tanggal Mulai"
@@ -301,14 +209,6 @@ const FinanceReport = () => {
               label="Tanggal Akhir"
               value={endDate}
               onChange={(e) => setEndDate(new Date(e.target.value))}
-            />
-
-            <FormSelect
-              id="view-type"
-              label="Tampilan"
-              value={viewType}
-              onChange={(e) => setViewType(e.target.value)}
-              options={viewTypeOptions}
             />
 
             <FormSelect
@@ -343,7 +243,7 @@ const FinanceReport = () => {
             loading ? (
               <LoadingIndicator size="sm" />
             ) : (
-              formatCurrency(reportMetrics.totalRevenue)
+              formatCurrency(summaryMetrics.total_pendapatan || 0)
             )
           }
         />
@@ -354,7 +254,7 @@ const FinanceReport = () => {
             loading ? (
               <LoadingIndicator size="sm" />
             ) : (
-              formatCurrency(reportMetrics.totalExpenses)
+              formatCurrency(summaryMetrics.total_pengeluaran || 0)
             )
           }
         />
@@ -365,11 +265,11 @@ const FinanceReport = () => {
             loading ? (
               <LoadingIndicator size="sm" />
             ) : (
-              formatCurrency(reportMetrics.netProfit)
+              formatCurrency(summaryMetrics.keuntungan_bersih || 0)
             )
           }
           trend={
-            reportMetrics.netProfit >= 0
+            (summaryMetrics.keuntungan_bersih || 0) >= 0
               ? { positive: true, value: "" }
               : { positive: false, value: "" }
           }
@@ -381,11 +281,11 @@ const FinanceReport = () => {
             loading ? (
               <LoadingIndicator size="sm" />
             ) : (
-              `${reportMetrics.profitMargin.toFixed(2)}%`
+              `${(summaryMetrics.margin_keuntungan || 0)}%`
             )
           }
           trend={
-            reportMetrics.profitMargin >= 0
+            (summaryMetrics.margin_keuntungan || 0) >= 0
               ? { positive: true, value: "" }
               : { positive: false, value: "" }
           }
@@ -404,12 +304,12 @@ const FinanceReport = () => {
             </h3>
             {loading ? (
               <LoadingIndicator />
-            ) : (
+            ) : trendData.length > 0 ? (
               <>
                 <div className="h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
-                      data={financeData}
+                      data={trendData}
                       margin={{
                         top: 5,
                         right: 30,
@@ -493,23 +393,24 @@ const FinanceReport = () => {
                     },
                     {
                       header: "Margin (%)",
-                      cell: (row) => (
-                        <span
-                          className={
-                            (row.profit / row.revenue) * 100 >= 0
-                              ? "text-green-600"
-                              : "text-red-600"
-                          }
-                        >
-                          {((row.profit / row.revenue) * 100).toFixed(2)}%
-                        </span>
-                      ),
+                      cell: (row) => {
+                        const margin = row.revenue > 0 ? (row.profit / row.revenue) * 100 : 0;
+                        return (
+                          <span
+                            className={margin >= 0 ? "text-green-600" : "text-red-600"}
+                          >
+                            {margin.toFixed(2)}%
+                          </span>
+                        );
+                      },
                       cellClassName: "text-right",
                     },
                   ]}
-                  data={financeData}
+                  data={trendData}
                 />
               </>
+            ) : (
+              <p className="text-gray-600 text-center py-8">Tidak ada data untuk ditampilkan</p>
             )}
           </CardContent>
         </Card>
@@ -522,26 +423,24 @@ const FinanceReport = () => {
             <h3 className="text-lg font-medium mb-4">Metode Pembayaran</h3>
             {loading ? (
               <LoadingIndicator />
-            ) : (
+            ) : paymentMethods.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={paymentMethodData}
+                        data={paymentMethods}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
                         label={({ name, percent }) =>
-                          `${formatPaymentMethod(name)}: ${(
-                            percent * 100
-                          ).toFixed(0)}%`
+                          `${formatPaymentMethod(name)}: ${(percent * 100).toFixed(0)}%`
                         }
                         outerRadius={150}
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        {paymentMethodData.map((entry, index) => (
+                        {paymentMethods.map((entry, index) => (
                           <Cell
                             key={`cell-${index}`}
                             fill={COLORS[index % COLORS.length]}
@@ -580,21 +479,21 @@ const FinanceReport = () => {
                       {
                         header: "Persentase",
                         cell: (row) => {
-                          const totalValue = paymentMethodData.reduce(
+                          const totalValue = paymentMethods.reduce(
                             (sum, method) => sum + method.value,
                             0
                           );
-                          return `${((row.value / totalValue) * 100).toFixed(
-                            2
-                          )}%`;
+                          return `${((row.value / totalValue) * 100).toFixed(2)}%`;
                         },
                         cellClassName: "text-right",
                       },
                     ]}
-                    data={paymentMethodData}
+                    data={paymentMethods}
                   />
                 </div>
               </div>
+            ) : (
+              <p className="text-gray-600 text-center py-8">Tidak ada data untuk ditampilkan</p>
             )}
           </CardContent>
         </Card>
@@ -607,36 +506,11 @@ const FinanceReport = () => {
             <h3 className="text-lg font-medium mb-4">Analisis Pengeluaran</h3>
             {loading ? (
               <LoadingIndicator />
-            ) : (
+            ) : expenseAnalysis.length > 0 ? (
               <div className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={[
-                      {
-                        name: "Pembelian Stok",
-                        value: Math.floor(Math.random() * 3000000) + 2000000,
-                      },
-                      {
-                        name: "Gaji Karyawan",
-                        value: Math.floor(Math.random() * 2000000) + 1500000,
-                      },
-                      {
-                        name: "Sewa",
-                        value: Math.floor(Math.random() * 1500000) + 1000000,
-                      },
-                      {
-                        name: "Utilitas",
-                        value: Math.floor(Math.random() * 800000) + 500000,
-                      },
-                      {
-                        name: "Pemasaran",
-                        value: Math.floor(Math.random() * 600000) + 300000,
-                      },
-                      {
-                        name: "Lainnya",
-                        value: Math.floor(Math.random() * 400000) + 200000,
-                      },
-                    ]}
+                    data={expenseAnalysis}
                     layout="vertical"
                     margin={{ top: 5, right: 30, left: 120, bottom: 5 }}
                   >
@@ -656,6 +530,8 @@ const FinanceReport = () => {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+            ) : (
+              <p className="text-gray-600 text-center py-8">Tidak ada data untuk ditampilkan</p>
             )}
           </CardContent>
         </Card>
@@ -668,72 +544,62 @@ const FinanceReport = () => {
             <h3 className="text-lg font-medium mb-4">Pajak & Biaya Tambahan</h3>
             {loading ? (
               <LoadingIndicator />
-            ) : (
+            ) : taxAndFees ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
                   <h4 className="text-base font-medium mb-2">Total Pajak</h4>
                   <p className="text-2xl font-bold mb-1">
-                    {formatCurrency(
-                      Math.floor(Math.random() * 2000000) + 1000000
-                    )}
+                    {formatCurrency(taxAndFees.taxSummary?.total_tax || 0)}
                   </p>
                   <p className="text-sm text-gray-600">
-                    {(Math.random() * 10 + 2).toFixed(1)}% dari total pendapatan
+                    {taxAndFees.taxSummary?.tax_percentage}% dari total pendapatan
                   </p>
                 </div>
 
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
                   <h4 className="text-base font-medium mb-2">Biaya Layanan</h4>
                   <p className="text-2xl font-bold mb-1">
-                    {formatCurrency(
-                      Math.floor(Math.random() * 1000000) + 500000
-                    )}
+                    {formatCurrency(taxAndFees.taxSummary?.total_fees || 0)}
                   </p>
                   <p className="text-sm text-gray-600">
-                    {(Math.random() * 5 + 1).toFixed(1)}% dari total pendapatan
+                    {taxAndFees.taxSummary?.fees_percentage}% dari total pendapatan
                   </p>
                 </div>
 
-                <div className="col-span-1 md:col-span-2 mt-4">
-                  <h4 className="text-base font-medium mb-4">
-                    Biaya Transaksi per Metode Pembayaran
-                  </h4>
-                  <DataTable
-                    columns={[
-                      {
-                        header: "Metode Pembayaran",
-                        cell: (row) => formatPaymentMethod(row.name),
-                      },
-                      {
-                        header: "Total Transaksi",
-                        cell: (row) => formatCurrency(row.value),
-                        cellClassName: "text-right",
-                      },
-                      {
-                        header: "Biaya Layanan",
-                        cell: (row) => {
-                          const serviceFee =
-                            row.value * (Math.random() * 0.03 + 0.01);
-                          return formatCurrency(serviceFee);
+                {taxAndFees.feesByPaymentMethod && taxAndFees.feesByPaymentMethod.length > 0 && (
+                  <div className="col-span-1 md:col-span-2 mt-4">
+                    <h4 className="text-base font-medium mb-4">
+                      Biaya Transaksi per Metode Pembayaran
+                    </h4>
+                    <DataTable
+                      columns={[
+                        {
+                          header: "Metode Pembayaran",
+                          cell: (row) => formatPaymentMethod(row.metode_pembayaran),
                         },
-                        cellClassName: "text-right",
-                      },
-                      {
-                        header: "Persentase Biaya",
-                        cell: (row) => {
-                          const serviceFee =
-                            row.value * (Math.random() * 0.03 + 0.01);
-                          return `${((serviceFee / row.value) * 100).toFixed(
-                            2
-                          )}%`;
+                        {
+                          header: "Total Transaksi",
+                          cell: (row) => formatCurrency(row.total_amount),
+                          cellClassName: "text-right",
                         },
-                        cellClassName: "text-right",
-                      },
-                    ]}
-                    data={paymentMethodData}
-                  />
-                </div>
+                        {
+                          header: "Biaya Layanan",
+                          cell: (row) => formatCurrency(row.transaction_fees),
+                          cellClassName: "text-right",
+                        },
+                        {
+                          header: "Persentase Biaya",
+                          cell: (row) => `${row.fee_percentage}%`,
+                          cellClassName: "text-right",
+                        },
+                      ]}
+                      data={taxAndFees.feesByPaymentMethod}
+                    />
+                  </div>
+                )}
               </div>
+            ) : (
+              <p className="text-gray-600 text-center py-8">Tidak ada data untuk ditampilkan</p>
             )}
           </CardContent>
         </Card>

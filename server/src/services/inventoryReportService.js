@@ -114,7 +114,7 @@ const getInventoryValueReport = async (filters) => {
 // Get inventory movement report
 const getInventoryMovementReport = async (filters) => {
   const {
-    cabangId,
+    cabangId = "all",
     produkId,
     startDate,
     endDate,
@@ -122,10 +122,10 @@ const getInventoryMovementReport = async (filters) => {
     groupBy = "day", // 'day', 'week', 'month'
   } = filters;
 
+  // Normalize empty string or falsy values to "all"
+  const normalizedCabangId = cabangId || "all";
+
   // Validate input
-  if (!cabangId) {
-    throw new ResponseError(400, "cabangId diperlukan");
-  }
 
   if (!startDate || !endDate) {
     throw new ResponseError(400, "startDate dan endDate diperlukan");
@@ -140,12 +140,16 @@ const getInventoryMovementReport = async (filters) => {
 
   // Build where clause
   const where = {
-    cabangId,
     createdAt: {
       gte: start,
       lte: end,
     },
   };
+
+  // Only add cabangId filter if it's not "all"
+  if (normalizedCabangId !== "all") {
+    where.cabangId = normalizedCabangId;
+  }
 
   if (produkId) where.produkId = produkId;
   if (referenceType) where.referenceType = referenceType;
