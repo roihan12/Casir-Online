@@ -1,6 +1,7 @@
 /**
  * Middleware to check branch access
  * Works with both formatted (roles/cabang) and raw (userRoles/userCabang) user objects
+ * Supports single cabangId or comma-separated multiple cabangIds
  */
 const cabangAccess = async (req, res, next) => {
   try {
@@ -9,6 +10,11 @@ const cabangAccess = async (req, res, next) => {
       req.params.cabangId || req.body.cabangId || req.query.cabangId;
 
     if (!cabangId) {
+      return next();
+    }
+
+    // Skip validation if cabangId is "all"
+    if (cabangId === "all") {
       return next();
     }
 
@@ -25,13 +31,28 @@ const cabangAccess = async (req, res, next) => {
       return next();
     }
 
-    // Check if user has access to requested branch
-    const hasAccess = cabangList.some((uc) => uc.cabangId === cabangId);
+    // Handle multiple cabangIds (comma-separated)
+    const requestedCabangIds = cabangId.includes(',') 
+      ? cabangId.split(',').map(id => id.trim()).filter(id => id.length > 0)
+      : [cabangId];
 
-    if (!hasAccess) {
+    // Get user's accessible cabang IDs
+    const userCabangIds = cabangList.map((uc) => uc.cabangId || uc.id);
+
+    // Check if user has access to ALL requested branches
+    const hasAccessToAll = requestedCabangIds.every((requestedId) =>
+      userCabangIds.includes(requestedId)
+    );
+
+    if (!hasAccessToAll) {
+      const unauthorizedBranches = requestedCabangIds.filter(
+        (id) => !userCabangIds.includes(id)
+      );
+      
       return res.status(403).json({
         success: false,
-        message: "Forbidden: You do not have access to this branch",
+        message: "Forbidden: You do not have access to the requested branch(es)",
+        unauthorizedBranches,
       });
     }
 

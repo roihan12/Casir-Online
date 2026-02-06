@@ -1,5 +1,6 @@
 const prisma = require("../config/db");
 const { ResponseError } = require("../error/responseError");
+const { sanitizeBigInt } = require("../utils/bigintSerializer");
 
 const getLowStockReport = async (filters) => {
   const {
@@ -9,6 +10,9 @@ const getLowStockReport = async (filters) => {
     page = 1,
     limit = 10,
   } = filters;
+
+  const numLimit = parseInt(limit, 10);
+  const numPage = parseInt(page, 10);
 
   let query = `
     SELECT 
@@ -66,10 +70,10 @@ const getLowStockReport = async (filters) => {
   const countResult = await prisma.$queryRawUnsafe(countQuery, ...params);
   const total = Number(countResult[0].total);
 
-  const offset = (page - 1) * limit;
+  const offset = (numPage - 1) * numLimit;
   query += ` ORDER BY ps.stok_percentage ASC, ps.updated_at DESC`;
   query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-  params.push(limit, offset);
+  params.push(numLimit, offset);
 
   const products = await prisma.$queryRawUnsafe(query, ...params);
 
@@ -140,9 +144,9 @@ const getLowStockByCategory = async (filters) => {
       SUM(CASE WHEN p.stok = 0 THEN 1 ELSE 0 END) as out_of_stock_count,
       AVG(p.stok::float / NULLIF(p.min_stok, 0)::float * 100) as avg_stock_percentage
     FROM vw_produk_stok_menipis ps
-    JOIN "produk" p ON p.id = ps.produk_id
-    JOIN "produk_master" pm ON pm.id = p.produk_master_id
-    LEFT JOIN "kategori" k ON k.id = pm.kategori_id
+    JOIN "produk" p ON p.produk_id = ps.produk_id
+    JOIN "produk_master" pm ON pm.produk_master_id = p.produk_master_id
+    LEFT JOIN "kategori" k ON k.kategori_id= pm.kategori_id
     WHERE 1=1
     ${cabangId ? `AND ps.cabang_id = ${cabangId}` : ""}
     GROUP BY pm.kategori_id, k.nama_kategori
@@ -150,7 +154,7 @@ const getLowStockByCategory = async (filters) => {
   `;
 
   const result = await prisma.$queryRawUnsafe(query);
-  return result;
+  return sanitizeBigInt( result);
 };
 
 module.exports = {

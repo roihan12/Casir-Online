@@ -283,6 +283,221 @@ export const useExportReport = (options = {}) => {
   });
 };
 
+/**
+ * Hook for fetching profit and loss report
+ */
+export const useProfitLossReport = (params, options = {}) => {
+  return useQuery({
+    queryKey: ["profitLossReport", params],
+    queryFn: () => reportService.getProfitLossReport(params),
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    enabled: !!params.year,
+    ...options,
+  });
+};
+
+/**
+ * Hook for fetching profit and loss summary with comparison
+ */
+export const useProfitLossSummary = (params, options = {}) => {
+  return useQuery({
+    queryKey: ["profitLossSummary", params],
+    queryFn: () => reportService.getProfitLossSummary(params),
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    ...options,
+  });
+};
+
+// ==================== SHIFT PERFORMANCE HOOKS ====================
+
+/**
+ * Hook for fetching shift summary metrics
+ */
+export const useShiftSummary = (params, options = {}) => {
+  return useQuery({
+    queryKey: ["shiftSummary", params],
+    queryFn: () => reportService.getShiftSummary(params),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!(params.startDate && params.endDate),
+    ...options,
+  });
+};
+
+/**
+ * Hook for fetching detailed shift information
+ */
+export const useShiftDetail = (shiftId, options = {}) => {
+  return useQuery({
+    queryKey: ["shiftDetail", shiftId],
+    queryFn: () => reportService.getShiftDetail(shiftId),
+    staleTime: 3 * 60 * 1000,
+    enabled: !!shiftId,
+    ...options,
+  });
+};
+
+/**
+ * Hook for fetching cash variance report
+ */
+export const useCashReport = (params, options = {}) => {
+  return useQuery({
+    queryKey: ["cashReport", params],
+    queryFn: () => reportService.getCashReport(params),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!(params.startDate && params.endDate),
+    ...options,
+  });
+};
+
+/**
+ * Hook for fetching staff performance comparison
+ */
+export const useStaffPerformance = (params, options = {}) => {
+  return useQuery({
+    queryKey: ["staffPerformance", params],
+    queryFn: () => reportService.getStaffPerformance(params),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!(params.startDate && params.endDate),
+    ...options,
+  });
+};
+
+// ==================== TRANSACTION DETAIL HOOKS ====================
+
+/**
+ * Hook for fetching detailed transaction list
+ */
+export const useTransactionDetail = (params, options = {}) => {
+  return useQuery({
+    queryKey: ["transactionDetail", params],
+    queryFn: () => reportService.getTransactionDetail(params),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!(params.startDate && params.endDate),
+    ...options,
+  });
+};
+
+/**
+ * Hook for fetching transaction summary
+ */
+export const useTransactionSummary = (params, options = {}) => {
+  return useQuery({
+    queryKey: ["transactionSummary", params],
+    queryFn: () => reportService.getTransactionSummary(params),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!(params.startDate && params.endDate),
+    ...options,
+  });
+};
+
+/**
+ * Hook for fetching transaction audit trail
+ */
+export const useAuditTrail = (params, options = {}) => {
+  return useQuery({
+    queryKey: ["auditTrail", params],
+    queryFn: () => reportService.getAuditTrail(params),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!(params.startDate && params.endDate),
+    ...options,
+  });
+};
+
+// ==================== CUSTOMER & LOYALTY HOOKS ====================
+
+/**
+ * Hook for fetching customer summary metrics
+ */
+export const useCustomerSummary = (params, options = {}) => {
+  return useQuery({
+    queryKey: ["customerSummary", params],
+    queryFn: () => reportService.getCustomerSummary(params),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!(params.startDate && params.endDate),
+    ...options,
+  });
+};
+
+/**
+ * Hook for fetching top customers
+ */
+export const useTopCustomers = (params, options = {}) => {
+  return useQuery({
+    queryKey: ["topCustomers", params],
+    queryFn: () => reportService.getTopCustomers(params),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!(params.startDate && params.endDate),
+    ...options,
+  });
+};
+
+/**
+ * Hook for fetching loyalty metrics
+ */
+export const useLoyaltyMetrics = (params, options = {}) => {
+  return useQuery({
+    queryKey: ["loyaltyMetrics", params],
+    queryFn: () => reportService.getLoyaltyReport(params),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!(params.startDate && params.endDate),
+    ...options,
+  });
+};
+
+/**
+ * Hook for fetching customer acquisition trend
+ */
+export const useCustomerAcquisition = (params, options = {}) => {
+  return useQuery({
+    queryKey: ["customerAcquisition", params],
+    queryFn: () => reportService.getCustomerAcquisition(params),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!(params.startDate && params.endDate),
+    ...options,
+  });
+};
+
+// ==================== PROMO & DISCOUNT HOOKS ====================
+
+/**
+ * Hook for fetching promo summary
+ */
+export const usePromoSummary = (params, options = {}) => {
+  return useQuery({
+    queryKey: ["promoSummary", params],
+    queryFn: () => reportService.getPromoSummary(params),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!(params.startDate && params.endDate),
+    ...options,
+  });
+};
+
+/**
+ * Hook for fetching promo effectiveness
+ */
+export const usePromoEffectiveness = (promoId, params, options = {}) => {
+  return useQuery({
+    queryKey: ["promoEffectiveness", promoId, params],
+    queryFn: () => reportService.getPromoEffectiveness(promoId, params),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!(promoId && params.startDate && params.endDate),
+    ...options,
+  });
+};
+
+/**
+ * Hook for fetching discount breakdown
+ */
+export const useDiscountBreakdown = (params, options = {}) => {
+  return useQuery({
+    queryKey: ["discountBreakdown", params],
+    queryFn: () => reportService.getDiscountBreakdown(params),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!(params.startDate && params.endDate),
+    ...options,
+  });
+};
+
 export default {
   useSalesReport,
   useSalesSummary,
@@ -291,6 +506,8 @@ export default {
   useFinancialReport,
   useFinancialSummary,
   useFinancialTransactions,
+  useProfitLossReport,
+  useProfitLossSummary,
   useInventoryDashboard,
   useInventoryReport,
   useInventoryMovements,

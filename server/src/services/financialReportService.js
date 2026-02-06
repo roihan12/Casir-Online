@@ -1,9 +1,23 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
+const { cacheOrFetch, createCacheKey } = require("../utils/redisUtils");
+const { sanitizeBigInt } = require("../utils/bigintSerializer");
 
 /**
- * Service for retrieving financial reports using materialized views
+ * Service for retrieving financial reports using materialized views with Redis caching
  */
+
+// Cache TTL configurations (in seconds)
+const CACHE_TTL = {
+  DASHBOARD: 300,      // 5 minutes - most accessed
+  SUMMARY: 600,        // 10 minutes
+  TREND: 600,          // 10 minutes
+  PAYMENT_METHODS: 600,// 10 minutes
+  EXPENSES: 600,       // 10 minutes
+  TAX_AND_FEES: 600,   // 10 minutes
+  TRANSACTIONS: 60,    // 1 minute - more dynamic
+  PROFIT_LOSS: 1800,   // 30 minutes - complex calculation
+};
 class FinancialReportService {
   /**
    * Get financial summary data filtered by cabang id and date range
@@ -15,48 +29,56 @@ class FinancialReportService {
    */
   static async getFinancialSummary(filters) {
     const { cabangId = "all", startDate, endDate } = filters;
-
-    // Define query conditions
-    let whereClause = "TRUE";
-    const params = [];
-
-    if (cabangId !== "all") {
-      whereClause += " AND cabang_id = $1";
-      params.push(cabangId);
-    }
-
-    if (startDate && endDate) {
-      whereClause +=
-        " AND transaction_date BETWEEN $" +
-        (params.length + 1) +
-        "::date AND $" +
-        (params.length + 2) +
-        "::date";
-      params.push(startDate, endDate);
-    }
-
-    // Query the materialized view
-    const query = `
-      SELECT 
-        SUM(total_pendapatan) AS total_pendapatan,
-        SUM(total_pengeluaran) AS total_pengeluaran,
-        SUM(keuntungan_bersih) AS keuntungan_bersih,
-        CASE 
-          WHEN SUM(total_pendapatan) > 0 
-          THEN ROUND((SUM(keuntungan_bersih) * 100.0 / SUM(total_pendapatan)), 2)
-          ELSE 0 
-        END AS margin_keuntungan,
-        SUM(total_pajak) AS total_pajak,
-        SUM(total_biaya_layanan) AS total_biaya_layanan,
-        SUM(total_transaksi_penjualan) AS total_transaksi_penjualan,
-        SUM(total_transaksi_pembelian) AS total_transaksi_pembelian
-      FROM vw_financial_summary
-      WHERE ${whereClause}
-    `;
     
-    const summaryData = await prisma.$queryRawUnsafe(query, ...params);
+    // Create cache key
+    const cacheKey = createCacheKey(
+      'financial:summary',
+      `${cabangId}:${startDate}:${endDate}`
+    );
 
-    return summaryData[0];
+    return cacheOrFetch(cacheKey, async () => {
+      // Define query conditions
+      let whereClause = "TRUE";
+      const params = [];
+
+      if (cabangId !== "all") {
+        whereClause += " AND cabang_id = $1";
+        params.push(cabangId);
+      }
+
+      if (startDate && endDate) {
+        whereClause +=
+          " AND transaction_date BETWEEN $" +
+          (params.length + 1) +
+          "::date AND $" +
+          (params.length + 2) +
+          "::date";
+        params.push(startDate, endDate);
+      }
+
+      // Query the materialized view
+      const query = `
+        SELECT 
+          SUM(total_pendapatan) AS total_pendapatan,
+          SUM(total_pengeluaran) AS total_pengeluaran,
+          SUM(keuntungan_bersih) AS keuntungan_bersih,
+          CASE 
+            WHEN SUM(total_pendapatan) > 0 
+            THEN ROUND((SUM(keuntungan_bersih) * 100.0 / SUM(total_pendapatan)), 2)
+            ELSE 0 
+          END AS margin_keuntungan,
+          SUM(total_pajak) AS total_pajak,
+          SUM(total_biaya_layanan) AS total_biaya_layanan,
+          SUM(total_transaksi_penjualan) AS total_transaksi_penjualan,
+          SUM(total_transaksi_pembelian) AS total_transaksi_pembelian
+        FROM vw_financial_summary
+        WHERE ${whereClause}
+      `;
+      
+      const summaryData = await prisma.$queryRawUnsafe(query, ...params);
+
+      return sanitizeBigInt(summaryData[0]);
+    }, CACHE_TTL.SUMMARY);
   }
 
   /**
@@ -69,41 +91,49 @@ class FinancialReportService {
    */
   static async getFinancialDailyTrend(filters) {
     const { cabangId = "all", startDate, endDate } = filters;
-
-    // Define query conditions
-    let whereClause = "TRUE";
-    const params = [];
-
-    if (cabangId !== "all") {
-      whereClause += " AND cabang_id = $1";
-      params.push(cabangId);
-    }
-
-    if (startDate && endDate) {
-      whereClause +=
-        " AND transaction_date BETWEEN $" +
-        (params.length + 1) +
-        "::date AND $" +
-        (params.length + 2) +
-        "::date";
-      params.push(startDate, endDate);
-    }
-
-    // Query the materialized view
-    const query = `
-      SELECT 
-        transaction_date,
-        pendapatan,
-        pengeluaran,
-        keuntungan
-      FROM mv_financial_daily_trend
-      WHERE ${whereClause}
-      ORDER BY transaction_date
-    `;
     
-    const trendData = await prisma.$queryRawUnsafe(query, ...params);
+    // Create cache key
+    const cacheKey = createCacheKey(
+      'financial:trend',
+      `${cabangId}:${startDate}:${endDate}`
+    );
 
-    return trendData;
+    return cacheOrFetch(cacheKey, async () => {
+      // Define query conditions
+      let whereClause = "TRUE";
+      const params = [];
+
+      if (cabangId !== "all") {
+        whereClause += " AND cabang_id = $1";
+        params.push(cabangId);
+      }
+
+      if (startDate && endDate) {
+        whereClause +=
+          " AND transaction_date BETWEEN $" +
+          (params.length + 1) +
+          "::date AND $" +
+          (params.length + 2) +
+          "::date";
+        params.push(startDate, endDate);
+      }
+
+      // Query the materialized view
+      const query = `
+        SELECT 
+          transaction_date,
+          pendapatan,
+          pengeluaran,
+          keuntungan
+        FROM mv_financial_daily_trend
+        WHERE ${whereClause}
+        ORDER BY transaction_date
+      `;
+      
+      const trendData = await prisma.$queryRawUnsafe(query, ...params);
+
+      return sanitizeBigInt(trendData);
+    }, CACHE_TTL.TREND);
   }
 
   /**
@@ -152,7 +182,7 @@ class FinancialReportService {
     
     const paymentData = await prisma.$queryRawUnsafe(query, ...params);
 
-    return paymentData;
+    return sanitizeBigInt(paymentData);
   }
 
   /**
@@ -186,7 +216,7 @@ class FinancialReportService {
     
     const expenseData = await prisma.$queryRawUnsafe(query, ...params);
 
-    return expenseData;
+    return sanitizeBigInt(expenseData);
   }
 
   /**
@@ -237,10 +267,10 @@ class FinancialReportService {
     
     const feesByPayment = await prisma.$queryRawUnsafe(query2, ...params);
 
-    return {
+    return sanitizeBigInt({
       taxSummary: taxData[0],
       feesByPaymentMethod: feesByPayment,
-    };
+    });
   }
 
   /**
@@ -331,7 +361,7 @@ class FinancialReportService {
     const totalCount = parseInt(countResult[0].total);
     const totalPages = Math.ceil(totalCount / limit);
 
-    return {
+    return sanitizeBigInt({
       data: transactions,
       pagination: {
         page: parseInt(page),
@@ -339,7 +369,7 @@ class FinancialReportService {
         totalItems: totalCount,
         totalPages,
       },
-    };
+    });
   }
 
   /**
@@ -352,87 +382,95 @@ class FinancialReportService {
    */
   static async getProfitLossReport(filters) {
     const { cabangId = "all", year, month } = filters;
-
-    // Define query conditions
-    let whereClause = "TRUE";
-    const params = [];
-
-    if (cabangId !== "all") {
-      whereClause += " AND cabang_id = $1";
-      params.push(cabangId);
-    }
-
-    if (year) {
-      if (month) {
-        // Filter for specific month of specific year
-        whereClause += ` AND EXTRACT(YEAR FROM period_month) = ${year} AND EXTRACT(MONTH FROM period_month) = ${month}`;
-      } else {
-        // Filter for all months of specific year
-        whereClause += ` AND EXTRACT(YEAR FROM period_month) = ${year}`;
-      }
-    }
-
-    // Query the profit loss main view
-    const query1 = `
-      SELECT 
-        period_month,
-        total_revenue,
-        subtotal_revenue,
-        total_discount,
-        total_tax,
-        total_additional_fees,
-        sales_transaction_count,
-        total_cogs,
-        gross_profit,
-        gross_profit_margin,
-        total_operating_expenses,
-        net_profit,
-        net_profit_margin
-      FROM mv_profit_loss_report
-      WHERE ${whereClause}
-      ORDER BY period_month
-    `;
     
-    const profitLossData = await prisma.$queryRawUnsafe(query1, ...params);
+    // Create cache key
+    const cacheKey = createCacheKey(
+      'financial:profit-loss',
+      `${cabangId}:${year}:${month || 'all'}`
+    );
 
-    // Query the expense breakdown by category
-    const query2 = `
-      SELECT 
-        period_month,
-        expense_category,
-        category_expense,
-        expense_percentage
-      FROM mv_profit_loss_expense_detail
-      WHERE ${whereClause}
-      ORDER BY period_month, category_expense DESC
-    `;
-    
-    const expenseBreakdown = await prisma.$queryRawUnsafe(query2, ...params);
+    return cacheOrFetch(cacheKey, async () => {
+      // Define query conditions
+      let whereClause = "TRUE";
+      const params = [];
 
-    // Organize expense breakdown by period
-    const expensesByPeriod = {};
-    expenseBreakdown.forEach((expense) => {
-      const periodKey = expense.period_month.toISOString();
-      if (!expensesByPeriod[periodKey]) {
-        expensesByPeriod[periodKey] = [];
+      if (cabangId !== "all") {
+        whereClause += " AND cabang_id = $1";
+        params.push(cabangId);
       }
-      expensesByPeriod[periodKey].push({
-        category: expense.expense_category,
-        amount: expense.category_expense,
-        percentage: expense.expense_percentage,
+
+      if (year) {
+        if (month) {
+          // Filter for specific month of specific year
+          whereClause += ` AND EXTRACT(YEAR FROM period_month) = ${year} AND EXTRACT(MONTH FROM period_month) = ${month}`;
+        } else {
+          // Filter for all months of specific year
+          whereClause += ` AND EXTRACT(YEAR FROM period_month) = ${year}`;
+        }
+      }
+
+      // Query the profit loss main view
+      const query1 = `
+        SELECT 
+          period_month,
+          total_revenue,
+          subtotal_revenue,
+          total_discount,
+          total_tax,
+          total_additional_fees,
+          sales_transaction_count,
+          total_cogs,
+          gross_profit,
+          gross_profit_margin,
+          total_operating_expenses,
+          net_profit,
+          net_profit_margin
+        FROM mv_profit_loss_report
+        WHERE ${whereClause}
+        ORDER BY period_month
+      `;
+      
+      const profitLossData = await prisma.$queryRawUnsafe(query1, ...params);
+
+      // Query the expense breakdown by category
+      const query2 = `
+        SELECT 
+          period_month,
+          expense_category,
+          category_expense,
+          expense_percentage
+        FROM mv_profit_loss_expense_detail
+        WHERE ${whereClause}
+        ORDER BY period_month, category_expense DESC
+      `;
+      
+      const expenseBreakdown = await prisma.$queryRawUnsafe(query2, ...params);
+
+      // Organize expense breakdown by period
+      const expensesByPeriod = {};
+      expenseBreakdown.forEach((expense) => {
+        const periodKey = expense.period_month.toISOString();
+        if (!expensesByPeriod[periodKey]) {
+          expensesByPeriod[periodKey] = [];
+        }
+        expensesByPeriod[periodKey].push({
+          category: expense.expense_category,
+          amount: expense.category_expense,
+          percentage: expense.expense_percentage,
+        });
       });
-    });
 
-    // Combine main data with expense breakdown
-    const result = profitLossData.map((item) => {
-      const periodKey = item.period_month.toISOString();
-      return {
-        ...item,
-        expenses_breakdown: expensesByPeriod[periodKey] || [],
-      };
-    });
+      // Combine main data with expense breakdown
+      const result = profitLossData.map((item) => {
+        const periodKey = item.period_month.toISOString();
+        return {
+          ...item,
+          expenses_breakdown: expensesByPeriod[periodKey] || [],
+        };
+      });
 
-    return result;
+      return sanitizeBigInt(result);
+    }, CACHE_TTL.PROFIT_LOSS);
   }
 
   /**
@@ -444,201 +482,197 @@ class FinancialReportService {
    */
   static async getProfitLossSummary(filters) {
     const { cabangId = "all", period = "month" } = filters;
+    
+    // Create cache key
+    const cacheKey = createCacheKey(
+      'financial:profit-loss-summary',
+      `${cabangId}:${period}`
+    );
 
-    // Define the current period and previous period based on the period type
-    const now = new Date();
-    let currentPeriodStart,
-      currentPeriodEnd,
-      previousPeriodStart,
-      previousPeriodEnd;
+    return cacheOrFetch(cacheKey, async () => {
+      // Define the current period and previous period based on the period type
+      const now = new Date();
+      let currentPeriodStart,
+        currentPeriodEnd,
+        previousPeriodStart,
+        previousPeriodEnd;
 
-    if (period === "month") {
-      // Current month
-      currentPeriodStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      currentPeriodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      if (period === "month") {
+        // Current month
+        currentPeriodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        currentPeriodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-      // Previous month
-      previousPeriodStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      previousPeriodEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-    } else if (period === "quarter") {
-      // Current quarter
-      const currentQuarter = Math.floor(now.getMonth() / 3);
-      currentPeriodStart = new Date(now.getFullYear(), currentQuarter * 3, 1);
-      currentPeriodEnd = new Date(
-        now.getFullYear(),
-        (currentQuarter + 1) * 3,
-        0
-      );
+        // Previous month
+        previousPeriodStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        previousPeriodEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+      } else if (period === "quarter") {
+        // Current quarter
+        const currentQuarter = Math.floor(now.getMonth() / 3);
+        currentPeriodStart = new Date(now.getFullYear(), currentQuarter * 3, 1);
+        currentPeriodEnd = new Date(
+          now.getFullYear(),
+          (currentQuarter + 1) * 3,
+          0
+        );
 
-      // Previous quarter
-      previousPeriodStart = new Date(
-        now.getFullYear(),
-        (currentQuarter - 1) * 3,
-        1
-      );
-      previousPeriodEnd = new Date(now.getFullYear(), currentQuarter * 3, 0);
-    } else {
-      // year
-      // Current year
-      currentPeriodStart = new Date(now.getFullYear(), 0, 1);
-      currentPeriodEnd = new Date(now.getFullYear(), 11, 31);
-
-      // Previous year
-      previousPeriodStart = new Date(now.getFullYear() - 1, 0, 1);
-      previousPeriodEnd = new Date(now.getFullYear() - 1, 11, 31);
-    }
-
-    // Format dates for SQL
-    const formatDate = (date) => date.toISOString().split("T")[0];
-
-    // Define query conditions
-    let whereClause = "TRUE";
-    const params = [];
-
-    if (cabangId !== "all") {
-      whereClause += " AND cabang_id = $1";
-      params.push(cabangId);
-    }
-
-    if (year) {
-      if (month) {
-        // Filter for specific month of specific year
-        whereClause += ` AND EXTRACT(YEAR FROM period_month) = $${params.length + 1} AND EXTRACT(MONTH FROM period_month) = $${params.length + 2}`;
-        params.push(year, month);
+        // Previous quarter
+        previousPeriodStart = new Date(
+          now.getFullYear(),
+          (currentQuarter - 1) * 3,
+          1
+        );
+        previousPeriodEnd = new Date(now.getFullYear(), currentQuarter * 3, 0);
       } else {
-        // Filter for all months of specific year
-        whereClause += ` AND EXTRACT(YEAR FROM period_month) = $${params.length + 1}`;
-        params.push(year);
+        // year
+        // Current year
+        currentPeriodStart = new Date(now.getFullYear(), 0, 1);
+        currentPeriodEnd = new Date(now.getFullYear(), 11, 31);
+
+        // Previous year
+        previousPeriodStart = new Date(now.getFullYear() - 1, 0, 1);
+        previousPeriodEnd = new Date(now.getFullYear() - 1, 11, 31);
       }
-    }
 
-    // Query current period data
-    const query1 = `
-      SELECT 
-        SUM(total_revenue) AS total_revenue,
-        SUM(total_cogs) AS total_cogs,
-        SUM(gross_profit) AS gross_profit,
-        CASE 
-          WHEN SUM(total_revenue) > 0 
-          THEN ROUND(SUM(gross_profit) * 100.0 / SUM(total_revenue), 2)
-          ELSE 0 
-        END AS gross_profit_margin,
-        SUM(total_operating_expenses) AS total_expenses,
-        SUM(net_profit) AS net_profit,
-        CASE 
-          WHEN SUM(total_revenue) > 0 
-          THEN ROUND(SUM(net_profit) * 100.0 / SUM(total_revenue), 2)
-          ELSE 0 
-        END AS net_profit_margin
-      FROM mv_profit_loss_report
-      WHERE ${whereClause}
-      AND period_month BETWEEN $${params.length + 1}::date AND $${params.length + 2}::date
-    `;
-    
-    const currentPeriodData = await prisma.$queryRawUnsafe(
-      query1,
-      ...params,
-      formatDate(currentPeriodStart),
-      formatDate(currentPeriodEnd)
-    );
+      // Format dates for SQL
+      const formatDate = (date) => date.toISOString().split("T")[0];
 
-    // Query previous period data
-    const query2 = `
-      SELECT 
-        SUM(total_revenue) AS total_revenue,
-        SUM(total_cogs) AS total_cogs,
-        SUM(gross_profit) AS gross_profit,
-        CASE 
-          WHEN SUM(total_revenue) > 0 
-          THEN ROUND(SUM(gross_profit) * 100.0 / SUM(total_revenue), 2)
-          ELSE 0 
-        END AS gross_profit_margin,
-        SUM(total_operating_expenses) AS total_expenses,
-        SUM(net_profit) AS net_profit,
-        CASE 
-          WHEN SUM(total_revenue) > 0 
-          THEN ROUND(SUM(net_profit) * 100.0 / SUM(total_revenue), 2)
-          ELSE 0 
-        END AS net_profit_margin
-      FROM mv_profit_loss_report
-      WHERE ${whereClause}
-      AND period_month BETWEEN $${params.length + 1}::date AND $${params.length + 2}::date
-    `;
-    
-    const previousPeriodData = await prisma.$queryRawUnsafe(
-      query2,
-      ...params,
-      formatDate(previousPeriodStart),
-      formatDate(previousPeriodEnd)
-    );
+      // Define query conditions
+      let whereClause = "TRUE";
+      const params = [];
 
-    // Calculate percentage changes
-    const calculateChange = (current, previous) => {
-      if (!previous || previous === 0) {
-        return current > 0 ? 100 : 0;
+      if (cabangId !== "all") {
+        whereClause += " AND cabang_id = $1";
+        params.push(cabangId);
       }
-      return parseFloat((((current - previous) / previous) * 100).toFixed(2));
-    };
 
-    const current = currentPeriodData[0] || {};
-    const previous = previousPeriodData[0] || {};
+      // Query current period data
+      const query1 = `
+        SELECT 
+          SUM(total_revenue) AS total_revenue,
+          SUM(total_cogs) AS total_cogs,
+          SUM(gross_profit) AS gross_profit,
+          CASE 
+            WHEN SUM(total_revenue) > 0 
+            THEN ROUND(SUM(gross_profit) * 100.0 / SUM(total_revenue), 2)
+            ELSE 0 
+          END AS gross_profit_margin,
+          SUM(total_operating_expenses) AS total_expenses,
+          SUM(net_profit) AS net_profit,
+          CASE 
+            WHEN SUM(total_revenue) > 0 
+            THEN ROUND(SUM(net_profit) * 100.0 / SUM(total_revenue), 2)
+            ELSE 0 
+          END AS net_profit_margin
+        FROM mv_profit_loss_report
+        WHERE ${whereClause}
+        AND period_month BETWEEN $${params.length + 1}::date AND $${params.length + 2}::date
+      `;
+      
+      const currentPeriodData = await prisma.$queryRawUnsafe(
+        query1,
+        ...params,
+        formatDate(currentPeriodStart),
+        formatDate(currentPeriodEnd)
+      );
 
-    return {
-      current_period: {
-        start_date: formatDate(currentPeriodStart),
-        end_date: formatDate(currentPeriodEnd),
-        period_type: period,
-        total_revenue: current.total_revenue || 0,
-        total_cogs: current.total_cogs || 0,
-        gross_profit: current.gross_profit || 0,
-        gross_profit_margin: current.gross_profit_margin || 0,
-        total_expenses: current.total_expenses || 0,
-        net_profit: current.net_profit || 0,
-        net_profit_margin: current.net_profit_margin || 0,
-      },
-      previous_period: {
-        start_date: formatDate(previousPeriodStart),
-        end_date: formatDate(previousPeriodEnd),
-        period_type: period,
-        total_revenue: previous.total_revenue || 0,
-        total_cogs: previous.total_cogs || 0,
-        gross_profit: previous.gross_profit || 0,
-        gross_profit_margin: previous.gross_profit_margin || 0,
-        total_expenses: previous.total_expenses || 0,
-        net_profit: previous.net_profit || 0,
-        net_profit_margin: previous.net_profit_margin || 0,
-      },
-      changes: {
-        revenue_change: calculateChange(
-          current.total_revenue || 0,
-          previous.total_revenue || 0
-        ),
-        cogs_change: calculateChange(
-          current.total_cogs || 0,
-          previous.total_cogs || 0
-        ),
-        gross_profit_change: calculateChange(
-          current.gross_profit || 0,
-          previous.gross_profit || 0
-        ),
-        gross_margin_change: calculateChange(
-          current.gross_profit_margin || 0,
-          previous.gross_profit_margin || 0
-        ),
-        expenses_change: calculateChange(
-          current.total_expenses || 0,
-          previous.total_expenses || 0
-        ),
-        net_profit_change: calculateChange(
-          current.net_profit || 0,
-          previous.net_profit || 0
-        ),
-        net_margin_change: calculateChange(
-          current.net_profit_margin || 0,
-          previous.net_profit_margin || 0
-        ),
-      },
-    };
+      // Query previous period data
+      const query2 = `
+        SELECT 
+          SUM(total_revenue) AS total_revenue,
+          SUM(total_cogs) AS total_cogs,
+          SUM(gross_profit) AS gross_profit,
+          CASE 
+            WHEN SUM(total_revenue) > 0 
+            THEN ROUND(SUM(gross_profit) * 100.0 / SUM(total_revenue), 2)
+            ELSE 0 
+          END AS gross_profit_margin,
+          SUM(total_operating_expenses) AS total_expenses,
+          SUM(net_profit) AS net_profit,
+          CASE 
+            WHEN SUM(total_revenue) > 0 
+            THEN ROUND(SUM(net_profit) * 100.0 / SUM(total_revenue), 2)
+            ELSE 0 
+          END AS net_profit_margin
+        FROM mv_profit_loss_report
+        WHERE ${whereClause}
+        AND period_month BETWEEN $${params.length + 1}::date AND $${params.length + 2}::date
+      `;
+      
+      const previousPeriodData = await prisma.$queryRawUnsafe(
+        query2,
+        ...params,
+        formatDate(previousPeriodStart),
+        formatDate(previousPeriodEnd)
+      );
+
+      // Calculate percentage changes
+      const calculateChange = (current, previous) => {
+        if (!previous || previous === 0) {
+          return current > 0 ? 100 : 0;
+        }
+        return parseFloat((((current - previous) / previous) * 100).toFixed(2));
+      };
+
+      const current = currentPeriodData[0] || {};
+      const previous = previousPeriodData[0] || {};
+
+      return sanitizeBigInt({
+        current_period: {
+          start_date: formatDate(currentPeriodStart),
+          end_date: formatDate(currentPeriodEnd),
+          period_type: period,
+          total_revenue: current.total_revenue || 0,
+          total_cogs: current.total_cogs || 0,
+          gross_profit: current.gross_profit || 0,
+          gross_profit_margin: current.gross_profit_margin || 0,
+          total_expenses: current.total_expenses || 0,
+          net_profit: current.net_profit || 0,
+          net_profit_margin: current.net_profit_margin || 0,
+        },
+        previous_period: {
+          start_date: formatDate(previousPeriodStart),
+          end_date: formatDate(previousPeriodEnd),
+          period_type: period,
+          total_revenue: previous.total_revenue || 0,
+          total_cogs: previous.total_cogs || 0,
+          gross_profit: previous.gross_profit || 0,
+          gross_profit_margin: previous.gross_profit_margin || 0,
+          total_expenses: previous.total_expenses || 0,
+          net_profit: previous.net_profit || 0,
+          net_profit_margin: previous.net_profit_margin || 0,
+        },
+        changes: {
+          revenue_change: calculateChange(
+            current.total_revenue || 0,
+            previous.total_revenue || 0
+          ),
+          cogs_change: calculateChange(
+            current.total_cogs || 0,
+            previous.total_cogs || 0
+          ),
+          gross_profit_change: calculateChange(
+            current.gross_profit || 0,
+            previous.gross_profit || 0
+          ),
+          gross_margin_change: calculateChange(
+            current.gross_profit_margin || 0,
+            previous.gross_profit_margin || 0
+          ),
+          expenses_change: calculateChange(
+            current.total_expenses || 0,
+            previous.total_expenses || 0
+          ),
+          net_profit_change: calculateChange(
+            current.net_profit || 0,
+            previous.net_profit || 0
+          ),
+          net_margin_change: calculateChange(
+            current.net_profit_margin || 0,
+            previous.net_profit_margin || 0
+          ),
+        },
+      });
+    }, CACHE_TTL.SUMMARY); // 10 minutes for summary comparison
   }
 
   /**
@@ -650,24 +684,34 @@ class FinancialReportService {
    * @returns {Promise<Object>} Complete financial dashboard data
    */
   static async getFinancialDashboard(filters) {
-    // Execute all queries in parallel for better performance
-    const [summary, trend, paymentMethods, expenseAnalysis, taxAndFees] =
-      await Promise.all([
-        this.getFinancialSummary(filters),
-        this.getFinancialDailyTrend(filters),
-        this.getPaymentMethodSummary(filters),
-        this.getExpenseAnalysis(filters),
-        this.getTaxAndFeesSummary(filters),
-      ]);
+    const { cabangId = "all", startDate, endDate } = filters;
+    
+    // Create cache key for dashboard
+    const cacheKey = createCacheKey(
+      'financial:dashboard',
+      `${cabangId}:${startDate}:${endDate}`
+    );
 
-    // Return consolidated data
-    return this.formatResponseData({
-      summary,
-      trend,
-      paymentMethods,
-      expenseAnalysis,
-      taxAndFees,
-    });
+    return cacheOrFetch(cacheKey, async () => {
+      // Execute all queries in parallel for better performance
+      const [summary, trend, paymentMethods, expenseAnalysis, taxAndFees] =
+        await Promise.all([
+          this.getFinancialSummary(filters),
+          this.getFinancialDailyTrend(filters),
+          this.getPaymentMethodSummary(filters),
+          this.getExpenseAnalysis(filters),
+          this.getTaxAndFeesSummary(filters),
+        ]);
+
+      // Return consolidated data (already sanitized by individual methods)
+      return {
+        summary,
+        trend,
+        paymentMethods,
+        expenseAnalysis,
+        taxAndFees,
+      };
+    }, CACHE_TTL.DASHBOARD);
   }
 
 

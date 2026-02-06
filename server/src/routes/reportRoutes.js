@@ -21,7 +21,7 @@ router.use(authenticate);
  * @query {number} page - Page number (default: 1)
  * @query {number} limit - Items per page (default: 50)
  */
-router.get("/sales", hasPermission(["report:read"]), reportController.getSalesReport);
+router.get("/sales", hasPermission(["laporan:read"]), reportController.getSalesReport);
 
 /**
  * @route GET /api/reports/sales/summary
@@ -30,7 +30,7 @@ router.get("/sales", hasPermission(["report:read"]), reportController.getSalesRe
  * @query {string} endDate - End date (YYYY-MM-DD)
  * @query {string} cabangId - Branch ID (optional)
  */
-router.get("/sales/summary", hasPermission(["report:read"]), reportController.getSalesSummary);
+router.get("/sales/summary", hasPermission(["laporan:read"]), reportController.getSalesSummary);
 
 /**
  * @route GET /api/reports/sales/products
@@ -40,7 +40,7 @@ router.get("/sales/summary", hasPermission(["report:read"]), reportController.ge
  * @query {string} cabangId - Branch ID (optional)
  * @query {number} limit - Number of products to return (default: 10, max: 100)
  */
-router.get("/sales/products", hasPermission(["report:read"]), reportController.getTopProducts);
+router.get("/sales/products", hasPermission(["laporan:read"]), reportController.getTopProducts);
 
 /**
  * @route GET /api/reports/sales/categories
@@ -49,7 +49,7 @@ router.get("/sales/products", hasPermission(["report:read"]), reportController.g
  * @query {string} endDate - End date (YYYY-MM-DD)
  * @query {string} cabangId - Branch ID (optional)
  */
-router.get("/sales/categories", hasPermission(["report:read"]), reportController.getSalesByCategory);
+router.get("/sales/categories", hasPermission(["laporan:read"]), reportController.getSalesByCategory);
 
 // ============================================================================
 // FINANCIAL REPORT ROUTES
@@ -62,7 +62,7 @@ router.get("/sales/categories", hasPermission(["report:read"]), reportController
  * @query {string} endDate - End date (YYYY-MM-DD)
  * @query {string} cabangId - Branch ID (optional)
  */
-router.get("/financial/dashboard", hasPermission(["report:read"]), reportController.getFinancialDashboard);
+router.get("/financial/dashboard", hasPermission(["laporan_keuangan:read"]), reportController.getFinancialDashboard);
 
 /**
  * @route GET /api/reports/financial/summary
@@ -71,7 +71,7 @@ router.get("/financial/dashboard", hasPermission(["report:read"]), reportControl
  * @query {string} endDate - End date (YYYY-MM-DD)
  * @query {string} cabangId - Branch ID (optional)
  */
-router.get("/financial/summary", hasPermission(["report:read"]), reportController.getFinancialSummary);
+router.get("/financial/summary", hasPermission(["laporan_keuangan:read"]), reportController.getFinancialSummary);
 
 /**
  * @route GET /api/reports/financial/transactions
@@ -83,7 +83,7 @@ router.get("/financial/summary", hasPermission(["report:read"]), reportControlle
  * @query {number} page - Page number (default: 1)
  * @query {number} limit - Items per page (default: 50)
  */
-router.get("/financial/transactions", hasPermission(["report:read"]), reportController.getFinancialTransactions);
+router.get("/financial/transactions", hasPermission(["laporan_keuangan:read"]), reportController.getFinancialTransactions);
 
 // ============================================================================
 // INVENTORY REPORT ROUTES
@@ -95,7 +95,7 @@ router.get("/financial/transactions", hasPermission(["report:read"]), reportCont
  * @query {string} cabangId - Branch ID (optional)
  * @query {boolean} includeLowStock - Include only low stock items (default: false)
  */
-router.get("/inventory/dashboard", hasPermission(["report:read"]), reportController.getInventoryDashboard);
+router.get("/inventory/dashboard", hasPermission(["laporan:read"]), reportController.getInventoryDashboard);
 
 /**
  * @route GET /api/reports/inventory/movements
@@ -106,7 +106,7 @@ router.get("/inventory/dashboard", hasPermission(["report:read"]), reportControl
  * @query {string} produkId - Product ID (optional)
  * @query {string} groupBy - Grouping period (day, week, month) (default: day)
  */
-router.get("/inventory/movements", hasPermission(["report:read"]), reportController.getInventoryMovements);
+router.get("/inventory/movements", hasPermission(["laporan:read"]), reportController.getInventoryMovements);
 
 /**
  * @route GET /api/reports/inventory/low-stock
@@ -117,14 +117,14 @@ router.get("/inventory/movements", hasPermission(["report:read"]), reportControl
  * @query {number} page - Page number (default: 1)
  * @query {number} limit - Items per page (default: 10)
  */
-router.get("/inventory/low-stock", hasPermission(["report:read"]), reportController.getLowStockReport);
+router.get("/inventory/low-stock", hasPermission(["laporan:read"]), reportController.getLowStockReport);
 
 /**
  * @route GET /api/reports/inventory/low-stock/by-category
  * @desc Get low stock summary by category
  * @query {string} cabangId - Branch ID (optional)
  */
-router.get("/inventory/low-stock/by-category", hasPermission(["report:read"]), reportController.getLowStockByCategory);
+router.get("/inventory/low-stock/by-category", hasPermission(["laporan:read"]), reportController.getLowStockByCategory);
 
 /**
  * @route GET /api/reports/inventory/expiring
@@ -136,7 +136,7 @@ router.get("/inventory/low-stock/by-category", hasPermission(["report:read"]), r
  * @query {number} page - Page number (default: 1)
  * @query {number} limit - Items per page (default: 10)
  */
-router.get("/inventory/expiring", hasPermission(["report:read"]), reportController.getExpiringProductsReport);
+router.get("/inventory/expiring", hasPermission(["laporan:read"]), reportController.getExpiringProductsReport);
 
 /**
  * @route GET /api/reports/inventory/expiring/by-category
@@ -144,7 +144,7 @@ router.get("/inventory/expiring", hasPermission(["report:read"]), reportControll
  * @query {string} cabangId - Branch ID (optional)
  * @query {number} daysThreshold - Days threshold (default: 90)
  */
-router.get("/inventory/expiring/by-category", hasPermission(["report:read"]), reportController.getExpiringByCategory);
+router.get("/inventory/expiring/by-category", hasPermission(["laporan:read"]), reportController.getExpiringByCategory);
 
 /**
  * @route GET /api/reports/inventory/stock-transfer
@@ -155,7 +155,7 @@ router.get("/inventory/expiring/by-category", hasPermission(["report:read"]), re
  * @query {number} page - Page number (default: 1)
  * @query {number} limit - Items per page (default: 10)
  */
-router.get("/inventory/stock-transfer", hasPermission(["report:read"]), reportController.getStockTransferReport);
+router.get("/inventory/stock-transfer", hasPermission(["laporan:read"]), reportController.getStockTransferReport);
 
 /**
  * @route GET /api/reports/inventory/stock-transfer/by-branch
@@ -164,7 +164,7 @@ router.get("/inventory/stock-transfer", hasPermission(["report:read"]), reportCo
  * @query {string} startDate - Start date (YYYY-MM-DD) (optional)
  * @query {string} endDate - End date (YYYY-MM-DD) (optional)
  */
-router.get("/inventory/stock-transfer/by-branch", hasPermission(["report:read"]), reportController.getStockTransferByBranch);
+router.get("/inventory/stock-transfer/by-branch", hasPermission(["laporan:read"]), reportController.getStockTransferByBranch);
 
 /**
  * @route GET /api/reports/inventory/health
@@ -175,28 +175,28 @@ router.get("/inventory/stock-transfer/by-branch", hasPermission(["report:read"])
  * @query {number} page - Page number (default: 1)
  * @query {number} limit - Items per page (default: 10)
  */
-router.get("/inventory/health", hasPermission(["report:read"]), reportController.getInventoryHealthReport);
+router.get("/inventory/health", hasPermission(["laporan:read"]), reportController.getInventoryHealthReport);
 
 /**
  * @route GET /api/reports/inventory/health/branch
  * @desc Get branch inventory health summary
  * @query {string} cabangId - Branch ID (optional)
  */
-router.get("/inventory/health/branch", hasPermission(["report:read"]), reportController.getBranchInventoryHealth);
+router.get("/inventory/health/branch", hasPermission(["laporan:read"]), reportController.getBranchInventoryHealth);
 
 /**
  * @route GET /api/reports/inventory/health/distribution
  * @desc Get health score distribution
  * @query {string} cabangId - Branch ID (optional)
  */
-router.get("/inventory/health/distribution", hasPermission(["report:read"]), reportController.getHealthScoreDistribution);
+router.get("/inventory/health/distribution", hasPermission(["laporan:read"]), reportController.getHealthScoreDistribution);
 
 /**
  * @route GET /api/reports/inventory/health/dimensions
  * @desc Get health score by dimension
  * @query {string} cabangId - Branch ID (optional)
  */
-router.get("/inventory/health/dimensions", hasPermission(["report:read"]), reportController.getHealthByDimension);
+router.get("/inventory/health/dimensions", hasPermission(["laporan:read"]), reportController.getHealthByDimension);
 
 /**
  * @route GET /api/reports/inventory/movement-trends
@@ -210,7 +210,7 @@ router.get("/inventory/health/dimensions", hasPermission(["report:read"]), repor
  * @query {number} page - Page number (default: 1)
  * @query {number} limit - Items per page (default: 10)
  */
-router.get("/inventory/movement-trends", hasPermission(["report:read"]), reportController.getStockMovementTrends);
+router.get("/inventory/movement-trends", hasPermission(["laporan:read"]), reportController.getStockMovementTrends);
 
 /**
  * @route GET /api/reports/inventory/top-moving
@@ -222,7 +222,7 @@ router.get("/inventory/movement-trends", hasPermission(["report:read"]), reportC
  * @query {number} limit - Limit results (default: 10)
  * @query {string} sortBy - Sort by (total, masuk, keluar) (default: total)
  */
-router.get("/inventory/top-moving", hasPermission(["report:read"]), reportController.getTopMovingProducts);
+router.get("/inventory/top-moving", hasPermission(["laporan:read"]), reportController.getTopMovingProducts);
 
 /**
  * @route GET /api/reports/inventory/movement-category
@@ -231,7 +231,7 @@ router.get("/inventory/top-moving", hasPermission(["report:read"]), reportContro
  * @query {string} startDate - Start date (YYYY-MM-DD) (optional)
  * @query {string} endDate - End date (YYYY-MM-DD) (optional)
  */
-router.get("/inventory/movement-category", hasPermission(["report:read"]), reportController.getStockMovementByCategory);
+router.get("/inventory/movement-category", hasPermission(["laporan:read"]), reportController.getStockMovementByCategory);
 
 /**
  * @route GET /api/reports/inventory/value-category
@@ -252,7 +252,7 @@ router.get("/inventory/value-category", hasPermission(["report:read"]), reportCo
  * @query {string} endDate - End date (YYYY-MM-DD) (optional)
  * @query {number} limit - Limit results (default: 50)
  */
-router.get("/inventory/activities", hasPermission(["report:read"]), reportController.getRecentInventoryActivities);
+router.get("/inventory/activities", hasPermission(["laporan:read"]), reportController.getRecentInventoryActivities);
 
 // ============================================================================
 // BRANCH REPORT ROUTES
@@ -264,6 +264,6 @@ router.get("/inventory/activities", hasPermission(["report:read"]), reportContro
  * @query {string} startDate - Start date (YYYY-MM-DD)
  * @query {string} endDate - End date (YYYY-MM-DD)
  */
-router.get("/branch", hasPermission(["report:read"]), reportController.getBranchComparison);
+router.get("/branch", hasPermission(["laporan:read"]), reportController.getBranchComparison);
 
 module.exports = router;

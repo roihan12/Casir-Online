@@ -53,6 +53,11 @@ const discountConfigRoutes = require("./routes/discountConfigRoutes");
 const loyaltyRoutes = require("./routes/loyaltyRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const reportExportRoutes = require("./routes/reportExportRoutes");
+const shiftReportRoutes = require("./routes/shiftReportRoutes");
+const transactionReportRoutes = require("./routes/transactionReportRoutes");
+const customerReportRoutes = require("./routes/customerReportRoutes");
+const promoReportRoutes = require("./routes/promoReportRoutes");
+
 
 const {
   setupNotificationScheduler,
@@ -141,7 +146,7 @@ app.use("/api/transaction-dashboard", transactionDashboardRoutes);
 app.use("/api/inventory-dashboard", inventoryDashboardRoutes);
 app.use("/api/operational-hours", operationalHoursRoutes);
 app.use("/api/produk-supplier", produkSupplierRoutes);
-app.use("/api/financial-report", financialReportRoutes);
+app.use("/api/financial", financialReportRoutes);
 app.use("/api/kredit-rekomendasi", kreditRekomendasiRoutes);
 app.use("/api/kredit-notifikasi", kreditNotifikasiRoutes);
 app.use("/api/hutang", pembayaranHutangRoutes);
@@ -151,6 +156,10 @@ app.use("/api/discount-config", discountConfigRoutes);
 app.use("/api/loyalty", loyaltyRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/reports/export", reportExportRoutes);
+app.use("/api/reports/shift", shiftReportRoutes);
+app.use("/api/reports/transactions", transactionReportRoutes);
+app.use("/api/reports/customer", customerReportRoutes);
+app.use("/api/reports/promo", promoReportRoutes);
 
 // 404 handler
 app.use((req, res) => {

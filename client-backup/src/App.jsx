@@ -115,6 +115,13 @@ import AIAgentPage from "./features/whatsapp/pages/AIAgentPage";
 
 import { ToastProvider } from "./app/providers/ToastContext";
 import POSPage from "./features/pos/pages/POSPage";
+import ProfitLossReport from "./features/reports/pages/ProfitLossReport";
+import ShiftPerformanceReport from "./features/reports/pages/ShiftPerformanceReport";
+import InventoryHealthReport from "./features/reports/pages/InventoryHealthReport";
+import CustomerLoyaltyReport from "./features/reports/pages/CustomerLoyaltyReport";
+import LowStockReport from "./features/reports/pages/LowStockReport";
+import PromoDiscountReport from "./features/reports/pages/PromoDiscountReport";
+import TransactionDetailReport from "./features/reports/pages/TransactionDetailReport";
 
 function App() {
   return (
@@ -479,6 +486,13 @@ function App() {
               <Route path="finance" element={<FinanceReport />} />
               <Route path="inventory" element={<InventoryReport />} />
               <Route path="branch" element={<BranchReport />} />
+              <Route path="profit-loss" element={<ProfitLossReport />} />
+              <Route path="shift-performance" element={<ShiftPerformanceReport />} />
+              <Route path="inventory-health" element={<InventoryHealthReport />} />
+              <Route path="low-stock" element={<LowStockReport />} />
+              <Route path="promo-diskon" element={<PromoDiscountReport />} />
+              <Route path="transactions" element={<TransactionDetailReport />} />
+              <Route path="customers" element={<CustomerLoyaltyReport />} />
             </Route>
 
             {/* Promo & Diskon */}

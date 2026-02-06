@@ -1,5 +1,6 @@
 const prisma = require("../config/db");
 const { ResponseError } = require("../error/responseError");
+const { sanitizeBigInt } = require("../utils/bigintSerializer");
 
 const getInventoryHealthReport = async (filters) => {
   const {
@@ -19,9 +20,9 @@ const getInventoryHealthReport = async (filters) => {
       ih.nama_produk,
       ih.sku,
       ih.stok,
-      ih.stok_minimum,
-      ih.stok_maksimum,
-      ih.tanggal_kadaluarsa,
+      ih.min_stok,
+      ih.max_stok,
+      ih.tanggal_kedaluwarsa,
       ih.stock_level_score,
       ih.expiration_score,
       ih.movement_score,
@@ -64,10 +65,17 @@ const getInventoryHealthReport = async (filters) => {
   const countResult = await prisma.$queryRawUnsafe(countQuery, ...params);
   const total = Number(countResult[0].total);
 
-  const offset = (page - 1) * limit;
+  // Convert to numbers to avoid PostgreSQL type error
+  const numLimit = parseInt(limit, 10);
+  const numPage = parseInt(page, 10);
+  const offset = (numPage - 1) * numLimit;
+  
   query += ` ORDER BY ih.overall_health_score ASC`;
   query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-  params.push(limit, offset);
+  params.push(numLimit, offset);
+
+  console.log(query);
+  console.log(params);
 
   const products = await prisma.$queryRawUnsafe(query, ...params);
 
@@ -106,10 +114,10 @@ const getInventoryHealthReport = async (filters) => {
     healthStatusSummary,
     products,
     pagination: {
-      page,
-      limit,
+      page: numPage,
+      limit: numLimit,
       total,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(total / numLimit),
     },
   };
 };
@@ -141,7 +149,7 @@ const getBranchInventoryHealth = async (filters) => {
   `;
 
   const result = await prisma.$queryRawUnsafe(query);
-  return result;
+  return sanitizeBigInt(result);
 };
 
 const getHealthScoreDistribution = async (filters) => {
@@ -169,7 +177,7 @@ const getHealthScoreDistribution = async (filters) => {
   `;
 
   const result = await prisma.$queryRawUnsafe(query);
-  return result;
+  return sanitizeBigInt(result);
 };
 
 const getHealthByDimension = async (filters) => {
@@ -223,7 +231,7 @@ const getHealthByDimension = async (filters) => {
   `;
 
   const result = await prisma.$queryRawUnsafe(query);
-  return result;
+  return sanitizeBigInt(result);
 };
 
 module.exports = {

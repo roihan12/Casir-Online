@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useCabang } from "@features/cabang/hooks/useCabang";
 import { useSalesReport, useSalesSummary, useTopProducts, useSalesByCategory, useBranchReport } from "../hooks/useReports";
+import { useUserBranches } from "../hooks/useUserBranches";
 import formatCurrency from "@common/utils/formatCurrency";
 import {
   Card,
@@ -39,6 +40,7 @@ import {
   Divider,
 } from "../components/ReportComponents";
 import ExportDropdown from "../components/ExportDropdown";
+import BranchMultiSelect from "../components/BranchMultiSelect";
 
 const COLORS = [
   "#0088FE",
@@ -62,8 +64,17 @@ const SalesReport = () => {
   });
   const [endDate, setEndDate] = useState(new Date());
   const [viewType, setViewType] = useState("daily");
-  const [cabangFilter, setCabangFilter] = useState("all");
-  const { allCabang } = useCabang();
+  
+  // Multi-branch selection with localStorage preference
+  const {
+    availableBranches,
+    selectedBranches,
+    setSelectedBranches,
+    cabangFilterParam,
+    isDisabled,
+  } = useUserBranches('sales');
+
+  console.log("availableBranches", availableBranches);
 
   // Format dates for API
   const apiParams = useMemo(() => {
@@ -74,9 +85,9 @@ const SalesReport = () => {
     return {
       startDate: formatDate(startDate),
       endDate: formatDate(endDate),
-      cabangId: cabangFilter,
+      cabangId: cabangFilterParam,
     };
-  }, [startDate, endDate, cabangFilter]);
+  }, [startDate, endDate, cabangFilterParam]);
 
   const salesParams = { ...apiParams, viewType };
 
@@ -129,16 +140,6 @@ const SalesReport = () => {
     { value: "daily", label: "Harian" },
     { value: "weekly", label: "Mingguan" },
     { value: "monthly", label: "Bulanan" },
-  ];
-
-  const cabangOptions = [
-    { value: "all", label: "Semua Cabang" },
-    ...(allCabang
-      ? allCabang.map((cabang) => ({
-          value: cabang.id,
-          label: cabang.namaCabang,
-        }))
-      : []),
   ];
 
   // Prepare chart data
@@ -211,12 +212,11 @@ const SalesReport = () => {
               options={viewTypeOptions}
             />
 
-            <FormSelect
-              id="cabang"
-              label="Cabang"
-              value={cabangFilter}
-              onChange={(e) => setCabangFilter(e.target.value)}
-              options={cabangOptions}
+            <BranchMultiSelect
+              availableBranches={availableBranches}
+              selectedBranches={selectedBranches}
+              onChange={setSelectedBranches}
+              isDisabled={isDisabled}
             />
           </div>
         </CardContent>
@@ -229,9 +229,13 @@ const SalesReport = () => {
         </p>
         <StatusChip
           label={
-            cabangFilter === "all" ? "Tampilan Global" : "Tampilan Per Cabang"
+            selectedBranches.length === availableBranches.length && !isDisabled
+              ? "Semua Cabang" 
+              : selectedBranches.length === 1
+                ? `1 Cabang`
+                : `${selectedBranches.length} Cabang`
           }
-          color={cabangFilter === "all" ? "primary" : "secondary"}
+          color={selectedBranches.length === availableBranches.length ? "primary" : "secondary"}
         />
       </div>
 

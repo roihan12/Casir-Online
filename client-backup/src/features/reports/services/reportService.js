@@ -374,6 +374,190 @@ const reportService = {
     return response.data;
   },
 
+  // ==================== SHIFT PERFORMANCE REPORTS ====================
+  
+  /**
+   * Get shift summary metrics
+   * @param {Object} params - Query parameters
+   * @param {string} params.startDate - Start date (YYYY-MM-DD) 
+   * @param {string} params.endDate - End date (YYYY-MM-DD)
+   * @param {string} params.cabangId - Branch ID (optional)
+   * @param {string} params.userId - User ID (optional)
+   * @param {string} params.status - Shift status (optional)
+   */
+  getShiftSummary: async (params) => {
+    const response = await api.get("/reports/shift/summary", { params });
+    return response.data;
+  },
+
+  /**
+   * Get detailed shift information
+   * @param {string} shiftId - Shift ID
+   */
+  getShiftDetail: async (shiftId) => {
+    const response = await api.get(`/reports/shift/detail/${shiftId}`);
+    return response.data;
+  },
+
+  /**
+   * Get cash variance report
+   * @param {Object} params - Query parameters
+   * @param {string} params.startDate - Start date (YYYY-MM-DD)
+   * @param {string} params.endDate - End date (YYYY-MM-DD)
+   * @param {string} params.cabangId - Branch ID (optional)
+   */
+  getCashReport: async (params) => {
+    const response = await api.get("/reports/shift/cash-report", { params });
+    return response.data;
+  },
+
+  /**
+   * Get staff performance comparison
+   * @param {Object} params - Query parameters
+   * @param {string} params.startDate - Start date (YYYY-MM-DD)
+   * @param {string} params.endDate - End date (YYYY-MM-DD)
+   * @param {string} params.cabangId - Branch ID (optional)
+   */
+  getStaffPerformance: async (params) => {
+    const response = await api.get("/reports/shift/staff-performance", { params });
+    return response.data;
+  },
+
+  // ==================== TRANSACTION DETAIL REPORTS ====================
+
+  /**
+   * Get detailed transaction list with pagination
+   * @param {Object} params - Query parameters
+   * @param {string} params.startDate - Start date (YYYY-MM-DD)
+   * @param {string} params.endDate - End date (YYYY-MM-DD)
+   * @param {string} params.cabangId - Branch ID (optional)
+   * @param {string} params.status - Payment status (optional)
+   * @param {string} params.metodePembayaran - Payment method (optional)
+   * @param {string} params.search - Search query (optional)
+   * @param {number} params.page - Page number (optional)
+   * @param {number} params.limit - Items per page (optional)
+   */
+  getTransactionDetail: async (params) => {
+    const response = await api.get("/reports/transactions/detail", { params });
+    return response.data;
+  },
+
+  /**
+   * Get transaction summary by status
+   * @param {Object} params - Query parameters
+   * @param {string} params.startDate - Start date (YYYY-MM-DD)
+   * @param {string} params.endDate - End date (YYYY-MM-DD)
+   * @param {string} params.cabangId - Branch ID (optional)
+   */
+  getTransactionSummary: async (params) => {
+    const response = await api.get("/reports/transactions/summary", { params });
+    return response.data;
+  },
+
+  /**
+   * Get audit trail for voided/refunded transactions
+   * @param {Object} params - Query parameters
+   * @param {string} params.startDate - Start date (YYYY-MM-DD)
+   * @param {string} params.endDate - End date (YYYY-MM-DD)
+   * @param {string} params.cabangId - Branch ID (optional)
+   */
+  getAuditTrail: async (params) => {
+    const response = await api.get("/reports/transactions/audit", { params });
+    return response.data;
+  },
+
+  // ==================== CUSTOMER & LOYALTY REPORTS ====================
+
+  /**
+   * Get customer summary metrics
+   * @param {Object} params - Query parameters
+   * @param {string} params.startDate - Start date (YYYY-MM-DD)
+   * @param {string} params.endDate - End date (YYYY-MM-DD)
+   * @param {string} params.cabangId - Branch ID (optional)
+   * @param {string} params.segmen - Customer segment (optional)
+   */
+  getCustomerSummary: async (params) => {
+    const response = await api.get("/reports/customer/summary", { params });
+    return response.data;
+  },
+
+  /**
+   * Get top customers by spending
+   * @param {Object} params - Query parameters
+   * @param {string} params.startDate - Start date (YYYY-MM-DD)
+   * @param {string} params.endDate - End date (YYYY-MM-DD)
+   * @param {string} params.cabangId - Branch ID (optional)
+   * @param {number} params.limit - Number of customers (optional, default: 10)
+   */
+  getTopCustomers: async (params) => {
+    const response = await api.get("/reports/customer/top", { params });
+    return response.data;
+  },
+
+  /**
+   * Get loyalty program metrics
+   * @param {Object} params - Query parameters
+   * @param {string} params.startDate - Start date (YYYY-MM-DD)
+   * @param {string} params.endDate - End date (YYYY-MM-DD)
+   * @param {string} params.cabangId - Branch ID (optional)
+   */
+  getLoyaltyReport: async (params) => {
+    const response = await api.get("/reports/customer/loyalty", { params });
+    return response.data;
+  },
+
+  /**
+   * Get customer acquisition trend
+   * @param {Object} params - Query parameters
+   * @param {string} params.startDate - Start date (YYYY-MM-DD)
+   * @param {string} params.endDate - End date (YYYY-MM-DD)
+   * @param {string} params.cabangId - Branch ID (optional)
+   */
+  getCustomerAcquisition: async (params) => {
+    const response = await api.get("/reports/customer/acquisition", { params });
+    return response.data;
+  },
+
+  // ==================== PROMO & DISCOUNT REPORTS ====================
+
+  /**
+   * Get promo summary metrics
+   * @param {Object} params - Query parameters
+   * @param {string} params.startDate - Start date (YYYY-MM-DD)
+   * @param {string} params.endDate - End date (YYYY-MM-DD)
+   * @param {string} params.cabangId - Branch ID (optional)
+   * @param {string} params.promoId - Promo ID (optional)
+   */
+  getPromoSummary: async (params) => {
+    const response = await api.get("/reports/promo/summary", { params });
+    return response.data;
+  },
+
+  /**
+   * Get promo effectiveness metrics
+   * @param {string} promoId - Promo ID
+   * @param {Object} params - Query parameters
+   * @param {string} params.startDate - Start date (YYYY-MM-DD)
+   * @param {string} params.endDate - End date (YYYY-MM-DD)
+   * @param {string} params.cabangId - Branch ID (optional)
+   */
+  getPromoEffectiveness: async (promoId, params) => {
+    const response = await api.get(`/reports/promo/effectiveness/${promoId}`, { params });
+    return response.data;
+  },
+
+  /**
+   * Get discount breakdown (manual vs auto vs member)
+   * @param {Object} params - Query parameters
+   * @param {string} params.startDate - Start date (YYYY-MM-DD)
+   * @param {string} params.endDate - End date (YYYY-MM-DD)
+   * @param {string} params.cabangId - Branch ID (optional)
+   */
+  getDiscountBreakdown: async (params) => {
+    const response = await api.get("/reports/promo/discount-breakdown", { params });
+    return response.data;
+  },
+
   /**
    * Export report to specified format
    * @param {string} reportType - Type of report (sales, financial, inventory, branch)
@@ -412,6 +596,40 @@ const reportService = {
     window.URL.revokeObjectURL(url);
 
     return { success: true, filename };
+  },
+
+  /**
+   * Get profit and loss report
+   * @param {Object} params - Query parameters
+   * @param {string} params.cabangId - Branch ID (optional, default: "all")
+   * @param {string} params.year - Year (YYYY format, required)
+   * @param {string} params.month - Month (MM format, optional)
+   */
+  getProfitLossReport: async (params) => {
+    const response = await api.get("/financial/profit-loss", {
+      params: {
+        cabangId: params.cabangId || "all",
+        year: params.year,
+        month: params.month,
+      },
+    });
+    return response.data;
+  },
+
+  /**
+   * Get profit and loss summary with period comparison
+   * @param {Object} params - Query parameters
+   * @param {string} params.cabangId - Branch ID (optional, default: "all")
+   * @param {string} params.period - Period type: "month", "quarter", or "year" (optional, default: "month")
+   */
+  getProfitLossSummary: async (params) => {
+    const response = await api.get("/financial/profit-loss-summary", {
+      params: {
+        cabangId: params.cabangId || "all",
+        period: params.period || "month",
+      },
+    });
+    return response.data;
   },
 };
 

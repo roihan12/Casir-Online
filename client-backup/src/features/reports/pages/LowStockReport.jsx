@@ -69,8 +69,11 @@ const LowStockReport = () => {
 
   const loading = loadingReport || loadingCategory;
 
-  const products = reportData?.data?.products || [];
-  const summary = reportData?.data?.summary || {
+  console.log("reportData", reportData);
+  console.log("categoryData", categoryData);
+
+  const products = reportData?.products || [];
+  const summary = reportData?.summary || {
     totalProducts: 0,
     outOfStock: 0,
     lowStock: 0,
@@ -128,10 +131,11 @@ const LowStockReport = () => {
     { value: "Menipis", label: "Menipis" },
   ];
 
+  // Transform category data for chart - backend doesn't split out_of_stock and low_stock
   const chartData = categorySummary.map((cat) => ({
-    name: cat.namaKategori || cat.kategori_id,
-    outOfStock: cat.outOfStock || 0,
-    lowStock: cat.lowStock || 0,
+    name: cat.nama_kategori || cat.kategori_id,
+    totalProducts: cat.total_products || 0,
+    outOfStockCount: cat.out_of_stock_count || 0,
   }));
 
   return (
@@ -263,46 +267,47 @@ const LowStockReport = () => {
                       header: "Nama Produk",
                       cell: (row) => (
                         <div>
-                          <div className="font-medium">{row.namaProduk}</div>
+                          <div className="font-medium">{row.nama_produk}</div>
                           <div className="text-xs text-gray-500">SKU: {row.sku}</div>
                         </div>
                       ),
                     },
                     {
-                      header: "Kategori",
-                      cell: (row) => row.namaKategori || "-",
-                    },
-                    {
                       header: "Cabang",
-                      cell: (row) => row.namaCabang || "-",
+                      cell: (row) => row.nama_cabang || "-",
                     },
                     {
                       header: "Stok Saat Ini",
-                      cell: (row) => row.stok.toLocaleString(),
+                      cell: (row) => Number(row.stok).toLocaleString(),
                       cellClassName: "text-right font-medium",
                     },
                     {
                       header: "Min Stok",
-                      cell: (row) => row.minStok?.toLocaleString() || "-",
+                      cell: (row) => row.min_stok ? Number(row.min_stok).toLocaleString() : "-",
+                      cellClassName: "text-right",
+                    },
+                    {
+                      header: "Persentase Stok",
+                      cell: (row) => `${parseFloat(row.stok_percentage || 0).toFixed(1)}%`,
                       cellClassName: "text-right",
                     },
                     {
                       header: "Status Stok",
                       cell: (row) => (
                         <StatusChip
-                          label={row.stokStatus}
-                          color={row.stokStatus === "Habis" ? "danger" : "warning"}
+                          label={row.stok_status}
+                          color={row.stok_status === "Habis" ? "danger" : "warning"}
                         />
                       ),
                     },
                     {
                       header: "Harga Jual",
-                      cell: (row) => formatCurrency(row.hargaJual),
+                      cell: (row) => formatCurrency(parseFloat(row.harga_jual)),
                       cellClassName: "text-right",
                     },
                     {
                       header: "Nilai Stok",
-                      cell: (row) => formatCurrency(row.hargaJual * row.stok),
+                      cell: (row) => formatCurrency(parseFloat(row.harga_jual) * Number(row.stok)),
                       cellClassName: "text-right",
                     },
                   ]}
@@ -313,8 +318,8 @@ const LowStockReport = () => {
                   <div className="flex justify-between items-center mt-4">
                     <p className="text-sm text-gray-600">
                       Menampilkan {(page - 1) * limit + 1} -{" "}
-                      {Math.min(page * limit, summary.totalProducts)} dari{" "}
-                      {summary.totalProducts} produk
+                      {Math.min(page * limit, reportData.data.pagination.total)} dari{" "}
+                      {reportData.data.pagination.total} produk
                     </p>
                     <div className="flex space-x-2">
                       <Button
@@ -329,7 +334,7 @@ const LowStockReport = () => {
                       </span>
                       <Button
                         onClick={() => handlePageChange(page + 1)}
-                        disabled={page * limit >= summary.totalProducts}
+                        disabled={page >= reportData.data.pagination.totalPages}
                         variant="outline"
                       >
                         Selanjutnya
@@ -367,8 +372,8 @@ const LowStockReport = () => {
                       <YAxis />
                       <RechartsTooltip />
                       <Legend />
-                      <Bar dataKey="outOfStock" name="Stok Habis" fill="#ef4444" />
-                      <Bar dataKey="lowStock" name="Stok Menipis" fill="#f97316" />
+                      <Bar dataKey="totalProducts" name="Total Produk" fill="#3b82f6" />
+                      <Bar dataKey="outOfStockCount" name="Stok Habis" fill="#ef4444" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -378,22 +383,26 @@ const LowStockReport = () => {
                     columns={[
                       {
                         header: "Kategori",
-                        cell: (row) => row.namaKategori || row.kategori_id || "-",
+                        cell: (row) => row.nama_kategori || row.kategori_id || "-",
                       },
                       {
-                        header: "Stok Habis",
-                        cell: (row) => row.outOfStock?.toLocaleString() || "0",
+                        header: "Total Produk",
+                        cell: (row) => Number(row.total_products || 0).toLocaleString(),
+                        cellClassName: "text-right",
+                      },
+                      {
+                        header: "Out of Stock",
+                        cell: (row) => Number(row.out_of_stock_count || 0).toLocaleString(),
                         cellClassName: "text-right text-red-600",
                       },
                       {
-                        header: "Stok Menipis",
-                        cell: (row) => row.lowStock?.toLocaleString() || "0",
-                        cellClassName: "text-right text-orange-600",
+                        header: "Total Stok",
+                        cell: (row) => Number(row.total_stock || 0).toLocaleString(),
+                        cellClassName: "text-right",
                       },
                       {
-                        header: "Total",
-                        cell: (row) =>
-                          ((row.outOfStock || 0) + (row.lowStock || 0)).toLocaleString(),
+                        header: "Nilai Total",
+                        cell: (row) => formatCurrency(parseFloat(row.total_value || 0)),
                         cellClassName: "text-right font-medium",
                       },
                     ]}

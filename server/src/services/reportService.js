@@ -11,110 +11,120 @@ const prisma = new PrismaClient();
 const getSalesReport = async (filters) => {
   const { startDate, endDate, cabangId, viewType, page = 1, limit = 50 } = filters;
 
-  // Build where clause
+  // Convert cabangId to PostgreSQL array format
+  let cabangArray = null;
+  if (cabangId && cabangId !== "all") {
+    if (cabangId.includes(',')) {
+      cabangArray = cabangId.split(',').map(id => id.trim()).filter(id => id.length > 0);
+    } else {
+      cabangArray = [cabangId];
+    }
+  }
+
+  // Build where clause for transaction list (using regular view)
   const whereClause = {
-    deleted_at: null,
-    jenis_transaksi: "PENJUALAN",
-    tanggal: {
+    sale_date: {
       gte: new Date(startDate),
-      lte: new Date(endDate + "T23:59:59.999Z"),
+      lte: new Date(endDate),
     },
   };
 
-  if (cabangId && cabangId !== "all") {
-    whereClause.cabang_id = cabangId;
+  if (cabangArray) {
+    whereClause.cabang_id = { in: cabangArray };
   }
 
-  // Get transactions with pagination
+  // Get transactions from regular view with pagination
   const [transactions, totalCount] = await Promise.all([
-    prisma.transaksi.findMany({
-      where: whereClause,
-      include: {
-        cabang: {
-          select: { id: true, namaCabang: true },
-        },
-        pelanggan: {
-          select: { id: true, namaPelanggan: true },
-        },
-      },
-      orderBy: { tanggal: "desc" },
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-    prisma.transaksi.count({ where: whereClause }),
+    prisma.$queryRawUnsafe(`
+      SELECT 
+        transaksi_id,
+        tanggal,
+        sale_date,
+        cabang_id,
+        cabang_nama,
+        pelanggan_id,
+        nama_pelanggan,
+        subtotal,
+        diskon,
+        pajak,
+        biaya_tambahan,
+        total,
+        status_pembayaran
+      FROM v_sales_report
+      WHERE sale_date >= $1::date
+        AND sale_date <= $2::date
+        ${cabangArray ? 'AND cabang_id = ANY($3::text[])' : ''}
+      ORDER BY tanggal DESC
+      LIMIT $${cabangArray ? '4' : '3'} OFFSET $${cabangArray ? '5' : '4'}
+    `, startDate, endDate, ...(cabangArray ? [cabangArray, limit, (page - 1) * limit] : [limit, (page - 1) * limit])),
+    
+    prisma.$queryRawUnsafe(`
+      SELECT COUNT(*)::int as count
+      FROM v_sales_report
+      WHERE sale_date >= $1::date
+        AND sale_date <= $2::date
+        ${cabangArray ? 'AND cabang_id = ANY($3::text[])' : ''}
+    `, startDate, endDate, ...(cabangArray ? [cabangArray] : []))
   ]);
 
-  // Calculate summary
-  const summary = await prisma.transaksi.aggregate({
-    where: whereClause,
-    _count: { transaksi_id: true },
-    _sum: {
-      subtotal: true,
-      diskon: true,
-      pajak: true,
-      total: true,
-    },
-    _avg: {
-      total: true,
-    },
-  });
+  // Get summary from materialized view (fast!)
+  const summaryResult = await prisma.$queryRawUnsafe(`
+    SELECT 
+      COALESCE(SUM(total_sales), 0)::NUMERIC as total_sales,
+      COALESCE(SUM(transaction_count), 0) as total_transactions,
+      COALESCE(AVG(avg_transaction), 0)::NUMERIC as average_transaction,
+      COALESCE(SUM(total_discount), 0)::NUMERIC as total_discount,
+      COALESCE(SUM(total_tax), 0)::NUMERIC as total_tax,
+      COALESCE(SUM(total_additional_fees), 0)::NUMERIC as total_additional_fees
+    FROM mv_sales_daily_summary
+    WHERE sale_date >= $1::date
+      AND sale_date <= $2::date
+      ${cabangArray ? 'AND cabang_id = ANY($3::text[])' : ''}
+  `, startDate, endDate, ...(cabangArray ? [cabangArray] : []));
 
-  // Get daily trend data based on viewType
-  let trendData = [];
+  const summary = summaryResult[0];
 
-  // Build date grouping based on viewType
+  // Get trend data from materialized view based on viewType
   let dateGroupBy;
   switch (viewType) {
     case "weekly":
-      dateGroupBy = "DATE_TRUNC('week', tanggal)";
+      dateGroupBy = "DATE_TRUNC('week', sale_date)";
       break;
     case "monthly":
-      dateGroupBy = "DATE_TRUNC('month', tanggal)";
+      dateGroupBy = "DATE_TRUNC('month', sale_date)";
       break;
     default: // daily
-      dateGroupBy = "DATE(tanggal)";
+      dateGroupBy = "sale_date";
   }
 
-  // Build parameters for safe query
-  const queryParams = [startDate, endDate];
-  let cabangCondition = "";
-  let cabangParamIndex = 0;
-
-  if (cabangId && cabangId !== "all") {
-    cabangCondition = "AND cabang_id = $" + (queryParams.length + 1);
-    queryParams.push(cabangId);
-  }
-
-  trendData = await prisma.$queryRawUnsafe(`
+  const trendData = await prisma.$queryRawUnsafe(`
     SELECT
       ${dateGroupBy} as date,
-      COUNT(*) as transactions,
-      COALESCE(SUM(total), 0) as total
-    FROM transaksi
-    WHERE deleted_at IS NULL
-      AND jenis_transaksi = 'PENJUALAN'
-      AND DATE(tanggal) >= $1
-      AND DATE(tanggal) <= $2
-      ${cabangCondition}
+      SUM(transaction_count)::int as transactions,
+      COALESCE(SUM(total_sales), 0)::NUMERIC as total
+    FROM mv_sales_daily_summary
+    WHERE sale_date >= $1::date
+      AND sale_date <= $2::date
+      ${cabangArray ? 'AND cabang_id = ANY($3::text[])' : ''}
     GROUP BY ${dateGroupBy}
     ORDER BY date ASC
-  `, queryParams);
+  `, startDate, endDate, ...(cabangArray ? [cabangArray] : []));
 
   return {
     transactions,
     summary: {
-      totalSales: Number(summary._sum.total) || 0,
-      totalTransactions: summary._count.transaksi_id,
-      averageTransaction: Number(summary._avg.total) || 0,
-      totalDiscount: Number(summary._sum.diskon) || 0,
-      totalTax: Number(summary._sum.pajak) || 0,
+      totalSales: Number(summary.total_sales) || 0,
+      totalTransactions: Number(summary.total_transactions) || 0,
+      averageTransaction: Number(summary.average_transaction) || 0,
+      totalDiscount: Number(summary.total_discount) || 0,
+      totalTax: Number(summary.total_tax) || 0,
     },
     trend: trendData,
     pagination: {
       page: parseInt(page),
       limit: parseInt(limit),
-      total: totalCount,
-      totalPages: Math.ceil(totalCount / limit),
+      total: totalCount[0]?.count || 0,
+      totalPages: Math.ceil((totalCount[0]?.count || 0) / limit),
     },
   };
 };
@@ -135,7 +145,13 @@ const getSalesSummary = async (filters) => {
   };
 
   if (cabangId && cabangId !== "all") {
-    whereClause.cabang_id = cabangId;
+    // Handle comma-separated multiple cabangIds
+    if (cabangId.includes(',')) {
+      const cabangIds = cabangId.split(',').map(id => id.trim()).filter(id => id.length > 0);
+      whereClause.cabang_id = { in: cabangIds };
+    } else {
+      whereClause.cabang_id = cabangId;
+    }
   }
 
   // Get current period summary
@@ -208,7 +224,13 @@ const getTopProducts = async (filters) => {
   };
 
   if (cabangId && cabangId !== "all") {
-    whereClause.cabang_id = cabangId;
+    // Handle comma-separated multiple cabangIds
+    if (cabangId.includes(',')) {
+      const cabangIds = cabangId.split(',').map(id => id.trim()).filter(id => id.length > 0);
+      whereClause.cabang_id = { in: cabangIds };
+    } else {
+      whereClause.cabang_id = cabangId;
+    }
   }
 
   // Get transactions with items
@@ -269,7 +291,13 @@ const getSalesByCategory = async (filters) => {
   };
 
   if (cabangId && cabangId !== "all") {
-    whereClause.cabang_id = cabangId;
+    // Handle comma-separated multiple cabangIds
+    if (cabangId.includes(',')) {
+      const cabangIds = cabangId.split(',').map(id => id.trim()).filter(id => id.length > 0);
+      whereClause.cabang_id = { in: cabangIds };
+    } else {
+      whereClause.cabang_id = cabangId;
+    }
   }
 
   // Get transactions with items
@@ -337,7 +365,13 @@ const getInventoryDashboard = async (filters) => {
   };
 
   if (cabangId && cabangId !== "all") {
-    whereClause.cabangId = cabangId;
+    // Handle comma-separated multiple cabangIds
+    if (cabangId.includes(',')) {
+      const cabangIds = cabangId.split(',').map(id => id.trim()).filter(id => id.length > 0);
+      whereClause.cabangId = { in: cabangIds };
+    } else {
+      whereClause.cabangId = cabangId;
+    }
   }
 
   // Get all products
