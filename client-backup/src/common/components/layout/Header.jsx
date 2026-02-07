@@ -268,20 +268,20 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-white p-4 flex items-center justify-between border-b">
-      <div className="flex items-center">
-        <div className="relative w-80" ref={searchRef}>
+    <header className="bg-white p-2 md:p-4 flex items-center justify-between border-b">
+      <div className="flex items-center flex-1 min-w-0">
+        <div className="relative w-full md:w-80" ref={searchRef}>
           <form onSubmit={handleSearchSubmit}>
             <div className="flex">
               <div className="relative flex-grow">
                 <Search
                   className="absolute left-3 top-2.5 text-gray-400"
-                  size={18}
+                  size={16}
                 />
                 <input
                   type="text"
                   placeholder="Cari..."
-                  className="pl-10 pr-4 py-2 bg-gray-100 rounded-l-lg text-sm w-full focus:outline-none"
+                  className="pl-10 pr-2 md:pr-4 py-1.5 md:py-2 bg-gray-100 rounded-l-lg text-xs md:text-sm w-full focus:outline-none"
                   value={searchQuery}
                   onChange={handleSearchChange}
                   onFocus={() =>
@@ -291,16 +291,16 @@ const Header = () => {
               </div>
               <button
                 type="button"
-                className="bg-gray-100 border-l border-gray-200 rounded-r-lg px-3 flex items-center"
+                className="bg-gray-100 border-l border-gray-200 rounded-r-lg px-2 md:px-3 flex items-center"
                 onClick={() => setShowSearchDropdown(!showSearchDropdown)}
               >
-                <span className="text-sm text-gray-600 hidden sm:inline mr-1">
+                <span className="text-xs md:text-sm text-gray-600 hidden sm:inline mr-1">
                   {
                     searchCategories.find((cat) => cat.id === searchCategory)
                       ?.label
                   }
                 </span>
-                <ChevronDown size={16} className="text-gray-500" />
+                <ChevronDown size={14} className="md:w-4 md:h-4 text-gray-500" />
               </button>
             </div>
           </form>
@@ -408,8 +408,8 @@ const Header = () => {
           )}
         </div>
 
-        {/* Quick Actions */}
-        <div className="ml-4">
+        {/* Quick Actions - Hidden on mobile and small tablets */}
+        <div className="ml-2 md:ml-4 hidden lg:block">
           <div className="flex space-x-2 bg-gray-100 p-1.5 rounded-lg">
             <button
               className="flex items-center justify-center h-9 w-9 bg-white rounded hover:bg-indigo-50 text-gray-600 hover:text-indigo-600"
@@ -435,20 +435,20 @@ const Header = () => {
         {/* Date & Time moved from left side */}
       </div>
 
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-1 md:space-x-4 flex-shrink-0">
         <div className="relative" ref={notificationRef}>
           <div
-            className="cursor-pointer p-1.5 rounded-full hover:bg-gray-100"
+            className="cursor-pointer p-1 md:p-1.5 rounded-full hover:bg-gray-100"
             onClick={toggleNotifications}
           >
-            <Bell size={20} className="text-gray-600" />
+            <Bell size={18} className="md:w-5 md:h-5 text-gray-600" />
             <div className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center">
               <span className="text-white text-xs">3</span>
             </div>
           </div>
 
           {showNotifications && (
-            <div className="absolute right-0 top-10 bg-white shadow-lg rounded-lg z-10 w-80 py-2 border">
+            <div className="absolute right-0 top-10 bg-white shadow-lg rounded-lg z-10 w-[calc(100vw-2rem)] md:w-80 py-2 border">
               <div className="px-4 py-2 border-b flex justify-between items-center">
                 <p className="text-sm font-medium">Notifikasi</p>
                 <div className="flex space-x-2">
@@ -501,8 +501,8 @@ const Header = () => {
           )}
         </div>
 
-        {/* Date & Time */}
-        <div className="flex items-center text-gray-600">
+        {/* Date & Time - Hidden on mobile */}
+        <div className="hidden md:flex items-center text-gray-600">
           <Clock size={18} className="mr-2 text-gray-500" />
           <div className="flex flex-col">
             <span className="text-sm font-medium">

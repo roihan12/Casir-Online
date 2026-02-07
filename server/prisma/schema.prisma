@@ -21,9 +21,10 @@ model Cabang {
   updatedAt           DateTime             @updatedAt @map("updated_at")
   absensiPegawai      AbsensiPegawai[]
   BotConfig           BotConfig[]
+  discount_config     discount_config[]
   hutang              Hutang[]
-  Invoice             Invoice[]
   InventoryMovement   InventoryMovement[]
+  Invoice             Invoice[]
   jadwalKerja         JadwalKerja[]
   lokasiAbsensi       LokasiAbsensi[]
   loyaltyConfig       LoyaltyConfig[]
@@ -35,6 +36,7 @@ model Cabang {
   ProdukPriceHistory  ProdukPriceHistory[]
   ProdukRequest       ProdukRequest[]
   ProdukSupplier      ProdukSupplier[]
+  promoCabang         PromoCabang[]
   promoDiskon         PromoDiskon[]
   ReceiptConfig       ReceiptConfig[]
   shifts              Shift[]
@@ -47,7 +49,6 @@ model Cabang {
   userCabang          UserCabang[]
   userRoles           UserRole[]
   userLokasiAbsensi   UserLokasiAbsensi[]  @relation("CabangToUserLokasiAbsensi")
-  promoCabang        PromoCabang[]
 
   @@map("cabang")
 }
@@ -75,8 +76,10 @@ model User {
   faceImageUrl              String?                   @map("face_image_url") @db.VarChar(255)
   faceRecognitionEnabled    Boolean                   @default(false) @map("face_recognition_enabled")
   lastFaceUpdate            DateTime?                 @map("last_face_update")
+  total_discount_given      Decimal?                  @default(0) @db.Decimal(15, 2)
   absensi                   AbsensiPegawai[]
   AuditLog                  AuditLog[]
+  discount_log              discount_log[]
   hutangCreated             Hutang[]                  @relation("HutangCreatedByUserId")
   hutangDeleted             Hutang[]                  @relation("HutangDeletedByUserId")
   hutangUpdated             Hutang[]                  @relation("HutangUpdatedByUserId")
@@ -280,161 +283,153 @@ model Kategori {
 }
 
 model PromoDiskon {
-  id                 String            @id @default(uuid()) @map("promo_id")
-  namaPromo          String            @map("nama_promo") @db.VarChar(100)
-  kodePromo          String            @unique @map("kode_promo") @db.VarChar(50)
-  deskripsi          String?           @db.Text
-  tipeDiskon         TipeDiskon        @map("tipe_diskon")
-  nilaiDiskon        Decimal           @map("nilai_diskon") @db.Decimal(15, 2)
-  buyXgetYConfig     Json?             @map("buy_x_get_y_config")
-  minPembelian       Decimal?          @map("min_pembelian") @db.Decimal(15, 2)
-  maxDiskon          Decimal?          @map("max_diskon") @db.Decimal(15, 2)
-  maxPenggunaanTotal Int?              @map("max_penggunaan_total")
-  maxPenggunaanPerUser Int?            @map("max_penggunaan_per_user")
-  currentUsage       Int               @default(0) @map("current_usage")
-  tanggalMulai       DateTime?         @map("tanggal_mulai") @db.Date
-  tanggalBerakhir    DateTime?         @map("tanggal_berakhir") @db.Date
-  limitPenggunaan    Int?              @map("limit_penggunaan")
-  tipeScope          TipeScopePromo    @default(GLOBAL) @map("tipe_scope")
-  kategoriId         String?           @map("kategori_id")
-  produkId           String?           @map("produk_id")
-  cabangId           String?           @map("cabang_id")
-  status             PromoDiskonStatus @default(aktif)
-  deletedAt          DateTime?         @map("deleted_at")
-  createdAt          DateTime          @default(now()) @map("created_at")
-  updatedAt          DateTime          @updatedAt @map("updated_at")
-  created_by         String?           @map("created_by") @db.VarChar(36)
-  created_by_user_Id String?           @map("created_by_user_id") @db.VarChar(36)
-  deleted_by         String?           @map("deleted_by") @db.VarChar(36)
-  deleted_by_user_Id String?           @map("deleted_by_user_id") @db.VarChar(36)
-  updated_by         String?           @map("updated_by") @db.VarChar(36)
-  updated_by_user_Id String?           @map("updated_by_user_id") @db.VarChar(36)
-  cabang             Cabang?           @relation(fields: [cabangId], references: [id])
-  createdByUserId    User?             @relation("PromoDiskonCreatedByUserId", fields: [created_by_user_Id], references: [id])
-  deletedByUserId    User?             @relation("PromoDiskonDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
-  kategori           Kategori?         @relation(fields: [kategoriId], references: [id])
-  produkMaster       ProdukMaster?     @relation(fields: [produkId], references: [id])
-  updatedByUserId    User?             @relation("PromoDiskonUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
-  transaksis         Transaksi[]       
-  promoRules         PromoRule[]
-  promoCabangs       PromoCabang[]
-  promoProduk        PromoProduk[]
-  promoBundle        PromoBundle[]
-  transaksiPromo     TransaksiPromo[]
-  voucherUsage       VoucherUsage[]
+  id                   String            @id @default(uuid()) @map("promo_id")
+  namaPromo            String            @map("nama_promo") @db.VarChar(100)
+  kodePromo            String            @unique @map("kode_promo") @db.VarChar(50)
+  nilaiDiskon          Decimal           @map("nilai_diskon") @db.Decimal(15, 2)
+  minPembelian         Decimal?          @map("min_pembelian") @db.Decimal(15, 2)
+  maxDiskon            Decimal?          @map("max_diskon") @db.Decimal(15, 2)
+  tanggalMulai         DateTime?         @map("tanggal_mulai") @db.Date
+  tanggalBerakhir      DateTime?         @map("tanggal_berakhir") @db.Date
+  limitPenggunaan      Int?              @map("limit_penggunaan")
+  kategoriId           String?           @map("kategori_id")
+  produkId             String?           @map("produk_id")
+  cabangId             String?           @map("cabang_id")
+  status               PromoDiskonStatus @default(aktif)
+  deletedAt            DateTime?         @map("deleted_at")
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt @map("updated_at")
+  created_by           String?           @map("created_by") @db.VarChar(36)
+  created_by_user_Id   String?           @map("created_by_user_id") @db.VarChar(36)
+  deleted_by           String?           @map("deleted_by") @db.VarChar(36)
+  deleted_by_user_Id   String?           @map("deleted_by_user_id") @db.VarChar(36)
+  updated_by           String?           @map("updated_by") @db.VarChar(36)
+  updated_by_user_Id   String?           @map("updated_by_user_id") @db.VarChar(36)
+  deskripsi            String?
+  buyXgetYConfig       Json?             @map("buy_x_get_y_config")
+  maxPenggunaanTotal   Int?              @map("max_penggunaan_total")
+  maxPenggunaanPerUser Int?              @map("max_penggunaan_per_user")
+  currentUsage         Int?              @default(0) @map("current_usage")
+  tipeScope            TipeScopePromo?   @default(GLOBAL) @map("tipe_scope")
+  is_stackable         Boolean?          @default(false)
+  prioritas            Int?              @default(0)
+  tipeDiskon           TipeDiskon?       @map("tipe_diskon")
+  promoBundle          PromoBundle[]
+  promoCabangs         PromoCabang[]
+  cabang               Cabang?           @relation(fields: [cabangId], references: [id])
+  createdByUserId      User?             @relation("PromoDiskonCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  deletedByUserId      User?             @relation("PromoDiskonDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+  kategori             Kategori?         @relation(fields: [kategoriId], references: [id])
+  produkMaster         ProdukMaster?     @relation(fields: [produkId], references: [id])
+  updatedByUserId      User?             @relation("PromoDiskonUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  promoProduk          PromoProduk[]
+  promoRules           PromoRule[]
+  transaksis           Transaksi[]
+  transaksiPromo       TransaksiPromo[]
+  voucherUsage         VoucherUsage[]
 
   @@map("promo_diskon")
 }
 
-
-
-
 model PromoRule {
-  id                 String            @id @default(uuid()) @map("promo_rule_id")
-  promoId            String            @map("promo_id")
-  tipeRule           TipeRulePromo     @map("tipe_rule")
-  operator           String            @default("EQUAL") @db.VarChar(20)
-  nilai              Json             
-  isRequired         Boolean           @default(true) @map("is_required")
-  errorMessage       String?           @map("error_message") @db.VarChar(255)
-  createdAt          DateTime          @default(now()) @map("created_at")
-  updatedAt          DateTime          @updatedAt @map("updated_at")
-  promo              PromoDiskon       @relation(fields: [promoId], references: [id], onDelete: Cascade)
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @map("promo_rule_id") @db.VarChar(36)
+  promoId      String        @map("promo_id") @db.VarChar(36)
+  tipeRule     TipeRulePromo @map("tipe_rule")
+  operator     String?       @default("EQUAL") @db.VarChar(20)
+  nilai        Json
+  isRequired   Boolean?      @default(true) @map("is_required")
+  errorMessage String?       @map("error_message") @db.VarChar(255)
+  createdAt    DateTime?     @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime?     @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  promo        PromoDiskon   @relation(fields: [promoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  @@index([promoId], map: "idx_promo_rule_promo_id")
   @@map("promo_rule")
 }
 
-
 model PromoCabang {
-  id                 String            @id @default(uuid()) @map("promo_cabang_id")
-  promoId            String            @map("promo_id")
-  cabangId           String            @map("cabang_id")
-  isActive           Boolean           @default(true) @map("is_active")
-  createdAt          DateTime          @default(now()) @map("created_at")
-  updatedAt          DateTime          @updatedAt @map("updated_at")
-  promo              PromoDiskon       @relation(fields: [promoId], references: [id], onDelete: Cascade)
-  cabang             Cabang            @relation(fields: [cabangId], references: [id], onDelete: Cascade)
+  id        String      @id @default(dbgenerated("gen_random_uuid()")) @map("promo_cabang_id") @db.VarChar(36)
+  promoId   String      @map("promo_id") @db.VarChar(36)
+  cabangId  String      @map("cabang_id") @db.VarChar(36)
+  isActive  Boolean?    @default(true) @map("is_active")
+  createdAt DateTime?   @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime?   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  cabang    Cabang      @relation(fields: [cabangId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  promo     PromoDiskon @relation(fields: [promoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
   @@unique([promoId, cabangId])
+  @@index([cabangId], map: "idx_promo_cabang_cabang_id")
+  @@index([promoId], map: "idx_promo_cabang_promo_id")
   @@map("promo_cabang")
 }
 
-
 model PromoProduk {
-  id                 String            @id @default(uuid()) @map("promo_produk_id")
-  promoId            String            @map("promo_id")
-  tipeTarget         TipeTargetPromo   @map("tipe_target")
-  targetId           String            @map("target_id")
-  // Polymorphic: bisa produk_master_id, produk_id (cabang), atau kategori_id
-  
-  isInclude          Boolean           @default(true) @map("is_include")
-  // TRUE = include (produk ini dapat promo)
-  // FALSE = exclude (produk ini TIDAK dapat promo)
-  
-  isActive           Boolean           @default(true) @map("is_active")
-  
-  createdAt          DateTime          @default(now()) @map("created_at")
-  updatedAt          DateTime          @updatedAt @map("updated_at")
-  
-  promo              PromoDiskon       @relation(fields: [promoId], references: [id], onDelete: Cascade)
+  id         String          @id @default(dbgenerated("gen_random_uuid()")) @map("promo_produk_id") @db.VarChar(36)
+  promoId    String          @map("promo_id") @db.VarChar(36)
+  tipeTarget TipeTargetPromo @map("tipe_target")
+  targetId   String          @map("target_id") @db.VarChar(36)
+  isInclude  Boolean?        @default(true) @map("is_include")
+  isActive   Boolean?        @default(true) @map("is_active")
+  createdAt  DateTime?       @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt  DateTime?       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  promo      PromoDiskon     @relation(fields: [promoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([promoId, tipeTarget, targetId])
+  @@index([promoId], map: "idx_promo_produk_promo_id")
+  @@index([tipeTarget, targetId], map: "idx_promo_produk_target")
   @@map("promo_produk")
 }
 
-
 model PromoBundle {
-  id                 String            @id @default(uuid()) @map("promo_bundle_id")
-  promoId            String            @map("promo_id")
-  produkMasterId     String            @map("produk_master_id")
-  minQty             Int               @default(1) @map("min_qty")
-  isRequired         Boolean           @default(true) @map("is_required")
-  // TRUE = wajib beli produk ini
-  // FALSE = opsional, tapi jika beli dapat diskon lebih
-  
-  createdAt          DateTime          @default(now()) @map("created_at")
-  updatedAt          DateTime          @updatedAt @map("updated_at")
-  
-  promo              PromoDiskon       @relation(fields: [promoId], references: [id], onDelete: Cascade)
-  produkMaster       ProdukMaster      @relation(fields: [produkMasterId], references: [id], onDelete: Cascade)
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @map("promo_bundle_id") @db.VarChar(36)
+  promoId        String       @map("promo_id") @db.VarChar(36)
+  produkMasterId String       @map("produk_master_id") @db.VarChar(36)
+  minQty         Int?         @default(1) @map("min_qty")
+  isRequired     Boolean?     @default(true) @map("is_required")
+  createdAt      DateTime?    @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime?    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  produkMaster   ProdukMaster @relation(fields: [produkMasterId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  promo          PromoDiskon  @relation(fields: [promoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([promoId, produkMasterId])
+  @@index([promoId], map: "idx_promo_bundle_promo_id")
   @@map("promo_bundle")
 }
 
-
 model TransaksiPromo {
-  id                 String            @id @default(uuid()) @map("transaksi_promo_id")
-  transaksiId        String            @map("transaksi_id")
-  promoId            String            @map("promo_id")
-  totalDiskon        Decimal           @map("total_diskon") @db.Decimal(15, 2)
-  isApplied          Boolean           @default(true) @map("is_applied")
-  errorMessage       String?           @map("error_message")
-  metadata           Json?             // Extra info (misal: free items, cashback amount, dll)
-  
-  createdAt          DateTime          @default(now()) @map("created_at")
-  
-  transaksi          Transaksi         @relation(fields: [transaksiId], references: [transaksi_id], onDelete: Cascade)
-  promo              PromoDiskon       @relation(fields: [promoId], references: [id])
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @map("transaksi_promo_id") @db.VarChar(36)
+  transaksiId  String      @map("transaksi_id") @db.VarChar(36)
+  promoId      String      @map("promo_id") @db.VarChar(36)
+  totalDiskon  Decimal     @default(0) @map("total_diskon") @db.Decimal(15, 2)
+  isApplied    Boolean?    @default(true) @map("is_applied")
+  errorMessage String?     @map("error_message")
+  metadata     Json?
+  createdAt    DateTime?   @default(now()) @map("created_at") @db.Timestamp(6)
+  promo        PromoDiskon @relation(fields: [promoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  transaksi    Transaksi   @relation(fields: [transaksiId], references: [transaksi_id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([transaksiId, promoId])
+  @@index([promoId], map: "idx_transaksi_promo_promo_id")
+  @@index([transaksiId], map: "idx_transaksi_promo_transaksi_id")
   @@map("transaksi_promo")
 }
 
-
 model VoucherUsage {
-  id                 String            @id @default(uuid()) @map("voucher_usage_id")
-  promoId            String            @map("promo_id")
-  pelangganId        String            @map("pelanggan_id")
-  transaksiId        String?           @map("transaksi_id")
-  kodeVoucher        String            @map("kode_voucher") @db.VarChar(50)
-  tanggalDigunakan   DateTime          @default(now()) @map("tanggal_digunakan")
-  nilaiDiskon        Decimal           @map("nilai_diskon") @db.Decimal(15, 2)
-  
-  promo              PromoDiskon       @relation(fields: [promoId], references: [id])
-  pelanggan          Pelanggan         @relation(fields: [pelangganId], references: [id])
-  transaksi          Transaksi?        @relation(fields: [transaksiId], references: [transaksi_id])
+  id               String      @id @default(dbgenerated("gen_random_uuid()")) @map("voucher_usage_id") @db.VarChar(36)
+  promoId          String      @map("promo_id") @db.VarChar(36)
+  pelangganId      String      @map("pelanggan_id") @db.VarChar(36)
+  transaksiId      String?     @map("transaksi_id") @db.VarChar(36)
+  kodeVoucher      String      @map("kode_voucher") @db.VarChar(50)
+  tanggalDigunakan DateTime?   @default(now()) @map("tanggal_digunakan") @db.Timestamp(6)
+  nilaiDiskon      Decimal     @map("nilai_diskon") @db.Decimal(15, 2)
+  pelanggan        Pelanggan   @relation(fields: [pelangganId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  promo            PromoDiskon @relation(fields: [promoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  transaksi        Transaksi?  @relation(fields: [transaksiId], references: [transaksi_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([promoId, pelangganId, transaksiId])
+  @@index([kodeVoucher], map: "idx_voucher_usage_kode")
+  @@index([pelangganId], map: "idx_voucher_usage_pelanggan_id")
+  @@index([promoId], map: "idx_voucher_usage_promo_id")
   @@map("voucher_usage")
 }
 
@@ -523,21 +518,28 @@ model Pelanggan {
   deleted_by_user_Id          String?                       @map("deleted_by_user_id") @db.VarChar(36)
   updated_by                  String?                       @map("updated_by") @db.VarChar(36)
   updated_by_user_Id          String?                       @map("updated_by_user_id") @db.VarChar(36)
+  discount_tier               Int?                          @default(0)
+  total_diskon_diterima       Decimal?                      @default(0) @db.Decimal(15, 2)
+  lifetime_points             Int?                          @default(0)
+  loyalty_tier_id             String?                       @db.VarChar(36)
   BotSession                  BotSession[]
   CustomerCampaignInteraction CustomerCampaignInteraction[]
+  discount_log                discount_log[]
   hutang                      Hutang[]
   Invoice                     Invoice[]
   KreditNotifikasi            KreditNotifikasi[]
   KreditRekomendasi           KreditRekomendasi[]
   kreditSettings              KreditSetting[]
   LoyaltyPointHistory         LoyaltyPointHistory[]
-  voucherUsage                VoucherUsage[]
   cabang                      Cabang?                       @relation(fields: [cabang_id], references: [id])
   createdByUser               User?                         @relation("PelangganCreatedByUserId", fields: [created_by_user_Id], references: [id])
   deletedByUser               User?                         @relation("PelangganDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+  loyalty_tier                loyalty_tier?                 @relation(fields: [loyalty_tier_id], references: [loyalty_tier_id], onDelete: NoAction, onUpdate: NoAction)
   updatedByUser               User?                         @relation("PelangganUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
   transaksi                   Transaksi[]
+  voucherUsage                VoucherUsage[]
 
+  @@index([loyalty_tier_id], map: "idx_pelanggan_tier")
   @@map("pelanggan")
 }
 
@@ -567,6 +569,7 @@ model ProdukMaster {
   updated_by               String?             @map("updated_by") @db.VarChar(36)
   updated_by_user_Id       String?             @map("updated_by_user_id") @db.VarChar(36)
   isi                      Int?
+  loyalty_reward           loyalty_reward[]
   produk                   Produk[]
   produkImage              ProdukImage[]
   createdByUser            User?               @relation("ProdukMasterCreatedByUserId", fields: [created_by_user_Id], references: [id])
@@ -576,8 +579,8 @@ model ProdukMaster {
   generatedFromRequestItem ProdukRequestItem[] @relation("generatedProduct")
   requestItems             ProdukRequestItem[]
   produkSupplier           ProdukSupplier[]
-  promoDiskon              PromoDiskon[]
   promoBundle              PromoBundle[]
+  promoDiskon              PromoDiskon[]
 
   @@map("produk_master")
 }
@@ -614,6 +617,7 @@ model Produk {
   stockTransferDetail StockTransferDetail[]
   transaksiDetail     TransaksiDetail[]
 
+  @@index([cabangId, id], map: "idx_produk_cabang_lock")
   @@map("produk")
 }
 
@@ -756,51 +760,62 @@ model StockTransferDetail {
 }
 
 model Transaksi {
-  transaksi_id        String                @id @default(uuid()) @db.VarChar(36)
-  cabang_id           String?               @db.VarChar(36)
-  nomor_transaksi     String                @unique @db.VarChar(50)
-  tanggal             DateTime
-  pelanggan_id        String?               @db.VarChar(36)
-  supplier_id         String?               @db.VarChar(36)
-  shift_id            String?               @db.VarChar(36)
-  promo_id            String?               @db.VarChar(36)
-  subtotal            Decimal               @db.Decimal(15, 2)
-  diskon              Decimal               @db.Decimal(15, 2)
-  pajak               Decimal               @db.Decimal(15, 2)
-  biaya_tambahan      Decimal               @db.Decimal(15, 2)
-  total               Decimal               @db.Decimal(15, 2)
-  keterangan          String?
-  deleted_at          DateTime?             @db.Timestamp(6)
-  created_at          DateTime              @default(now()) @db.Timestamp(6)
-  updated_at          DateTime              @updatedAt @db.Timestamp(6)
-  tanggal_lunas       DateTime?             @default(now()) @db.Timestamp(6)
-  jenis_transaksi     String                @db.VarChar
-  campaignId          String?               @map("campaign_id")
-  created_by          String?               @map("created_by") @db.VarChar(36)
-  created_by_user_Id  String?               @map("created_by_user_id") @db.VarChar(36)
-  deleted_by          String?               @map("deleted_by") @db.VarChar(36)
-  deleted_by_user_Id  String?               @map("deleted_by_user_id") @db.VarChar(36)
-  updated_by          String?               @map("updated_by") @db.VarChar(36)
-  updated_by_user_Id  String?               @map("updated_by_user_id") @db.VarChar(36)
-  status_pembayaran   String                @db.VarChar(50)
-  BotOrder            BotOrder[]
-  hutang              Hutang[]              @relation("HutangTransaksi")
-  kreditTransaksi     KreditTransaksi[]     @relation("KreditTransaksi")
-  LoyaltyPointHistory LoyaltyPointHistory[]
-  pembayaran          Pembayaran[]
-  invoice             Invoice?
-  cabang              Cabang?               @relation(fields: [cabang_id], references: [id])
-  campaign            MarketingCampaign?    @relation("CampaignTransaksi", fields: [campaignId], references: [id])
-  createdByUser       User?                 @relation("TransaksiCreatedByUserId", fields: [created_by_user_Id], references: [id])
-  deletedByUser       User?                 @relation("TransaksiDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
-  pelanggan           Pelanggan?            @relation(fields: [pelanggan_id], references: [id])
-  promo               PromoDiskon?          @relation(fields: [promo_id], references: [id])
-  shift               Shift?                @relation(fields: [shift_id], references: [id])
-  supplier            Supplier?             @relation(fields: [supplier_id], references: [id])
-  updatedByUser       User?                 @relation("TransaksiUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
-  transaksi_detail    TransaksiDetail[]
-  transaksiPromo     TransaksiPromo[]
-  voucherUsage       VoucherUsage[]
+  transaksi_id          String                @id @default(uuid()) @db.VarChar(36)
+  cabang_id             String?               @db.VarChar(36)
+  nomor_transaksi       String                @unique @db.VarChar(50)
+  tanggal               DateTime
+  pelanggan_id          String?               @db.VarChar(36)
+  supplier_id           String?               @db.VarChar(36)
+  shift_id              String?               @db.VarChar(36)
+  promo_id              String?               @db.VarChar(36)
+  subtotal              Decimal               @db.Decimal(15, 2)
+  diskon                Decimal               @db.Decimal(15, 2)
+  pajak                 Decimal               @db.Decimal(15, 2)
+  biaya_tambahan        Decimal               @db.Decimal(15, 2)
+  total                 Decimal               @db.Decimal(15, 2)
+  keterangan            String?
+  deleted_at            DateTime?             @db.Timestamp(6)
+  created_at            DateTime              @default(now()) @db.Timestamp(6)
+  updated_at            DateTime              @updatedAt @db.Timestamp(6)
+  tanggal_lunas         DateTime?             @default(now()) @db.Timestamp(6)
+  jenis_transaksi       String                @db.VarChar
+  campaignId            String?               @map("campaign_id")
+  created_by            String?               @map("created_by") @db.VarChar(36)
+  created_by_user_Id    String?               @map("created_by_user_id") @db.VarChar(36)
+  deleted_by            String?               @map("deleted_by") @db.VarChar(36)
+  deleted_by_user_Id    String?               @map("deleted_by_user_id") @db.VarChar(36)
+  updated_by            String?               @map("updated_by") @db.VarChar(36)
+  updated_by_user_Id    String?               @map("updated_by_user_id") @db.VarChar(36)
+  status_pembayaran     String                @db.VarChar(50)
+  diskon_member         Decimal?              @default(0) @db.Decimal(15, 2)
+  diskon_manual_persen  Decimal?              @db.Decimal(5, 2)
+  diskon_manual_nominal Decimal?              @default(0) @db.Decimal(15, 2)
+  diskon_manual_alasan  String?               @db.VarChar(255)
+  total_diskon_final    Decimal?              @default(0) @db.Decimal(15, 2)
+  loyalty_reward_id     String?               @db.VarChar(36)
+  loyalty_discount      Decimal?              @default(0) @db.Decimal(15, 2)
+  points_earned         Int?                  @default(0)
+  points_redeemed       Int?                  @default(0)
+  BotOrder              BotOrder[]
+  discount_log          discount_log[]
+  hutang                Hutang[]              @relation("HutangTransaksi")
+  invoice               Invoice?
+  kreditTransaksi       KreditTransaksi[]     @relation("KreditTransaksi")
+  LoyaltyPointHistory   LoyaltyPointHistory[]
+  pembayaran            Pembayaran[]
+  cabang                Cabang?               @relation(fields: [cabang_id], references: [id])
+  campaign              MarketingCampaign?    @relation("CampaignTransaksi", fields: [campaignId], references: [id])
+  createdByUser         User?                 @relation("TransaksiCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  deletedByUser         User?                 @relation("TransaksiDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+  loyalty_reward        loyalty_reward?       @relation(fields: [loyalty_reward_id], references: [loyalty_reward_id], onDelete: NoAction, onUpdate: NoAction)
+  pelanggan             Pelanggan?            @relation(fields: [pelanggan_id], references: [id])
+  promo                 PromoDiskon?          @relation(fields: [promo_id], references: [id])
+  shift                 Shift?                @relation(fields: [shift_id], references: [id])
+  supplier              Supplier?             @relation(fields: [supplier_id], references: [id])
+  updatedByUser         User?                 @relation("TransaksiUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  transaksi_detail      TransaksiDetail[]
+  transaksiPromo        TransaksiPromo[]
+  voucherUsage          VoucherUsage[]
 
   @@map("transaksi")
 }
@@ -834,40 +849,54 @@ model Pembayaran {
 }
 
 model TransaksiDetail {
-  transaksi_detail_id String    @id @default(uuid()) @db.VarChar(36)
-  transaksi_id        String    @db.VarChar(36)
-  produk_id           String    @db.VarChar(36)
-  batch_number        String?   @db.VarChar(100)
-  expired_date        DateTime? @db.Date
+  transaksi_detail_id String         @id @default(uuid()) @db.VarChar(36)
+  transaksi_id        String         @db.VarChar(36)
+  produk_id           String         @db.VarChar(36)
+  batch_number        String?        @db.VarChar(100)
+  expired_date        DateTime?      @db.Date
   jumlah              Int
-  harga_satuan        Decimal   @db.Decimal(15, 2)
-  diskon_persen       Decimal   @db.Decimal(5, 2)
-  diskon_nominal      Decimal   @db.Decimal(15, 2)
-  subtotal            Decimal   @db.Decimal(15, 2)
-  pajak_persen        Decimal   @db.Decimal(5, 2)
-  total               Decimal   @db.Decimal(15, 2)
-  hargaAsli           Decimal?  @map("harga_asli") @db.Decimal(15, 2)
-  promoItemId         String?   @map("promo_item_id")
-  created_at          DateTime  @default(now()) @db.Timestamp(6)
-  updated_at          DateTime  @updatedAt @db.Timestamp(6)
-  produk              Produk    @relation(fields: [produk_id], references: [id])
-  transaksi           Transaksi @relation(fields: [transaksi_id], references: [transaksi_id])
+  harga_satuan        Decimal        @db.Decimal(15, 2)
+  diskon_persen       Decimal        @db.Decimal(5, 2)
+  diskon_nominal      Decimal        @db.Decimal(15, 2)
+  subtotal            Decimal        @db.Decimal(15, 2)
+  pajak_persen        Decimal        @db.Decimal(5, 2)
+  total               Decimal        @db.Decimal(15, 2)
+  created_at          DateTime       @default(now()) @db.Timestamp(6)
+  updated_at          DateTime       @updatedAt @db.Timestamp(6)
+  hargaAsli           Decimal?       @map("harga_asli") @db.Decimal(15, 2)
+  promoItemId         String?        @map("promo_item_id") @db.VarChar(36)
+  diskon_item_persen  Decimal?       @db.Decimal(5, 2)
+  diskon_item_nominal Decimal?       @default(0) @db.Decimal(15, 2)
+  diskon_item_alasan  String?        @db.VarChar(255)
+  discount_log        discount_log[]
+  produk              Produk         @relation(fields: [produk_id], references: [id])
+  transaksi           Transaksi      @relation(fields: [transaksi_id], references: [transaksi_id])
 
   @@map("transaksi_detail")
 }
 
 model LoyaltyPointHistory {
-  id              String     @id @default(uuid()) @map("loyalty_point_history_id")
-  pelangganId     String     @map("pelanggan_id") @db.VarChar(36)
-  transaksiId     String?    @map("transaksi_id") @db.VarChar(36)
-  pointSebelumnya Int        @default(0) @map("point_sebelumnya")
-  pointDidapatkan Int        @default(0) @map("point_didapatkan")
-  pointAkhir      Int        @default(0) @map("point_akhir")
+  id              String              @id @default(uuid()) @map("loyalty_point_history_id")
+  pelangganId     String              @map("pelanggan_id") @db.VarChar(36)
+  transaksiId     String?             @map("transaksi_id") @db.VarChar(36)
+  pointSebelumnya Int                 @default(0) @map("point_sebelumnya")
+  pointDidapatkan Int                 @default(0) @map("point_didapatkan")
+  pointAkhir      Int                 @default(0) @map("point_akhir")
   keterangan      String?
-  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamp(6)
-  pelanggan       Pelanggan  @relation(fields: [pelangganId], references: [id])
-  transaksi       Transaksi? @relation(fields: [transaksiId], references: [transaksi_id])
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamp(6)
+  reward_id       String?             @db.VarChar(36)
+  description     String?
+  expires_at      DateTime?           @db.Timestamp(6)
+  is_expired      Boolean?            @default(false)
+  type            loyalty_point_type?
+  pelanggan       Pelanggan           @relation(fields: [pelangganId], references: [id])
+  loyalty_reward  loyalty_reward?     @relation(fields: [reward_id], references: [loyalty_reward_id], onDelete: NoAction, onUpdate: NoAction)
+  transaksi       Transaksi?          @relation(fields: [transaksiId], references: [transaksi_id])
 
+  @@index([createdAt], map: "idx_loyalty_point_history_created")
+  @@index([pelangganId], map: "idx_loyalty_point_history_pelanggan")
+  @@index([transaksiId], map: "idx_loyalty_point_history_transaksi")
+  @@index([type], map: "idx_loyalty_point_history_type")
   @@map("loyalty_point_history")
 }
 
@@ -946,7 +975,7 @@ model ReceiptConfig {
   @@map("receipt_config")
 }
 
-model TaxConfig { 
+model TaxConfig {
   id              String   @id @default(uuid()) @map("tax_config_id")
   cabang_id       String   @unique
   is_tax_enabled  Boolean  @default(false)
@@ -1182,7 +1211,7 @@ model Hutang {
   jumlahBayar        Decimal            @map("jumlah_bayar") @db.Decimal(15, 2)
   sisaHutang         Decimal            @map("sisa_hutang") @db.Decimal(15, 2)
   jenisHutang        JenisHutang        @map("jenis_hutang")
-  statusHutang       String        @default("aktif") @map("status_hutang")
+  statusHutang       String             @default("aktif") @map("status_hutang")
   keterangan         String?
   cabangId           String             @map("cabang_id")
   supplierId         String?            @map("supplier_id")
@@ -1208,28 +1237,28 @@ model Hutang {
 }
 
 model PembayaranHutang {
-  id                 String           @id @default(uuid()) @map("pembayaran_hutang_id")
-  hutangId           String           @map("hutang_id")
-  tanggalBayar       DateTime         @map("tanggal_bayar")
-  jumlahBayar        Decimal          @map("jumlah_bayar") @db.Decimal(15, 2)
-  metodePembayaran   String @map("metode_pembayaran")
-  nomorReferensi     String?          @map("nomor_referensi") @db.VarChar(50)
-  buktiUrl           String?          @map("bukti_url")
+  id                 String   @id @default(uuid()) @map("pembayaran_hutang_id")
+  hutangId           String   @map("hutang_id")
+  tanggalBayar       DateTime @map("tanggal_bayar")
+  jumlahBayar        Decimal  @map("jumlah_bayar") @db.Decimal(15, 2)
+  metodePembayaran   String?  @map("metode_pembayaran") @db.VarChar
+  nomorReferensi     String?  @map("nomor_referensi") @db.VarChar(50)
+  buktiUrl           String?  @map("bukti_url")
   keterangan         String?
-  userId             String           @map("user_id")
-  createdAt          DateTime         @default(now()) @map("created_at")
-  updatedAt          DateTime         @updatedAt @map("updated_at")
-  created_by         String?          @map("created_by") @db.VarChar(36)
-  updated_by         String?          @map("updated_by") @db.VarChar(36)
-  deleted_by         String?          @map("deleted_by") @db.VarChar(36)
-  deleted_by_user_Id String?          @map("deleted_by_user_id") @db.VarChar(36)
-  created_by_user_Id String?          @map("created_by_user_id") @db.VarChar(36)
-  updated_by_user_Id String?          @map("updated_by_user_id") @db.VarChar(36)
-  createdByUser      User?            @relation("PembayaranHutangCreatedByUserId", fields: [created_by_user_Id], references: [id])
-  deletedByUser      User?            @relation("PembayaranHutangDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
-  hutang             Hutang           @relation(fields: [hutangId], references: [id], onDelete: Cascade)
-  updatedByUser      User?            @relation("PembayaranHutangUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
-  user               User             @relation(fields: [userId], references: [id])
+  userId             String   @map("user_id")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  created_by         String?  @map("created_by") @db.VarChar(36)
+  updated_by         String?  @map("updated_by") @db.VarChar(36)
+  deleted_by         String?  @map("deleted_by") @db.VarChar(36)
+  deleted_by_user_Id String?  @map("deleted_by_user_id") @db.VarChar(36)
+  created_by_user_Id String?  @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String?  @map("updated_by_user_id") @db.VarChar(36)
+  createdByUser      User?    @relation("PembayaranHutangCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  deletedByUser      User?    @relation("PembayaranHutangDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+  hutang             Hutang   @relation(fields: [hutangId], references: [id], onDelete: Cascade)
+  updatedByUser      User?    @relation("PembayaranHutangUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  user               User     @relation(fields: [userId], references: [id])
 
   @@map("pembayaran_hutang")
 }
@@ -1296,28 +1325,28 @@ model KreditTransaksi {
 }
 
 model PembayaranKredit {
-  id                 String           @id @default(uuid()) @map("pembayaran_kredit_id")
-  kreditTransaksiId  String           @map("kredit_transaksi_id")
-  angsuranKe         Int              @map("angsuran_ke")
-  jumlahBayar        Decimal          @map("jumlah_bayar") @db.Decimal(15, 2)
-  tanggalBayar       DateTime         @map("tanggal_bayar")
-  metodePembayaran   String @map("metode_pembayaran")
-  nomorReferensi     String?          @map("nomor_referensi") @db.VarChar(50)
-  buktiUrl           String?          @map("bukti_url")
-  denda              Decimal?         @db.Decimal(15, 2)
+  id                 String          @id @default(uuid()) @map("pembayaran_kredit_id")
+  kreditTransaksiId  String          @map("kredit_transaksi_id")
+  angsuranKe         Int             @map("angsuran_ke")
+  jumlahBayar        Decimal         @map("jumlah_bayar") @db.Decimal(15, 2)
+  tanggalBayar       DateTime        @map("tanggal_bayar")
+  metodePembayaran   String?         @map("metode_pembayaran") @db.VarChar
+  nomorReferensi     String?         @map("nomor_referensi") @db.VarChar(50)
+  buktiUrl           String?         @map("bukti_url")
+  denda              Decimal?        @db.Decimal(15, 2)
   keterangan         String?
-  createdAt          DateTime         @default(now()) @map("created_at")
-  updatedAt          DateTime         @updatedAt @map("updated_at")
-  created_by         String?          @map("created_by") @db.VarChar(36)
-  updated_by         String?          @map("updated_by") @db.VarChar(36)
-  deleted_by         String?          @map("deleted_by") @db.VarChar(36)
-  deleted_by_user_Id String?          @map("deleted_by_user_id") @db.VarChar(36)
-  created_by_user_Id String?          @map("created_by_user_id") @db.VarChar(36)
-  updated_by_user_Id String?          @map("updated_by_user_id") @db.VarChar(36)
-  createdByUser      User?            @relation("PembayaranKreditCreatedByUserId", fields: [created_by_user_Id], references: [id])
-  deletedByUser      User?            @relation("PembayaranKreditDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
-  kreditTransaksi    KreditTransaksi  @relation(fields: [kreditTransaksiId], references: [id], onDelete: Cascade)
-  updatedByUser      User?            @relation("PembayaranKreditUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+  created_by         String?         @map("created_by") @db.VarChar(36)
+  updated_by         String?         @map("updated_by") @db.VarChar(36)
+  deleted_by         String?         @map("deleted_by") @db.VarChar(36)
+  deleted_by_user_Id String?         @map("deleted_by_user_id") @db.VarChar(36)
+  created_by_user_Id String?         @map("created_by_user_id") @db.VarChar(36)
+  updated_by_user_Id String?         @map("updated_by_user_id") @db.VarChar(36)
+  createdByUser      User?           @relation("PembayaranKreditCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  deletedByUser      User?           @relation("PembayaranKreditDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+  kreditTransaksi    KreditTransaksi @relation(fields: [kreditTransaksiId], references: [id], onDelete: Cascade)
+  updatedByUser      User?           @relation("PembayaranKreditUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
 
   @@map("pembayaran_kredit")
 }
@@ -1466,6 +1495,8 @@ model LoyaltyConfig {
   updatedAt          DateTime @updatedAt @map("updated_at")
   cabang             Cabang?  @relation(fields: [cabangId], references: [id])
 
+  @@index([isActive], map: "idx_loyalty_config_active")
+  @@index([cabangId], map: "idx_loyalty_config_cabang")
   @@map("loyalty_config")
 }
 
@@ -1650,28 +1681,137 @@ model RoleMenu {
 }
 
 model Invoice {
-  id                  String               @id @default(uuid())
-  nomor_invoice       String               @unique @map("nomor_invoice") @db.VarChar(50)
-  tanggal_invoice     DateTime             @default(now()) @map("tanggal_invoice")
-  tanggal_jatuh_tempo DateTime?            @map("tanggal_jatuh_tempo")
-  total               Decimal              @db.Decimal(15, 2)
-  status              InvoiceStatus        @default(BELUM_LUNAS)
+  id                  String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nomor_invoice       String     @unique @map("nomor_invoice") @db.VarChar(50)
+  tanggal_invoice     DateTime?  @default(now()) @map("tanggal_invoice") @db.Timestamptz(6)
+  tanggal_jatuh_tempo DateTime?  @map("tanggal_jatuh_tempo") @db.Timestamptz(6)
+  total               Decimal    @db.Decimal(15, 2)
+  status              String?    @default("BELUM_LUNAS") @db.VarChar(20)
   catatan             String?
-  transaksi_id        String               @unique @map("transaksi_id") @db.VarChar(36)
-  cabang_id           String               @map("cabang_id") @db.VarChar(36)
-  pelanggan_id        String?              @map("pelanggan_id") @db.VarChar(36)
-  created_at          DateTime             @default(now()) @map("created_at")
-  updated_at          DateTime             @updatedAt @map("updated_at")
+  transaksi_id        String     @unique @map("transaksi_id") @db.VarChar(36)
+  cabang_id           String     @map("cabang_id") @db.VarChar(36)
+  pelanggan_id        String?    @map("pelanggan_id") @db.VarChar(36)
+  created_at          DateTime?  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at          DateTime?  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  cabang              Cabang     @relation(fields: [cabang_id], references: [id], onUpdate: NoAction, map: "fk_invoice_cabang")
+  pelanggan           Pelanggan? @relation(fields: [pelanggan_id], references: [id], onUpdate: NoAction, map: "fk_invoice_pelanggan")
+  transaksi           Transaksi  @relation(fields: [transaksi_id], references: [transaksi_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_invoice_transaksi")
 
-  transaksi Transaksi @relation(fields: [transaksi_id], references: [transaksi_id])
-  cabang    Cabang    @relation(fields: [cabang_id], references: [id])
-  pelanggan Pelanggan? @relation(fields: [pelanggan_id], references: [id])
-
-  @@index([cabang_id], map: "idx_invoice_cabang_id"])
-  @@index([pelanggan_id], map: "idx_invoice_pelanggan_id"])
-  @@index([status], map: "idx_invoice_status"])
-  @@index([tanggal_invoice], map: "idx_invoice_tanggal"])
+  @@index([cabang_id], map: "idx_invoice_cabang_id")
+  @@index([pelanggan_id], map: "idx_invoice_pelanggan_id")
+  @@index([status], map: "idx_invoice_status")
+  @@index([tanggal_invoice], map: "idx_invoice_tanggal")
   @@map("invoice")
+}
+
+model discount_config {
+  discount_config_id           String                @id @default(dbgenerated("gen_random_uuid()")) @db.VarChar(36)
+  cabang_id                    String?               @db.VarChar(36)
+  enable_member_discount       Boolean?              @default(true)
+  member_discount_type         tipe_discount_member? @default(PERCENTAGE)
+  discount_segmen              Json?
+  max_manual_discount_persen   Decimal?              @default(50) @db.Decimal(5, 2)
+  max_manual_discount_nominal  Decimal?              @db.Decimal(15, 2)
+  min_transaction_for_discount Decimal?              @db.Decimal(15, 2)
+  allow_combine_with_promo     Boolean?              @default(false)
+  is_active                    Boolean?              @default(true)
+  created_at                   DateTime?             @default(now()) @db.Timestamp(6)
+  updated_at                   DateTime?             @default(now()) @db.Timestamp(6)
+  cabang                       Cabang?               @relation(fields: [cabang_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([cabang_id], map: "idx_discount_config_cabang")
+}
+
+model discount_log {
+  discount_log_id     String           @id @default(dbgenerated("gen_random_uuid()")) @db.VarChar(36)
+  transaksi_id        String           @db.VarChar(36)
+  transaksi_detail_id String?          @db.VarChar(36)
+  tipe_discount       String           @db.VarChar(50)
+  discount_persen     Decimal?         @db.Decimal(5, 2)
+  discount_nominal    Decimal          @db.Decimal(15, 2)
+  alasan              String?
+  user_id             String           @db.VarChar(36)
+  pelanggan_id        String?          @db.VarChar(36)
+  created_at          DateTime?        @default(now()) @db.Timestamp(6)
+  pelanggan           Pelanggan?       @relation(fields: [pelanggan_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  transaksi_detail    TransaksiDetail? @relation(fields: [transaksi_detail_id], references: [transaksi_detail_id], onDelete: Cascade, onUpdate: NoAction)
+  transaksi           Transaksi        @relation(fields: [transaksi_id], references: [transaksi_id], onDelete: Cascade, onUpdate: NoAction)
+  user                User             @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([created_at], map: "idx_discount_log_created")
+  @@index([pelanggan_id], map: "idx_discount_log_pelanggan")
+  @@index([transaksi_id], map: "idx_discount_log_transaksi")
+  @@index([user_id], map: "idx_discount_log_user")
+}
+
+model error_log {
+  error_id      String    @id @db.Uuid
+  error_message String
+  error_detail  String?
+  function_name String
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model loyalty_reward {
+  loyalty_reward_id       String                @id @default(dbgenerated("(gen_random_uuid())::character varying")) @db.VarChar(36)
+  name                    String                @db.VarChar(100)
+  description             String?
+  points_required         Int
+  reward_type             loyalty_reward_type   @default(DISCOUNT)
+  reward_value            Decimal               @db.Decimal(15, 2)
+  produk_master_id        String?               @db.VarChar(36)
+  max_redeem_per_customer Int?
+  total_stock             Int?
+  current_redeemed        Int?                  @default(0)
+  valid_from              DateTime?             @db.Date
+  valid_until             DateTime?             @db.Date
+  min_tier_id             String?               @db.VarChar(36)
+  is_active               Boolean?              @default(true)
+  created_at              DateTime?             @default(now()) @db.Timestamp(6)
+  updated_at              DateTime?             @default(now()) @db.Timestamp(6)
+  created_by              String?               @db.VarChar(36)
+  updated_by              String?               @db.VarChar(36)
+  loyalty_point_history   LoyaltyPointHistory[]
+  loyalty_tier            loyalty_tier?         @relation(fields: [min_tier_id], references: [loyalty_tier_id], onDelete: NoAction, onUpdate: NoAction)
+  produk_master           ProdukMaster?         @relation(fields: [produk_master_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  transaksi               Transaksi[]
+
+  @@index([is_active], map: "idx_loyalty_reward_active")
+  @@index([points_required], map: "idx_loyalty_reward_points")
+  @@index([reward_type], map: "idx_loyalty_reward_type")
+  @@index([valid_from, valid_until], map: "idx_loyalty_reward_validity")
+}
+
+model loyalty_tier {
+  loyalty_tier_id  String           @id @default(dbgenerated("(gen_random_uuid())::character varying")) @db.VarChar(36)
+  name             String           @db.VarChar(50)
+  min_points       Int              @default(0)
+  max_points       Int?
+  discount_percent Decimal?         @default(0) @db.Decimal(5, 2)
+  benefits         Json?            @default("[]")
+  color            String?          @default("#6B7280") @db.VarChar(20)
+  icon             String?          @default("star") @db.VarChar(50)
+  badge_url        String?          @db.VarChar(255)
+  tier_order       Int              @default(0)
+  is_active        Boolean?         @default(true)
+  created_at       DateTime?        @default(now()) @db.Timestamp(6)
+  updated_at       DateTime?        @default(now()) @db.Timestamp(6)
+  created_by       String?          @db.VarChar(36)
+  updated_by       String?          @db.VarChar(36)
+  loyalty_reward   loyalty_reward[]
+  pelanggan        Pelanggan[]
+
+  @@index([is_active], map: "idx_loyalty_tier_active")
+  @@index([tier_order], map: "idx_loyalty_tier_order")
+  @@index([min_points, max_points], map: "idx_loyalty_tier_points")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model v_loyalty_config {
+  point_rate          Int?
+  minimum_transaction Decimal? @db.Decimal(15, 2)
+
+  @@ignore
 }
 
 enum PermissionAction {
@@ -1743,13 +1883,6 @@ enum StatusPembayaranProvider {
   PENDING
 }
 
-enum InvoiceStatus {
-  DRAFT
-  BELUM_LUNAS
-  LUNAS
-  BATAL
-}
-
 enum CabangStatus {
   aktif
   nonaktif
@@ -1765,14 +1898,6 @@ enum KategoriStatus {
   nonaktif
 }
 
-enum PromoDiskonStatus {
-  aktif
-  tidak_aktif
-  kadaluarsa
-  
-  @@map("promo_diskon_status")
-}
-
 enum TipeRulePromo {
   MIN_QTY
   MIN_NOMINAL
@@ -1782,27 +1907,25 @@ enum TipeRulePromo {
   METODE_PEMBAYARAN
   FIRST_TIME_BUYER
   MEMBER_TIER
-  
+
   @@map("tipe_rule_promo")
 }
-
 
 enum TipeTargetPromo {
   PRODUK_MASTER
   PRODUK_CABANG
   KATEGORI
-  
+
   @@map("tipe_target_promo")
 }
 
-
 enum TipeScopePromo {
-  GLOBAL              // Semua cabang, semua produk
-  CABANG_SPESIFIK     // Cabang tertentu saja
-  PRODUK_SPESIFIK     // Produk tertentu saja
-  KATEGORI_SPESIFIK   // Kategori tertentu
-  CUSTOM              // Kombinasi kompleks
-  
+  GLOBAL
+  CABANG_SPESIFIK
+  PRODUK_SPESIFIK
+  KATEGORI_SPESIFIK
+  CUSTOM
+
   @@map("tipe_scope_promo")
 }
 
@@ -1813,7 +1936,7 @@ enum TipeDiskon {
   HARGA_SPESIAL
   CASHBACK
   VOUCHER
-  
+
   @@map("tipe_diskon")
 }
 
@@ -2032,4 +2155,36 @@ enum StatusKehadiran {
   cuti
   tanpa_keterangan
   lembur
+}
+
+enum PromoDiskonStatus {
+  aktif
+  nonaktif
+}
+
+enum TipeDiskon {
+  persentase
+  nominal
+  bogo
+  bundle
+}
+
+enum loyalty_point_type {
+  EARN
+  REDEEM
+  EXPIRE
+  ADJUSTMENT
+  BONUS
+}
+
+enum loyalty_reward_type {
+  DISCOUNT
+  FREE_PRODUCT
+  CASHBACK
+}
+
+enum tipe_discount_member {
+  PERCENTAGE
+  NOMINAL
+  TIER_BASED
 }

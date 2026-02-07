@@ -18,6 +18,46 @@ const CACHE_TTL = {
   TRANSACTIONS: 60,    // 1 minute - more dynamic
   PROFIT_LOSS: 1800,   // 30 minutes - complex calculation
 };
+
+/**
+ * Helper function to build WHERE clause for cabangId
+ * Handles both single ID and comma-separated multiple IDs
+ * @param {string} cabangId - Single ID, comma-separated IDs, or "all"
+ * @param {Array} params - Array to push parameters to
+ * @param {string} columnName - Column name for the WHERE clause (default: "cabang_id")
+ * @returns {string} WHERE clause fragment or empty string
+ */
+function buildCabangWhereClause(cabangId, params, columnName = "cabang_id") {
+  if (!cabangId || cabangId === "all") {
+    return "";
+  }
+
+  // Check if multiple IDs (comma-separated)
+  if (cabangId.includes(",")) {
+    const ids = cabangId.split(",").map(id => id.trim()).filter(id => id);
+    if (ids.length === 0) return "";
+    
+    if (ids.length === 1) {
+      // Single ID after splitting
+      const paramIndex = params.length + 1;
+      params.push(ids[0]);
+      return ` AND ${columnName} = $${paramIndex}`;
+    }
+    
+    // Multiple IDs - use IN clause
+    const placeholders = ids.map((id, index) => {
+      params.push(id);
+      return `$${params.length}`;
+    }).join(", ");
+    
+    return ` AND ${columnName} IN (${placeholders})`;
+  }
+  
+  // Single ID
+  const paramIndex = params.length + 1;
+  params.push(cabangId);
+  return ` AND ${columnName} = $${paramIndex}`;
+}
 class FinancialReportService {
   /**
    * Get financial summary data filtered by cabang id and date range
@@ -41,10 +81,7 @@ class FinancialReportService {
       let whereClause = "TRUE";
       const params = [];
 
-      if (cabangId !== "all") {
-        whereClause += " AND cabang_id = $1";
-        params.push(cabangId);
-      }
+      whereClause += buildCabangWhereClause(cabangId, params);
 
       if (startDate && endDate) {
         whereClause +=
@@ -103,10 +140,7 @@ class FinancialReportService {
       let whereClause = "TRUE";
       const params = [];
 
-      if (cabangId !== "all") {
-        whereClause += " AND cabang_id = $1";
-        params.push(cabangId);
-      }
+      whereClause += buildCabangWhereClause(cabangId, params);
 
       if (startDate && endDate) {
         whereClause +=
@@ -152,8 +186,7 @@ class FinancialReportService {
     const params = [];
 
     if (cabangId !== "all") {
-      whereClause += " AND cabang_id = $1";
-      params.push(cabangId);
+      whereClause += buildCabangWhereClause(cabangId, params);
     }
 
     if (startDate && endDate) {
@@ -199,8 +232,7 @@ class FinancialReportService {
     const params = [];
 
     if (cabangId !== "all") {
-      whereClause += " AND cabang_id = $1";
-      params.push(cabangId);
+      whereClause += buildCabangWhereClause(cabangId, params);
     }
 
     // Query the materialized view
@@ -233,8 +265,7 @@ class FinancialReportService {
     const params = [];
 
     if (cabangId !== "all") {
-      whereClause += " AND cabang_id = $1";
-      params.push(cabangId);
+      whereClause += buildCabangWhereClause(cabangId, params);
     }
 
     // Query the materialized view
@@ -299,8 +330,7 @@ class FinancialReportService {
     const params = [];
 
     if (cabangId !== "all") {
-      whereClause += " AND cabang_id = $1";
-      params.push(cabangId);
+      whereClause += buildCabangWhereClause(cabangId, params);
     }
 
     if (startDate && endDate) {
@@ -395,8 +425,7 @@ class FinancialReportService {
       const params = [];
 
       if (cabangId !== "all") {
-        whereClause += " AND cabang_id = $1";
-        params.push(cabangId);
+        whereClause += buildCabangWhereClause(cabangId, params);
       }
 
       if (year) {

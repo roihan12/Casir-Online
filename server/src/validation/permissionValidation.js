@@ -4,7 +4,7 @@ const CreatePermissionValidation = Joi.object({
   name: Joi.string().max(100).required(),
   description: Joi.string().max(255).allow(null, ""),
   module: Joi.string().max(50).required(),
-  action: Joi.string().valid("create", "read", "update", "delete", "manage").required(),
+  action: Joi.string().valid("CREATE", "READ", "UPDATE", "DELETE", "MANAGE").required(),
 });
 
 const UpdatePermissionValidation = Joi.object({

@@ -12,7 +12,6 @@ const BranchMultiSelect = ({
   isDisabled 
 }) => {
 
-  console.log(availableBranches);
   const options = availableBranches.map(cabang => ({
     value: cabang.id,
     label: cabang.namaCabang,
@@ -60,6 +59,14 @@ const BranchMultiSelect = ({
       fontSize: '0.875rem',
       color: '#9ca3af',
     }),
+    menu: (base) => ({
+      ...base,
+      zIndex: 9999,
+    }),
+    menuPortal: (base) => ({
+      ...base,
+      zIndex: 9999,
+    }),
     option: (base, state) => ({
       ...base,
       backgroundColor: state.isSelected 
@@ -94,6 +101,8 @@ const BranchMultiSelect = ({
         closeMenuOnSelect={false}
         hideSelectedOptions={false}
         isSearchable={true}
+        menuPortalTarget={document.body}
+        menuPosition="fixed"
       />
       {isDisabled && (
         <p className="text-xs text-gray-500 mt-1">

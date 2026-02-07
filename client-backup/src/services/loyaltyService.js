@@ -147,5 +147,7 @@ export default {
   getPointsHistory,
   redeemReward,
   // Stats
-  getLoyaltyStats
+  getLoyaltyStats,
+  // Segments
+  getSegmentRules: async () => []
 };

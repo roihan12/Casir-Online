@@ -41,7 +41,7 @@ class PermissionService {
         name: validData.name,
         description: validData.description,
         module: validData.module,
-        action: validData.action,
+        action: validData.action.toLowerCase(),
       },
     });
 

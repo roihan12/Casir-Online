@@ -1,14 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "react-hot-toast";
+import { Building2, FileSliders, Package, Settings, ScanLine, Save, RotateCcw, X } from "lucide-react";
 import formatRupiah from "@common/utils/formatCurrency";
 import { useAuth } from "../../../features/auth/hooks/useAuth.js";
 import { useCabang } from "../../../features/cabang/hooks/useCabang.js";
 import useProdukQueries from "../hooks/useProdukQueries.js";
 import Pagination from "../../../features/common/Pagination.jsx";
+import Stepper, { StepperNavigation } from "../../../features/common/Stepper.jsx";
+import ProductPreviewModal from "../components/ProductPreviewModal.jsx";
+import useAutoSave from "../hooks/useAutoSave.js";
+import useBarcodeScanner from "../hooks/useBarcodeScanner.js";
 
 // Form validation schema with Zod
 const productFormSchema = z.object({
@@ -67,12 +72,31 @@ const ProductCreate = () => {
   const [itemsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Step state for wizard
+  const [currentStep, setCurrentStep] = useState(adminMode ? 0 : 1);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+  // Define wizard steps
+  const steps = adminMode
+    ? [
+        { id: "branch", label: "Pilih Cabang", description: "Pilih cabang tujuan", icon: Building2 },
+        { id: "template", label: "Template", description: "Opsional", icon: FileSliders },
+        { id: "products", label: "Pilih Produk", description: "Dari rekomendasi", icon: Package },
+        { id: "settings", label: "Pengaturan", description: "Harga & Submit", icon: Settings },
+      ]
+    : [
+        { id: "template", label: "Template", description: "Opsional", icon: FileSliders },
+        { id: "products", label: "Pilih Produk", description: "Dari rekomendasi", icon: Package },
+        { id: "settings", label: "Pengaturan", description: "Harga & Submit", icon: Settings },
+      ];
+
   // React Hook Form setup
   const {
     register,
     handleSubmit,
     setValue,
     watch,
+    getValues,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(productFormSchema),
@@ -84,6 +108,80 @@ const ProductCreate = () => {
       status: "tersedia",
     },
   });
+
+  // Build draft data for auto-save
+  const draftData = useMemo(() => ({
+    selectedProducts,
+    productPrices,
+    selectedBranchId,
+    formValues: watch(),
+    currentStep,
+  }), [selectedProducts, productPrices, selectedBranchId, currentStep, watch]);
+
+  // Auto-save hook
+  const {
+    hasDraft,
+    loadDraft,
+    clearDraft,
+    showRestorePrompt,
+    dismissRestorePrompt,
+    lastSaved,
+  } = useAutoSave("product_create", draftData, {
+    debounceMs: 2000,
+    enabled: selectedProducts.length > 0,
+  });
+
+  // Handle barcode scan - find and add product
+  const handleBarcodeScan = (barcode) => {
+    if (!recommendations?.data) return;
+
+    const foundProduct = recommendations.data.find(
+      (p) => p.sku === barcode || p.barcode === barcode
+    );
+
+    if (foundProduct) {
+      if (!selectedProducts.find((p) => p.id === foundProduct.id)) {
+        setSelectedProducts((prev) => [...prev, foundProduct]);
+        toast.success(`Produk "${foundProduct.namaProduk}" ditambahkan`);
+      } else {
+        toast.error("Produk sudah ada dalam daftar");
+      }
+    } else {
+      toast.error(`Produk dengan barcode "${barcode}" tidak ditemukan`);
+    }
+  };
+
+  // Barcode scanner hook
+  const {
+    isScanning,
+    scannerEnabled,
+    toggleScanner,
+  } = useBarcodeScanner({
+    onScan: handleBarcodeScan,
+    enabled: steps[currentStep]?.id === "products",
+  });
+
+  // Restore draft handler
+  const handleRestoreDraft = () => {
+    const draft = loadDraft();
+    if (draft) {
+      if (draft.selectedProducts) setSelectedProducts(draft.selectedProducts);
+      if (draft.productPrices) setProductPrices(draft.productPrices);
+      if (draft.selectedBranchId) setSelectedBranchId(draft.selectedBranchId);
+      if (draft.formValues) {
+        Object.keys(draft.formValues).forEach((key) => {
+          setValue(key, draft.formValues[key]);
+        });
+      }
+      if (draft.currentStep !== undefined) setCurrentStep(draft.currentStep);
+    }
+  };
+
+  // Clear draft on successful submit
+  const handleSubmitSuccess = () => {
+    clearDraft();
+    setShowPreviewModal(false);
+  };
 
   // Queries using centralized hooks
   const { data: templates, isLoading: templatesLoading } = useProductTemplates(selectedBranchId);
@@ -238,6 +336,14 @@ const ProductCreate = () => {
       return;
     }
 
+    // Show preview modal instead of submitting directly
+    setShowPreviewModal(true);
+  };
+
+  // Handle final submit after preview confirmation
+  const handleConfirmSubmit = () => {
+    const formData = getValues();
+
     // Prepare products data with individual prices
     const productsData = selectedProducts.map((product) => {
       const hargaBeli = Number(productPrices[product.id]);
@@ -273,6 +379,52 @@ const ProductCreate = () => {
     recommendationsLoading ||
     addProductsMutation.isPending ||
     branchesLoading;
+
+  // Step navigation helpers
+  const getStepIndex = (stepId) => steps.findIndex((s) => s.id === stepId);
+
+  const canProceedToNextStep = () => {
+    const currentStepId = steps[currentStep]?.id;
+    
+    if (currentStepId === "branch" && adminMode) {
+      return !!selectedBranchId;
+    }
+    if (currentStepId === "template") {
+      return true; // Template is optional
+    }
+    if (currentStepId === "products") {
+      return selectedProducts.length > 0;
+    }
+    return true;
+  };
+
+  const handleNextStep = () => {
+    if (!canProceedToNextStep()) {
+      const currentStepId = steps[currentStep]?.id;
+      if (currentStepId === "branch") {
+        toast.error("Silahkan pilih cabang terlebih dahulu");
+      } else if (currentStepId === "products") {
+        toast.error("Pilih minimal satu produk untuk melanjutkan");
+      }
+      return;
+    }
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleStepClick = (stepIndex) => {
+    // Only allow clicking on completed steps
+    if (stepIndex < currentStep) {
+      setCurrentStep(stepIndex);
+    }
+  };
 
   return (
     <div className="container px-4 mx-auto">
@@ -364,7 +516,7 @@ const ProductCreate = () => {
         </h1>
         <button
           className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 flex items-center"
-          onClick={() => navigate(`/cabang/${selectedBranchId}/products`)}
+          onClick={() => navigate(`/products`)}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -382,88 +534,130 @@ const ProductCreate = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Add Branch Selection for Super Admin */}
-        {adminMode && (
-          <div className="lg:col-span-12">
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="bg-blue-50 py-3 px-4 border-b border-blue-100">
-                <h2 className="text-lg font-semibold text-blue-800">
-                  Pilih Cabang
-                </h2>
-              </div>
-              <div className="p-4">
-                <p className="text-sm text-gray-500 mb-3">
-                  Pilih cabang untuk menambahkan produk
-                </p>
+      {/* Stepper Progress */}
+      <div className="mb-8 bg-white p-6 rounded-xl shadow-md">
+        <Stepper
+          steps={steps}
+          currentStep={currentStep}
+          onStepClick={handleStepClick}
+          allowClickBack={true}
+        />
+      </div>
 
-                <div className="mb-4">
-                  <label
-                    htmlFor="branch"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Cabang
-                  </label>
-                  <select
-                    id="branch"
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-                    value={selectedBranchId}
-                    onChange={handleBranchChange}
-                    disabled={branchesLoading}
-                  >
-                    <option value="">-- Pilih Cabang --</option>
-                    {cabangList.filter(c => c.id !== "global").map((branch) => (
-                      <option key={branch.id} value={branch.id}>
-                        {branch.namaCabang}
-                      </option>
-                    ))}
-                  </select>
+      {/* Restore Draft Prompt */}
+      {showRestorePrompt && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-amber-100 p-2 rounded-lg">
+              <Save className="h-5 w-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="font-medium text-amber-800">Draft tersimpan ditemukan!</p>
+              <p className="text-sm text-amber-600">
+                Apakah Anda ingin melanjutkan dari draft sebelumnya?
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                clearDraft();
+                dismissRestorePrompt();
+              }}
+              className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+            >
+              <X className="h-4 w-4" />
+              Hapus
+            </button>
+            <button
+              type="button"
+              onClick={handleRestoreDraft}
+              className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 flex items-center gap-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Pulihkan
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Auto-save indicator */}
+      {hasDraft && !showRestorePrompt && lastSaved && (
+        <div className="mb-4 text-sm text-gray-500 flex items-center gap-2">
+          <Save className="h-4 w-4" />
+          Draft tersimpan otomatis
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Step 1: Branch Selection for Super Admin */}
+        {adminMode && steps[currentStep]?.id === "branch" && (
+          <>
+            <div className="lg:col-span-12">
+              <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                <div className="bg-blue-50 py-3 px-4 border-b border-blue-100">
+                  <h2 className="text-lg font-semibold text-blue-800">
+                    Pilih Cabang
+                  </h2>
+                </div>
+                <div className="p-4">
+                  <p className="text-sm text-gray-500 mb-3">
+                    Pilih cabang untuk menambahkan produk
+                  </p>
+
+                  <div className="mb-4">
+                    <label
+                      htmlFor="branch"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Cabang
+                    </label>
+                    <select
+                      id="branch"
+                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+                      value={selectedBranchId}
+                      onChange={handleBranchChange}
+                      disabled={branchesLoading}
+                    >
+                      <option value="">-- Pilih Cabang --</option>
+                      {cabangList.filter(c => c.id !== "global").map((branch) => (
+                        <option key={branch.id} value={branch.id}>
+                          {branch.namaCabang}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* After branch selection section, add conditional for super admin without branch selection */}
-        {adminMode && !selectedBranchId && (
-          <div className="lg:col-span-12">
-            <div className="bg-yellow-50 text-yellow-700 p-4 rounded-md border border-yellow-200">
-              <div className="flex items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 mr-2"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span className="font-medium">
-                  Silahkan pilih cabang terlebih dahulu untuk melihat produk
-                  rekomendasi.
-                </span>
-              </div>
+            {/* Step Navigation for Branch Step */}
+            <div className="lg:col-span-12">
+              <StepperNavigation
+                currentStep={currentStep}
+                totalSteps={steps.length}
+                onPrev={handlePrevStep}
+                onNext={handleNextStep}
+                isNextDisabled={!selectedBranchId}
+                showPrev={false}
+              />
             </div>
-          </div>
+          </>
         )}
 
-        {/* Template Selection - Only show when branch selected for super admin */}
-        {(!adminMode ||
-          (adminMode && selectedBranchId)) && (
+        {/* Step 2: Template Selection */}
+        {steps[currentStep]?.id === "template" && (selectedBranchId || !adminMode) && (
           <div className="lg:col-span-12">
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="bg-blue-50 py-3 px-4 border-b border-blue-100">
                 <h2 className="text-lg font-semibold text-blue-800">
-                  Pilih Template
+                  Pilih Template (Opsional)
                 </h2>
               </div>
               <div className="p-4">
                 <p className="text-sm text-gray-500 mb-3">
-                  Template akan mengisi nilai default untuk semua produk yang
-                  dipilih
+                  Template akan mengisi nilai default untuk semua produk yang dipilih
                 </p>
 
                 <div className="mb-4">
@@ -532,14 +726,24 @@ const ProductCreate = () => {
                 )}
               </div>
             </div>
+
+            {/* Step Navigation for Template Step */}
+            <div className="mt-6">
+              <StepperNavigation
+                currentStep={currentStep}
+                totalSteps={steps.length}
+                onPrev={handlePrevStep}
+                onNext={handleNextStep}
+              />
+            </div>
           </div>
         )}
 
-        {/* Product Selection - Only show when branch selected for super admin */}
-        {(!adminMode ||
-          (adminMode && selectedBranchId)) && (
-          <div className="lg:col-span-7">
-            <div className="bg-white rounded-lg shadow-md overflow-hidden h-full">
+        {/* Step 3: Product Selection */}
+        {steps[currentStep]?.id === "products" && (selectedBranchId || !adminMode) && (
+          <>
+            <div className="lg:col-span-12">
+              <div className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="bg-blue-50 py-3 px-4 border-b border-blue-100">
                 <h2 className="text-lg font-semibold text-blue-800">
                   Rekomendasi Produk
@@ -547,9 +751,24 @@ const ProductCreate = () => {
               </div>
               <div className="p-4">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-                  <p className="text-sm text-gray-500">
-                    Produk yang populer di cabang lain dan belum ada di cabang ini
-                  </p>
+                  <div className="flex items-center gap-4">
+                    <p className="text-sm text-gray-500">
+                      Produk yang populer di cabang lain dan belum ada di cabang ini
+                    </p>
+                    {/* Barcode Scanner Toggle */}
+                    <button
+                      type="button"
+                      onClick={toggleScanner}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                        scannerEnabled
+                          ? "bg-green-100 text-green-700 border border-green-300"
+                          : "bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200"
+                      }`}
+                    >
+                      <ScanLine className={`h-4 w-4 ${isScanning ? "animate-pulse" : ""}`} />
+                      {scannerEnabled ? "Scanner Aktif" : "Scanner"}
+                    </button>
+                  </div>
                   <div className="relative w-full md:w-80">
                     <input
                       type="text"
@@ -731,12 +950,22 @@ const ProductCreate = () => {
               </div>
             </div>
           </div>
+            {/* Step Navigation for Products Step */}
+            <div className="lg:col-span-12 mt-6">
+              <StepperNavigation
+                currentStep={currentStep}
+                totalSteps={steps.length}
+                onPrev={handlePrevStep}
+                onNext={handleNextStep}
+                isNextDisabled={selectedProducts.length === 0}
+              />
+            </div>
+          </>
         )}
 
-        {/* Form and Selected Products - Only show when branch selected for super admin */}
-        {(!adminMode ||
-          (adminMode && selectedBranchId)) && (
-          <div className="lg:col-span-5">
+        {/* Step 4: Settings and Selected Products */}
+        {steps[currentStep]?.id === "settings" && (selectedBranchId || !adminMode) && selectedProducts.length > 0 && (
+          <div className="lg:col-span-12">
             <div className="bg-white rounded-lg shadow-md overflow-hidden h-full">
               <div className="bg-blue-50 py-3 px-4 border-b border-blue-100">
                 <h2 className="text-lg font-semibold text-blue-800">
@@ -956,69 +1185,14 @@ const ProductCreate = () => {
                       </select>
                     </div>
 
-                    <div className="flex justify-between pt-4">
-                      <button
-                        type="button"
-                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
-                        onClick={() =>
-                          navigate(`/cabang/${selectedBranchId}/products`)
-                        }
-                        disabled={isSubmitting}
-                      >
-                        Batal
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={isSubmitting || selectedProducts.length === 0}
-                        className={`px-4 py-2 bg-blue-600 text-white rounded-md flex items-center ${
-                          isSubmitting || selectedProducts.length === 0
-                            ? "opacity-70 cursor-not-allowed"
-                            : "hover:bg-blue-700 transition-colors"
-                        }`}
-                      >
-                        {isSubmitting ? (
-                          <>
-                            <svg
-                              className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                              ></circle>
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                              ></path>
-                            </svg>
-                            Memproses...
-                          </>
-                        ) : (
-                          <>
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="h-5 w-5 mr-2"
-                              viewBox="0 0 20 20"
-                              fill="currentColor"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                            Tambah Produk
-                          </>
-                        )}
-                      </button>
-                    </div>
+                    {/* Step Navigation with Submit */}
+                    <StepperNavigation
+                      currentStep={currentStep}
+                      totalSteps={steps.length}
+                      onPrev={handlePrevStep}
+                      isSubmitting={isSubmitting}
+                      submitLabel="Tambah Produk"
+                    />
                   </form>
                 </div>
               </div>
@@ -1026,6 +1200,18 @@ const ProductCreate = () => {
           </div>
         )}
       </div>
+
+      {/* Preview Modal */}
+      <ProductPreviewModal
+        isOpen={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+        onConfirm={handleConfirmSubmit}
+        products={selectedProducts}
+        productPrices={productPrices}
+        marginPercentage={Number(watch("marginPercentage") || 0)}
+        branchName={cabangList.find(c => c.id === selectedBranchId)?.namaCabang || ""}
+        isSubmitting={isSubmitting}
+      />
     </div>
   );
 };

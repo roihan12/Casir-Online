@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { useCabang } from "../../cabang/hooks/useCabang";
+import { useAuth } from "../../auth/hooks/useAuth.js";
 import {
   Package,
   AlertTriangle,
@@ -49,6 +51,7 @@ import {
   ThumbsDown,
   BarChartHorizontal,
   ArrowUpRight,
+  Building2,
 } from "lucide-react";
 import {
   useProdukMasterList,
@@ -112,6 +115,8 @@ const ProductDashboard = ({
   className = "",
   dashboardData: initialDashboardData = null,
   fetchOwnData = false,
+  canManage = true, // Permission untuk tab Wawasan Bisnis, Produk Terbaru, Distribusi
+  cabangId = null, // Filter by cabang
 }) => {
   const [showDistribution, setShowDistribution] = useState(true);
   const [selectedMetric, setSelectedMetric] = useState("category");
@@ -132,15 +137,36 @@ const ProductDashboard = ({
   const [showRecommendations, setShowRecommendations] = useState(true);
   const [showBranchBreakdown, setShowBranchBreakdown] = useState(false);
   const [activeTab, setActiveTab] = useState("insights"); // New state for tabs: insights, products, distribution
+  const [selectedBranchId, setSelectedBranchId] = useState(cabangId); // Internal branch filter state
+
+  // Get user branches from context
+  const { cabangList, selectedCabang } = useCabang();
+  const { isSuperAdmin, getUserCabang } = useAuth();
+  
+  // Determine available branches based on role
+  const userCabang = getUserCabang ? getUserCabang() : [];
+  const availableBranches = isSuperAdmin && isSuperAdmin() ? (cabangList || []) : userCabang;
+  const hasSingleBranch = availableBranches.length === 1;
+
+  // Sync with prop when it changes
+  useEffect(() => {
+    setSelectedBranchId(cabangId);
+  }, [cabangId]);
+
+  // Always fetch when branch filter is active or fetchOwnData is true
+  const shouldFetchData = !!selectedBranchId || fetchOwnData;
 
   const { data: fetchedDashboardData, isLoading: isLoadingDashboard } =
     useProdukMasterDashboard({
-      enabled: fetchOwnData && !initialDashboardData,
+      cabangId: selectedBranchId,
+      enabled: shouldFetchData,
     });
 
-  const effectiveDashboardData =
-    initialDashboardData || fetchedDashboardData?.data || {};
-  const isLoading = fetchOwnData ? isLoadingDashboard : false;
+  // Use fetched data when branch filter is active, otherwise use initial data
+  const effectiveDashboardData = selectedBranchId 
+    ? (fetchedDashboardData?.data || {})
+    : (initialDashboardData || fetchedDashboardData?.data || {});
+  const isLoading = shouldFetchData ? isLoadingDashboard : false;
   const useDashboardData = true;
 
   const summaryData = effectiveDashboardData?.summaryData || {};
@@ -313,7 +339,39 @@ const ProductDashboard = ({
 
   return (
     <div className={`${className}`}>
-      {/* KPI Section - Keep as is */}
+      {/* Branch Filter Section */}
+      {availableBranches.length > 1 && (
+        <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center text-sm text-gray-600">
+            <Building2 className="h-4 w-4 mr-2 text-indigo-500" />
+            <span className="font-medium">Filter Cabang:</span>
+          </div>
+          <select
+            className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+            value={selectedBranchId || "all"}
+            onChange={(e) => setSelectedBranchId(e.target.value === "all" ? null : e.target.value)}
+          >
+            <option value="all">Semua Cabang</option>
+            {availableBranches.map((branch) => (
+              <option key={branch.id} value={branch.id}>
+                {branch.namaCabang}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Single branch indicator */}
+      {hasSingleBranch && availableBranches.length === 1 && (
+        <div className="bg-indigo-50 rounded-lg p-3 mb-4 flex items-center text-sm">
+          <Building2 className="h-4 w-4 mr-2 text-indigo-500" />
+          <span className="text-indigo-700">
+            Menampilkan data untuk: <strong>{availableBranches[0]?.namaCabang}</strong>
+          </span>
+        </div>
+      )}
+
+      {/* KPI Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-indigo-500 hover:shadow-md transition-shadow relative overflow-hidden">
           <div className="absolute right-0 top-0 h-16 w-16 opacity-10">
@@ -515,41 +573,50 @@ const ProductDashboard = ({
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="flex space-x-1 border-b mb-6">
-        <button
-          className={`px-4 py-2 font-medium text-sm focus:outline-none ${
-            activeTab === "insights"
-              ? "text-indigo-600 border-b-2 border-indigo-600"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-          onClick={() => setActiveTab("insights")}
-        >
-          <TrendingUp className="h-4 w-4 inline mr-1" />
-          Wawasan Bisnis
-        </button>
-        <button
-          className={`px-4 py-2 font-medium text-sm focus:outline-none ${
-            activeTab === "products"
-              ? "text-indigo-600 border-b-2 border-indigo-600"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-          onClick={() => setActiveTab("products")}
-        >
-          <Package className="h-4 w-4 inline mr-1" />
-          Produk Terbaru
-        </button>
-        <button
-          className={`px-4 py-2 font-medium text-sm focus:outline-none ${
-            activeTab === "distribution"
-              ? "text-indigo-600 border-b-2 border-indigo-600"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-          onClick={() => setActiveTab("distribution")}
-        >
-          <PieChart className="h-4 w-4 inline mr-1" />
-          Distribusi Produk
-        </button>
+      {/* Tab Navigation - Responsive */}
+      <div className="flex flex-wrap gap-1 border-b mb-6 overflow-x-auto pb-1">
+        {canManage && (
+          <button
+            className={`px-3 sm:px-4 py-2 font-medium text-xs sm:text-sm focus:outline-none whitespace-nowrap ${
+              activeTab === "insights"
+                ? "text-indigo-600 border-b-2 border-indigo-600"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+            onClick={() => setActiveTab("insights")}
+          >
+            <TrendingUp className="h-4 w-4 inline mr-1" />
+            <span className="hidden sm:inline">Wawasan Bisnis</span>
+            <span className="sm:hidden">Wawasan</span>
+          </button>
+        )}
+        {canManage && (
+          <button
+            className={`px-3 sm:px-4 py-2 font-medium text-xs sm:text-sm focus:outline-none whitespace-nowrap ${
+              activeTab === "products"
+                ? "text-indigo-600 border-b-2 border-indigo-600"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+            onClick={() => setActiveTab("products")}
+          >
+            <Package className="h-4 w-4 inline mr-1" />
+            <span className="hidden sm:inline">Produk Terbaru</span>
+            <span className="sm:hidden">Terbaru</span>
+          </button>
+        )}
+        {canManage && (
+          <button
+            className={`px-3 sm:px-4 py-2 font-medium text-xs sm:text-sm focus:outline-none whitespace-nowrap ${
+              activeTab === "distribution"
+                ? "text-indigo-600 border-b-2 border-indigo-600"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+            onClick={() => setActiveTab("distribution")}
+          >
+            <PieChart className="h-4 w-4 inline mr-1" />
+            <span className="hidden sm:inline">Distribusi Produk</span>
+            <span className="sm:hidden">Distribusi</span>
+          </button>
+        )}
       </div>
 
       {/* Tab Content: Wawasan Bisnis Section */}

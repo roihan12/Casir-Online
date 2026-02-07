@@ -140,10 +140,11 @@ export const useDeleteProdukImage = () => {
 
 // Hook for fetching product dashboard data
 export const useProdukMasterDashboard = (options = {}) => {
+  const { cabangId, ...rest } = options;
   return useQuery({
-    queryKey: ["produkMasterDashboard"],
-    queryFn: () => produkMasterService.getDashboardData(),
+    queryKey: ["produkMasterDashboard", cabangId],
+    queryFn: () => produkMasterService.getDashboardData({ cabangId }),
     staleTime: 5 * 60 * 1000, // 5 minutes
-    ...options, // Spread options to allow enabled: false, etc.
+    ...rest,
   });
 };

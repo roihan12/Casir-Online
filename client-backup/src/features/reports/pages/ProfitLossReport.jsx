@@ -24,7 +24,7 @@ import {
   DollarSign,
   PieChart as PieChartIcon,
 } from "lucide-react";
-import { useCabang } from "@features/cabang/hooks/useCabang";
+import { useUserBranches } from "../hooks/useUserBranches";
 import { useProfitLossReport, useProfitLossSummary } from "../hooks/useReports";
 import formatCurrency from "@common/utils/formatCurrency";
 import {
@@ -39,6 +39,7 @@ import {
   Button,
   Divider,
 } from "../components/ReportComponents";
+import BranchMultiSelect from "../components/BranchMultiSelect";
 import ExportDropdown from "../components/ExportDropdown";
 
 const COLORS = [
@@ -57,27 +58,35 @@ const ProfitLossReport = () => {
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear.toString());
   const [month, setMonth] = useState("");
-  const [cabangFilter, setCabangFilter] = useState("all");
   const [periodType, setPeriodType] = useState("month");
-  const { allCabang } = useCabang();
+  
+  // Multi-branch support
+  const {
+    availableBranches,
+    selectedBranches,
+    setSelectedBranches,
+    cabangFilterParam,
+    hasSingleBranch,
+    isDisabled,
+  } = useUserBranches("profit-loss");
 
   // API params for detail report
   const reportParams = useMemo(
     () => ({
-      cabangId: cabangFilter,
+      cabangId: cabangFilterParam,
       year,
       month: month || undefined,
     }),
-    [cabangFilter, year, month]
+    [cabangFilterParam, year, month]
   );
 
   // API params for summary comparison
   const summaryParams = useMemo(
     () => ({
-      cabangId: cabangFilter,
+      cabangId: cabangFilterParam,
       period: periodType,
     }),
-    [cabangFilter, periodType]
+    [cabangFilterParam, periodType]
   );
 
   // Fetch data
@@ -122,17 +131,6 @@ const ProfitLossReport = () => {
     { value: "10", label: "Oktober" },
     { value: "11", label: "November" },
     { value: "12", label: "Desember" },
-  ];
-
-  // Branch options
-  const cabangOptions = [
-    { value: "all", label: "Semua Cabang" },
-    ...(allCabang
-      ? allCabang.map((cabang) => ({
-          value: cabang.id,
-          label: cabang.namaCabang,
-        }))
-      : []),
   ];
 
   // Period type options
@@ -246,12 +244,11 @@ const ProfitLossReport = () => {
               options={monthOptions}
             />
 
-            <FormSelect
-              id="cabang"
-              label="Cabang"
-              value={cabangFilter}
-              onChange={(e) => setCabangFilter(e.target.value)}
-              options={cabangOptions}
+            <BranchMultiSelect
+              availableBranches={availableBranches}
+              selectedBranches={selectedBranches}
+              onChange={setSelectedBranches}
+              isDisabled={isDisabled}
             />
 
             <FormSelect

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "../../auth/hooks/useAuth";
+import cabangService from "../services/cabangService";
 
 /**
  * CabangContext - Context untuk manajemen cabang
@@ -25,6 +26,20 @@ export const CabangProvider = ({ children }) => {
   const [selectedCabang, setSelectedCabang] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Fetch all cabang from API (for super admin and multi-select)
+  const { data: allCabangData } = useQuery({
+    queryKey: ["cabang", "all"],
+    queryFn: async () => {
+      // Fetch with large limit to get all cabang
+      const response = await cabangService.getCabangList(1, 1000);
+      return response.data || [];
+    },
+    enabled: isAuthenticated,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const allCabang = allCabangData || [];
 
   // Derived state - isGlobalView berdasarkan selectedCabang
   const isGlobalView = selectedCabang?.id === GLOBAL_CABANG_ID;
@@ -178,6 +193,9 @@ export const CabangProvider = ({ children }) => {
         
         // Flags
         canSwitchCabang,
+        
+        // All cabang from API (for super admin)
+        allCabang,
       }}
     >
       {children}

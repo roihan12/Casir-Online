@@ -15,8 +15,8 @@ const produkMasterService = {
   },
 
   // Get dashboard data
-  async getDashboardData() {
-    const response = await api.get("/product-dashboard");
+  async getDashboardData(params = {}) {
+    const response = await api.get("/product-dashboard", { params });
     return response.data;
   },
 

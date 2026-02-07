@@ -130,8 +130,8 @@ const Sidebar = () => {
   return (
     <div
       className={`${
-        collapsed ? "w-20" : "w-64"
-      } bg-white p-4 flex flex-col h-screen border-r relative transition-all duration-300`}
+        collapsed ? "w-16 lg:w-20" : "w-64"
+      } bg-white p-2 md:p-4 flex flex-col h-screen border-r relative transition-all duration-300`}
     >
       {/* Tombol toggle sidebar */}
       <button
@@ -164,7 +164,14 @@ const Sidebar = () => {
         )}
       </div>
 
-      <nav className="flex-1 overflow-y-auto">
+      <nav className="flex-1 overflow-y-auto scroll-smooth
+        scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent
+        hover:scrollbar-thumb-gray-400
+        [&::-webkit-scrollbar]:w-1.5
+        [&::-webkit-scrollbar-track]:bg-transparent
+        [&::-webkit-scrollbar-thumb]:bg-gray-300
+        [&::-webkit-scrollbar-thumb]:rounded-full
+        [&::-webkit-scrollbar-thumb]:hover:bg-gray-400">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-8">
             <Spinner size="md" color="primary" />

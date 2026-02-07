@@ -20,6 +20,7 @@ import {
   Settings,
   Calendar,
   DollarSign,
+  Building2,
 } from "lucide-react";
 import { useAuth } from "../../auth/hooks/useAuth.js";
 import { toast } from "react-hot-toast";
@@ -27,11 +28,21 @@ import pelangganService from "../services/pelangganService";
 import loyaltyService from "../../../services/loyaltyService";
 import Modal from "../../common/Modal.jsx";
 import Table from "../../common/Table.jsx";
+import { useCabang } from "../../cabang/context/CabangContext";
 
 const CustomerSegmentation = () => {
   const navigate = useNavigate();
-  const { hasRole } = useAuth();
-  const isSuperAdmin = hasRole("super_admin");
+  const { hasRole, hasPermission, isSuperAdmin } = useAuth();
+  const { cabangList, selectedCabang, allCabang } = useCabang();
+  
+  // Permission checks
+  const canManage = hasPermission("pelanggan:manage");
+  const adminMode = isSuperAdmin();
+
+  // Branch filter state
+  const [selectedBranchId, setSelectedBranchId] = useState(null);
+  const availableBranches = adminMode ? allCabang : cabangList.filter(c => c.id !== "global");
+  const hasSingleBranch = availableBranches.length === 1;
 
   const [isLoading, setIsLoading] = useState(true);
   const [customers, setCustomers] = useState([]);
@@ -116,7 +127,7 @@ const CustomerSegmentation = () => {
   useEffect(() => {
     loadSegmentRules();
     loadCustomerList();
-  }, []);
+  }, [selectedBranchId]);
 
   const loadSegmentRules = async () => {
     try {
@@ -140,7 +151,8 @@ const CustomerSegmentation = () => {
       const response = await pelangganService.getAllPelanggan(
         searchQuery,
         currentPage,
-        itemsPerPage
+        itemsPerPage,
+        selectedBranchId
       );
 
       const customerData = Array.isArray(response.data) ? response.data : [];
@@ -352,6 +364,38 @@ const CustomerSegmentation = () => {
         </p>
       </div>
 
+      {/* Branch Filter Section */}
+      {availableBranches.length > 1 && (
+        <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center text-sm text-gray-600">
+            <Building2 className="h-4 w-4 mr-2 text-indigo-500" />
+            <span className="font-medium">Filter Cabang:</span>
+          </div>
+          <select
+            className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+            value={selectedBranchId || "all"}
+            onChange={(e) => setSelectedBranchId(e.target.value === "all" ? null : e.target.value)}
+          >
+            <option value="all">Semua Cabang</option>
+            {availableBranches.map((branch) => (
+              <option key={branch.id} value={branch.id}>
+                {branch.namaCabang}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Single branch indicator */}
+      {hasSingleBranch && availableBranches.length === 1 && (
+        <div className="bg-indigo-50 rounded-lg p-3 mb-4 flex items-center text-sm">
+          <Building2 className="h-4 w-4 mr-2 text-indigo-500" />
+          <span className="text-indigo-700">
+            Menampilkan data untuk: <strong>{availableBranches[0]?.namaCabang}</strong>
+          </span>
+        </div>
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-5">
@@ -429,7 +473,7 @@ const CustomerSegmentation = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
             <button
               onClick={handleRefresh}
               className={`inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
@@ -438,44 +482,48 @@ const CustomerSegmentation = () => {
               disabled={isRefreshing}
             >
               <RefreshCw
-                className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`}
+                className={`h-4 w-4 sm:mr-2 ${isRefreshing ? "animate-spin" : ""}`}
               />
-              Muat Ulang
+              <span className="hidden sm:inline">Muat Ulang</span>
             </button>
 
-            <button
-              onClick={() => {
-                setSelectedSegment(null);
-                setFormSegment({
-                  name: "",
-                  description: "",
-                  criteria: "transaction_amount",
-                  value: "",
-                  segmentType: "retail",
-                  isActive: true,
-                });
-                setShowEditModal(true);
-              }}
-              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Tambah Aturan
-            </button>
+            {canManage && (
+              <button
+                onClick={() => {
+                  setSelectedSegment(null);
+                  setFormSegment({
+                    name: "",
+                    description: "",
+                    criteria: "transaction_amount",
+                    value: "",
+                    segmentType: "retail",
+                    isActive: true,
+                  });
+                  setShowEditModal(true);
+                }}
+                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                <Plus className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Tambah Aturan</span>
+              </button>
+            )}
 
-            <button
-              onClick={runSegmentation}
-              className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
-                isRefreshing ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-              disabled={isRefreshing}
-            >
-              <Play
-                className={`h-4 w-4 mr-2 ${
-                  isRefreshing ? "animate-pulse" : ""
+            {canManage && (
+              <button
+                onClick={runSegmentation}
+                className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
+                  isRefreshing ? "opacity-50 cursor-not-allowed" : ""
                 }`}
-              />
-              Jalankan Segmentasi
-            </button>
+                disabled={isRefreshing}
+              >
+                <Play
+                  className={`h-4 w-4 sm:mr-2 ${
+                    isRefreshing ? "animate-pulse" : ""
+                  }`}
+                />
+                <span className="hidden sm:inline">Jalankan Segmentasi</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -573,18 +621,24 @@ const CustomerSegmentation = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleEditSegment(rule)}
-                        className="text-amber-600 hover:text-amber-900 mr-3"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteSegment(rule)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <Trash className="h-4 w-4" />
-                      </button>
+                      {canManage && (
+                        <>
+                          <button
+                            onClick={() => handleEditSegment(rule)}
+                            className="text-amber-600 hover:text-amber-900 mr-3"
+                            title="Edit"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSegment(rule)}
+                            className="text-red-600 hover:text-red-900"
+                            title="Hapus"
+                          >
+                            <Trash className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))}

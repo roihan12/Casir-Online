@@ -2,10 +2,11 @@ import api from "@common/utils/api";
 
 const pelangganService = {
   // Get all customers
-  getAllPelanggan: async (searchQuery = "", page = 1, limit = 10) => {
-    const response = await api.get("/pelanggan", {
-      params: { search: searchQuery, page, limit },
-    });
+  getAllPelanggan: async (searchQuery = "", page = 1, limit = 10, cabangId = null) => {
+    const params = { search: searchQuery, page, limit };
+    if (cabangId) params.cabang_id = cabangId;
+
+    const response = await api.get("/pelanggan", { params });
     return response.data;
   },
 

@@ -16,12 +16,14 @@ export const useUserBranches = (reportType) => {
   const { allCabang } = useCabang();
 
   console.log("allCabang", allCabang);
+  console.log("isSuperAdmin", isSuperAdmin());
   
   const userCabang = getUserCabang();
-  const hasSingleBranch = userCabang.length === 1;
   
   // Determine available branches based on role
-  const availableBranches = userCabang;
+  // Super admin gets all branches, regular users get their assigned branches
+  const availableBranches = isSuperAdmin() ? (allCabang || []) : userCabang;
+  const hasSingleBranch = availableBranches.length === 1;
   
   // Load saved preference from localStorage
   const getSavedPreference = () => {

@@ -26,6 +26,7 @@ import Modal from "../../common/Modal.jsx";
 import Table from "../../common/Table.jsx";
 import ProductDashboard from "../components/ProductDashboard";
 import ProductImportExport from "../components/ProductImportExport";
+import QuickAddProductModal from "../components/QuickAddProductModal";
 import {
   useDeleteProdukMaster,
   useProdukMasterDashboard,
@@ -43,6 +44,7 @@ const ProductManagementPage = () => {
   const canRead = hasPermission("produk:read");
   const canUpdate = hasPermission("produk:update");
   const canDelete = hasPermission("produk:delete");
+  const canManage = hasPermission("produk:manage");
   
   const queryClient = useQueryClient();
   const { useAllProducts } = useProdukQueries();
@@ -72,6 +74,7 @@ const ProductManagementPage = () => {
   const [showDashboard, setShowDashboard] = useState(true);
   const [categories, setCategories] = useState([]);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [showQuickAddModal, setShowQuickAddModal] = useState(false);
 
   // Sync cabangFilter for non-admins if it changes in context
   useEffect(() => {
@@ -594,11 +597,19 @@ const ProductManagementPage = () => {
                 </button>
 
                 <button
+                  onClick={() => setShowQuickAddModal(true)}
+                  className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-emerald-700"
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  Tambah Cepat
+                </button>
+
+                <button
                   onClick={handleAddProduct}
                   className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-indigo-700"
                 >
                   <Plus className="h-5 w-5 mr-2" />
-                  Tambah Produk
+                  Tambah Massal
                 </button>
               </>
             )}
@@ -656,6 +667,8 @@ const ProductManagementPage = () => {
               dashboardData={dashboardData?.data}
               onViewProduct={handleViewProduct}
               isLoading={isDashboardLoading}
+              canManage={canManage}
+              cabangId={cabangFilter !== "all" ? cabangFilter : null}
             />
           </div>
         )}
@@ -966,6 +979,13 @@ const ProductManagementPage = () => {
         onImport={handleImport}
         onExport={handleExport}
         productList={productList}
+      />
+
+      {/* Quick Add Modal */}
+      <QuickAddProductModal
+        isOpen={showQuickAddModal}
+        onClose={() => setShowQuickAddModal(false)}
+        onSuccess={() => refetch()}
       />
     </div>
   );

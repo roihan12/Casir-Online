@@ -36,7 +36,7 @@ const getInventoryHealthReport = async (filters) => {
   const params = [];
   let paramIndex = 1;
 
-  if (cabangId) {
+  if (cabangId && cabangId !== 'all') {
     query += ` AND ih.cabang_id = $${paramIndex}`;
     params.push(cabangId);
     paramIndex++;

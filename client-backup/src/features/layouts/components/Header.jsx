@@ -35,29 +35,29 @@ const Header = ({ user, selectedCabang, onSidebarToggle }) => {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 py-3 px-4 flex items-center justify-between sticky top-0 z-30">
-      <div className="flex items-center gap-3 overflow-hidden">
+    <header className="bg-white border-b border-gray-200 py-2 px-2 md:py-3 md:px-4 flex items-center justify-between sticky top-0 z-30">
+      <div className="flex items-center gap-2 md:gap-3 overflow-hidden min-w-0 flex-1">
         {/* Mobile Sidebar Toggle */}
         <button 
           onClick={onSidebarToggle}
-          className="lg:hidden p-1 rounded-md text-gray-500 hover:bg-gray-100 focus:outline-none"
+          className="lg:hidden p-1 rounded-md text-gray-500 hover:bg-gray-100 focus:outline-none flex-shrink-0"
         >
-          <Menu size={24} />
+          <Menu size={20} className="md:w-6 md:h-6" />
         </button>
 
-        <h1 className="text-lg md:text-xl font-semibold text-gray-800 truncate">
+        <h1 className="text-base md:text-xl font-semibold text-gray-800 truncate">
           {selectedCabang ? selectedCabang.nama : 'Dashboard'}
         </h1>
       </div>
 
-      <div className="flex items-center space-x-2 md:space-x-4">
+      <div className="flex items-center space-x-1 md:space-x-4 flex-shrink-0">
         {/* Notifications */}
         <div className="relative">
           <button
             onClick={toggleNotifications}
-            className="p-1 rounded-full hover:bg-gray-100 relative"
+            className="p-1 md:p-2 rounded-full hover:bg-gray-100 relative"
           >
-            <Bell size={20} />
+            <Bell size={18} className="md:w-5 md:h-5" />
             <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
           </button>
 
@@ -101,16 +101,16 @@ const Header = ({ user, selectedCabang, onSidebarToggle }) => {
         <div className="relative">
           <button
             onClick={toggleUserMenu}
-            className="flex items-center space-x-2 focus:outline-none max-w-[150px] md:max-w-none"
+            className="flex items-center space-x-1 md:space-x-2 focus:outline-none"
           >
-            <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
+            <div className="h-7 w-7 md:h-8 md:w-8 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0 text-xs md:text-sm">
               {user?.name?.charAt(0) || 'U'}
             </div>
-            <div className="hidden md:block text-left truncate">
+            <div className="hidden md:block text-left truncate max-w-[120px]">
               <p className="text-sm font-medium truncate">{user?.name || 'User'}</p>
               <p className="text-xs text-gray-500 truncate">{user?.role || 'Role'}</p>
             </div>
-            <ChevronDown size={16} className="flex-shrink-0" />
+            <ChevronDown size={14} className="md:w-4 md:h-4 flex-shrink-0" />
           </button>
 
           {userMenuOpen && (
