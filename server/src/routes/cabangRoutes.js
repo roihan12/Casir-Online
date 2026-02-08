@@ -8,6 +8,9 @@ const { cabangAccess } = require("../middleware/cabangMiddleware");
 // Get all cabang that user has access to
 router.get("/", authenticate, cabangController.getAllCabang);
 
+// Get map overview data for all branches
+router.get("/map-overview", authenticate, cabangController.getMapOverview);
+
 // Get specific cabang
 router.get(
   "/:cabangId",

@@ -105,6 +105,21 @@ const deleteCabang = async (req, res, next) => {
   }
 };
 
+const getMapOverview = async (req, res, next) => {
+  try {
+    const { user } = req;
+    const mapData = await cabangService.getMapOverview(user.id);
+
+    return res.status(200).json({
+      success: true,
+      data: mapData,
+      lastUpdated: new Date().toISOString(),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllCabang,
   getCabangById,
@@ -112,4 +127,5 @@ module.exports = {
   updateCabang,
   deleteCabang,
   getCabangByUserId,
+  getMapOverview,
 };

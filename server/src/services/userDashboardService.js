@@ -29,29 +29,41 @@ const CACHE_TTL = {
 /**
  * Mendapatkan statistik user (total, aktif, nonaktif)
  */
-const getUserStats = async () => {
-  const cacheKey = CACHE_KEYS.USER_STATS;
+const getUserStats = async (cabangId = null) => {
+  const cacheKey = cabangId
+    ? `${CACHE_KEYS.USER_STATS}:${cabangId}`
+    : CACHE_KEYS.USER_STATS;
 
   return await cacheOrFetch(
     cacheKey,
     async () => {
+      const whereCondition = {
+        deletedAt: null,
+      };
+
+      if (cabangId) {
+        whereCondition.userRoles = {
+          some: {
+            cabangId: cabangId,
+          },
+        };
+      }
+
       const totalUsers = await prisma.user.count({
-        where: {
-          deletedAt: null,
-        },
+        where: whereCondition,
       });
 
       const activeUsers = await prisma.user.count({
         where: {
+          ...whereCondition,
           status: "aktif",
-          deletedAt: null,
         },
       });
 
       const inactiveUsers = await prisma.user.count({
         where: {
+          ...whereCondition,
           status: "nonaktif",
-          deletedAt: null,
         },
       });
 
@@ -70,8 +82,11 @@ const getUserStats = async () => {
 /**
  * Mendapatkan jumlah user berdasarkan role
  */
-const getUsersByRole = async () => {
-  const cacheKey = createCacheKey(CACHE_KEYS.DASHBOARD, "users_by_role");
+const getUsersByRole = async (cabangId = null) => {
+  const cacheKey = createCacheKey(
+    CACHE_KEYS.DASHBOARD,
+    `users_by_role:${cabangId || "all"}`
+  );
 
   return await cacheOrFetch(
     cacheKey,
@@ -90,15 +105,23 @@ const getUsersByRole = async () => {
         role.namaRole.toLowerCase().includes("kasir")
       )?.id;
 
+      const baseWhere = {
+        user: {
+          deletedAt: null,
+          status: "aktif",
+        },
+      };
+
+      if (cabangId) {
+        baseWhere.cabangId = cabangId;
+      }
+
       // Hitung jumlah user dengan role tertentu
       const superAdminCount = superAdminRoleId
         ? await prisma.userRole.count({
             where: {
+              ...baseWhere,
               roleId: superAdminRoleId,
-              user: {
-                deletedAt: null,
-                status: "aktif",
-              },
             },
           })
         : 0;
@@ -106,11 +129,8 @@ const getUsersByRole = async () => {
       const adminCount = adminRoleId
         ? await prisma.userRole.count({
             where: {
+              ...baseWhere,
               roleId: adminRoleId,
-              user: {
-                deletedAt: null,
-                status: "aktif",
-              },
             },
           })
         : 0;
@@ -118,11 +138,8 @@ const getUsersByRole = async () => {
       const kasirCount = kasirRoleId
         ? await prisma.userRole.count({
             where: {
+              ...baseWhere,
               roleId: kasirRoleId,
-              user: {
-                deletedAt: null,
-                status: "aktif",
-              },
             },
           })
         : 0;
@@ -141,8 +158,10 @@ const getUsersByRole = async () => {
 /**
  * Mendapatkan distribusi role user
  */
-const getRoleDistribution = async () => {
-  const cacheKey = CACHE_KEYS.ROLE_DISTRIBUTION;
+const getRoleDistribution = async (cabangId = null) => {
+  const cacheKey = cabangId
+    ? `${CACHE_KEYS.ROLE_DISTRIBUTION}:${cabangId}`
+    : CACHE_KEYS.ROLE_DISTRIBUTION;
 
   return await cacheOrFetch(
     cacheKey,
@@ -153,13 +172,19 @@ const getRoleDistribution = async () => {
       // Menghitung jumlah user untuk setiap role
       const distribution = await Promise.all(
         roles.map(async (role) => {
-          const count = await prisma.userRole.count({
-            where: {
-              roleId: role.id,
-              user: {
-                deletedAt: null,
-              },
+          const whereCondition = {
+            roleId: role.id,
+            user: {
+              deletedAt: null,
             },
+          };
+
+          if (cabangId) {
+            whereCondition.cabangId = cabangId;
+          }
+
+          const count = await prisma.userRole.count({
+            where: whereCondition,
           });
 
           return {
@@ -187,18 +212,26 @@ const getRoleDistribution = async () => {
 /**
  * Mendapatkan jumlah user per cabang
  */
-const getUsersPerCabang = async () => {
-  const cacheKey = CACHE_KEYS.USERS_PER_CABANG;
+const getUsersPerCabang = async (cabangId = null) => {
+  const cacheKey = cabangId
+    ? `${CACHE_KEYS.USERS_PER_CABANG}:${cabangId}`
+    : CACHE_KEYS.USERS_PER_CABANG;
 
   return await cacheOrFetch(
     cacheKey,
     async () => {
+      const whereCabang = {
+        deletedAt: null,
+        status: "aktif",
+      };
+
+      if (cabangId) {
+        whereCabang.id = cabangId;
+      }
+
       // Mendapatkan semua cabang
       const cabangList = await prisma.cabang.findMany({
-        where: {
-          deletedAt: null,
-          status: "aktif",
-        },
+        where: whereCabang,
       });
 
       // Menghitung jumlah user untuk setiap cabang
@@ -231,18 +264,27 @@ const getUsersPerCabang = async () => {
 /**
  * Mendapatkan breakdown user per cabang berdasarkan role
  */
-const getBreakdownUserPerCabang = async () => {
-  const cacheKey = createCacheKey(CACHE_KEYS.DASHBOARD, "breakdown_per_cabang");
+const getBreakdownUserPerCabang = async (cabangId = null) => {
+  const cacheKey = createCacheKey(
+    CACHE_KEYS.DASHBOARD,
+    `breakdown_per_cabang:${cabangId || "all"}`
+  );
 
   return await cacheOrFetch(
     cacheKey,
     async () => {
+      const whereCabang = {
+        deletedAt: null,
+        status: "aktif",
+      };
+
+      if (cabangId) {
+        whereCabang.id = cabangId;
+      }
+
       // Mendapatkan semua cabang
       const cabangList = await prisma.cabang.findMany({
-        where: {
-          deletedAt: null,
-          status: "aktif",
-        },
+        where: whereCabang,
       });
 
       // Mendapatkan semua role
@@ -321,14 +363,29 @@ const getBreakdownUserPerCabang = async () => {
 /**
  * Mendapatkan login terbaru
  */
-const getRecentLogins = async () => {
-  const cacheKey = CACHE_KEYS.RECENT_LOGINS;
+const getRecentLogins = async (cabangId = null) => {
+  const cacheKey = cabangId
+    ? `${CACHE_KEYS.RECENT_LOGINS}:${cabangId}`
+    : CACHE_KEYS.RECENT_LOGINS;
 
   return await cacheOrFetch(
     cacheKey,
     async () => {
+      const whereCondition = {};
+
+      if (cabangId) {
+        whereCondition.user = {
+          userRoles: {
+            some: {
+              cabangId: cabangId,
+            },
+          },
+        };
+      }
+
       const recentSessions = await prisma.userSession.findMany({
         take: 5, // Ambil 5 login terbaru
+        where: whereCondition,
         orderBy: {
           createdAt: "desc", // Urutkan berdasarkan waktu terbaru
         },
@@ -371,15 +428,30 @@ const getRecentLogins = async () => {
 /**
  * Mendapatkan data aktivitas user dari AuditLog
  */
-const getUserActivities = async () => {
-  const cacheKey = CACHE_KEYS.USER_ACTIVITIES;
+const getUserActivities = async (cabangId = null) => {
+  const cacheKey = cabangId
+    ? `${CACHE_KEYS.USER_ACTIVITIES}:${cabangId}`
+    : CACHE_KEYS.USER_ACTIVITIES;
 
   return await cacheOrFetch(
     cacheKey,
     async () => {
+      const whereCondition = {};
+
+      if (cabangId) {
+        whereCondition.user = {
+          userRoles: {
+            some: {
+              cabangId: cabangId,
+            },
+          },
+        };
+      }
+
       // Mengambil aktivitas terbaru
       const recentActivities = await prisma.auditLog.findMany({
         take: 20,
+        where: whereCondition,
         orderBy: {
           created_at: "desc", // Urutkan berdasarkan waktu terbaru
         },
@@ -416,8 +488,11 @@ const getUserActivities = async () => {
 /**
  * Mendapatkan statistik aktivitas user
  */
-const getActivityStatistics = async () => {
-  const cacheKey = createCacheKey(CACHE_KEYS.USER_ACTIVITIES, "stats");
+const getActivityStatistics = async (cabangId = null) => {
+  const cacheKey = createCacheKey(
+    CACHE_KEYS.USER_ACTIVITIES,
+    `stats:${cabangId || "all"}`
+  );
 
   return await cacheOrFetch(
     cacheKey,
@@ -426,28 +501,60 @@ const getActivityStatistics = async () => {
       const last7Days = new Date();
       last7Days.setDate(last7Days.getDate() - 7);
 
-      // Hitung aktivitas per hari untuk 7 hari terakhir
-      const dailyActivities = await prisma.$queryRaw`
-        SELECT 
-          DATE(created_at) as date, 
-          COUNT(*) as count 
-        FROM audit_log 
-        WHERE created_at >= ${last7Days} 
-        GROUP BY DATE(created_at) 
-        ORDER BY date DESC
-      `;
+      let dailyActivities;
+      let moduleActivities;
 
-      // Hitung aktivitas per modul/tabel
-      const moduleActivities = await prisma.$queryRaw`
-        SELECT 
-          table_name, 
-          COUNT(*) as count,
-          COUNT(DISTINCT user_id) as unique_users
-        FROM audit_log 
-        GROUP BY table_name 
-        ORDER BY count DESC 
-        LIMIT 10
-      `;
+      if (cabangId) {
+        // Hitung aktivitas per hari untuk 7 hari terakhir dengan filter cabang
+        // Karena audit_log tidak punya cabang_id, kita filter berdasarkan user yang punya role di cabang tersebut
+        dailyActivities = await prisma.$queryRaw`
+          SELECT 
+            DATE(a.created_at) as date, 
+            COUNT(*) as count 
+          FROM audit_log a
+          JOIN user_roles ur ON a.user_id = ur.user_id
+          WHERE a.created_at >= ${last7Days} 
+          AND ur.cabang_id = ${cabangId}
+          GROUP BY DATE(a.created_at) 
+          ORDER BY date DESC
+        `;
+
+        moduleActivities = await prisma.$queryRaw`
+          SELECT 
+            a.table_name, 
+            COUNT(*) as count,
+            COUNT(DISTINCT a.user_id) as unique_users
+          FROM audit_log a
+          JOIN user_roles ur ON a.user_id = ur.user_id
+          WHERE ur.cabang_id = ${cabangId}
+          GROUP BY a.table_name 
+          ORDER BY count DESC 
+          LIMIT 10
+        `;
+      } else {
+        // Hitung aktivitas per hari untuk 7 hari terakhir
+        dailyActivities = await prisma.$queryRaw`
+          SELECT 
+            DATE(created_at) as date, 
+            COUNT(*) as count 
+          FROM audit_log 
+          WHERE created_at >= ${last7Days} 
+          GROUP BY DATE(created_at) 
+          ORDER BY date DESC
+        `;
+
+        // Hitung aktivitas per modul/tabel
+        moduleActivities = await prisma.$queryRaw`
+          SELECT 
+            table_name, 
+            COUNT(*) as count,
+            COUNT(DISTINCT user_id) as unique_users
+          FROM audit_log 
+          GROUP BY table_name 
+          ORDER BY count DESC 
+          LIMIT 10
+        `;
+      }
 
       // Convert BigInt to Number in the results
       return {
@@ -469,8 +576,11 @@ const getActivityStatistics = async () => {
 /**
  * Mendapatkan performa kasir berdasarkan transaksi
  */
-const getUserPerformance = async () => {
-  const cacheKey = createCacheKey(CACHE_KEYS.DASHBOARD, "user_performance");
+const getUserPerformance = async (cabangId = null) => {
+  const cacheKey = createCacheKey(
+    CACHE_KEYS.DASHBOARD,
+    `user_performance:${cabangId || "all"}`
+  );
 
   return await cacheOrFetch(
     cacheKey,
@@ -492,15 +602,21 @@ const getUserPerformance = async () => {
         };
       }
 
+      const whereKasir = {
+        roleId: kasirRole.id,
+        user: {
+          status: "aktif",
+          deletedAt: null,
+        },
+      };
+
+      if (cabangId) {
+        whereKasir.cabangId = cabangId;
+      }
+
       // Dapatkan semua user dengan role kasir
       const kasirUsers = await prisma.userRole.findMany({
-        where: {
-          roleId: kasirRole.id,
-          user: {
-            status: "aktif",
-            deletedAt: null,
-          },
-        },
+        where: whereKasir,
         include: {
           user: {
             select: {
@@ -625,8 +741,11 @@ const getUserPerformance = async () => {
 /**
  * Mendapatkan admin cabang teraktif
  */
-const getActiveAdminCabang = async () => {
-  const cacheKey = createCacheKey(CACHE_KEYS.DASHBOARD, "admin_cabang_aktif");
+const getActiveAdminCabang = async (cabangId = null) => {
+  const cacheKey = createCacheKey(
+    CACHE_KEYS.DASHBOARD,
+    `admin_cabang_aktif:${cabangId || "all"}`
+  );
 
   return await cacheOrFetch(
     cacheKey,
@@ -647,15 +766,21 @@ const getActiveAdminCabang = async () => {
         return [];
       }
 
+      const whereAdmin = {
+        roleId: adminCabangRole.id,
+        user: {
+          status: "aktif",
+          deletedAt: null,
+        },
+      };
+
+      if (cabangId) {
+        whereAdmin.cabangId = cabangId;
+      }
+
       // Dapatkan semua user dengan role admin cabang
       const adminUsers = await prisma.userRole.findMany({
-        where: {
-          roleId: adminCabangRole.id,
-          user: {
-            status: "aktif",
-            deletedAt: null,
-          },
-        },
+        where: whereAdmin,
         include: {
           user: {
             select: {
@@ -731,8 +856,10 @@ const getActiveAdminCabang = async () => {
 /**
  * Mendapatkan semua data untuk dashboard user
  */
-const getUserDashboardData = async () => {
-  const cacheKey = CACHE_KEYS.DASHBOARD;
+const getUserDashboardData = async (cabangId = null) => {
+  const cacheKey = cabangId
+    ? `${CACHE_KEYS.DASHBOARD}:${cabangId}`
+    : CACHE_KEYS.DASHBOARD;
 
   return await cacheOrFetch(
     cacheKey,
@@ -749,16 +876,16 @@ const getUserDashboardData = async () => {
         userPerformance,
         activeAdminCabang,
       ] = await Promise.all([
-        getUserStats(),
-        getUsersByRole(),
-        getRoleDistribution(),
-        getUsersPerCabang(),
-        getBreakdownUserPerCabang(),
-        getRecentLogins(),
-        getUserActivities(),
-        getActivityStatistics(),
-        getUserPerformance(),
-        getActiveAdminCabang(),
+        getUserStats(cabangId),
+        getUsersByRole(cabangId),
+        getRoleDistribution(cabangId),
+        getUsersPerCabang(cabangId),
+        getBreakdownUserPerCabang(cabangId),
+        getRecentLogins(cabangId),
+        getUserActivities(cabangId),
+        getActivityStatistics(cabangId),
+        getUserPerformance(cabangId),
+        getActiveAdminCabang(cabangId),
       ]);
 
       return {

@@ -5,7 +5,8 @@ const userDashboardService = require("../services/userDashboardService");
  */
 const getUserDashboard = async (req, res) => {
   try {
-    const dashboardData = await userDashboardService.getUserDashboardData();
+    const { cabangId } = req.query;
+    const dashboardData = await userDashboardService.getUserDashboardData(cabangId);
 
     return res.status(200).json({
       success: true,
@@ -25,7 +26,8 @@ const getUserDashboard = async (req, res) => {
  */
 const getUserStats = async (req, res) => {
   try {
-    const stats = await userDashboardService.getUserStats();
+    const { cabangId } = req.query;
+    const stats = await userDashboardService.getUserStats(cabangId);
 
     return res.status(200).json({
       success: true,
@@ -45,7 +47,10 @@ const getUserStats = async (req, res) => {
  */
 const getRoleDistribution = async (req, res) => {
   try {
-    const distribution = await userDashboardService.getRoleDistribution();
+    const { cabangId } = req.query;
+    const distribution = await userDashboardService.getRoleDistribution(
+      cabangId
+    );
 
     return res.status(200).json({
       success: true,
@@ -65,7 +70,10 @@ const getRoleDistribution = async (req, res) => {
  */
 const getUsersPerCabang = async (req, res) => {
   try {
-    const usersPerCabang = await userDashboardService.getUsersPerCabang();
+    const { cabangId } = req.query;
+    const usersPerCabang = await userDashboardService.getUsersPerCabang(
+      cabangId
+    );
 
     return res.status(200).json({
       success: true,
@@ -85,7 +93,10 @@ const getUsersPerCabang = async (req, res) => {
  */
 const getBreakdownUserPerCabang = async (req, res) => {
   try {
-    const breakdown = await userDashboardService.getBreakdownUserPerCabang();
+    const { cabangId } = req.query;
+    const breakdown = await userDashboardService.getBreakdownUserPerCabang(
+      cabangId
+    );
 
     return res.status(200).json({
       success: true,
@@ -105,7 +116,8 @@ const getBreakdownUserPerCabang = async (req, res) => {
  */
 const getRecentLogins = async (req, res) => {
   try {
-    const recentLogins = await userDashboardService.getRecentLogins();
+    const { cabangId } = req.query;
+    const recentLogins = await userDashboardService.getRecentLogins(cabangId);
 
     return res.status(200).json({
       success: true,
@@ -125,9 +137,10 @@ const getRecentLogins = async (req, res) => {
  */
 const getUserActivities = async (req, res) => {
   try {
+    const { cabangId } = req.query;
     const [activities, statistics] = await Promise.all([
-      userDashboardService.getUserActivities(),
-      userDashboardService.getActivityStatistics(),
+      userDashboardService.getUserActivities(cabangId),
+      userDashboardService.getActivityStatistics(cabangId),
     ]);
 
     return res.status(200).json({
@@ -151,7 +164,8 @@ const getUserActivities = async (req, res) => {
  */
 const getUserPerformance = async (req, res) => {
   try {
-    const performance = await userDashboardService.getUserPerformance();
+    const { cabangId } = req.query;
+    const performance = await userDashboardService.getUserPerformance(cabangId);
 
     return res.status(200).json({
       success: true,
@@ -171,7 +185,10 @@ const getUserPerformance = async (req, res) => {
  */
 const getActiveAdminCabang = async (req, res) => {
   try {
-    const activeAdmins = await userDashboardService.getActiveAdminCabang();
+    const { cabangId } = req.query;
+    const activeAdmins = await userDashboardService.getActiveAdminCabang(
+      cabangId
+    );
 
     return res.status(200).json({
       success: true,

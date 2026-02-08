@@ -21,9 +21,10 @@ const userService = {
     }
   },
 
-  async getUserDashboard() {
+  async getUserDashboard(cabangId = null) {
     try {
-      const response = await api.get("/user-dashboard");
+      const params = cabangId && cabangId !== "all" ? { params: { cabangId } } : {};
+      const response = await api.get("/user-dashboard", params);
       return response.data;
     } catch (error) {
       this._handleError(error);
@@ -171,6 +172,20 @@ const userService = {
       const response = await api.get(
         `/users/invalidate-cache${id ? `/${id}` : ""}`
       );
+      return response.data;
+    } catch (error) {
+      this._handleError(error);
+    }
+  },
+
+  // Get user transactions
+  async getUserTransactions(userId, params = {}) {
+    try {
+      const queryParams = new URLSearchParams({
+        userId,
+        ...params,
+      });
+      const response = await api.get(`/transaksi?${queryParams.toString()}`);
       return response.data;
     } catch (error) {
       this._handleError(error);

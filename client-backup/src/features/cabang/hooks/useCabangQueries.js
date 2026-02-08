@@ -93,3 +93,17 @@ export const useUpdateCabangStatus = () => {
     },
   });
 };
+
+/**
+ * Hook for fetching branch map overview data
+ * Auto-refreshes every 3 minutes
+ */
+export const useBranchMapOverview = () => {
+  return useQuery({
+    queryKey: [...cabangKeys.all, "mapOverview"],
+    queryFn: () => cabangService.getMapOverview(),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchInterval: 3 * 60 * 1000, // Auto-refresh every 3 minutes
+    refetchOnWindowFocus: true,
+  });
+};

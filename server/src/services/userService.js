@@ -159,7 +159,15 @@ const getUserById = async (id) => {
         include: {
           userRoles: {
             include: {
-              role: true,
+              role: {
+                include: {
+                  permissions: {
+                    include: {
+                      permission: true,
+                    },
+                  },
+                },
+              },
               cabang: true,
             },
           },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiEdit2 as Edit,
@@ -78,7 +78,7 @@ const UserManagementPage = () => {
 
   const { data: usersData, isLoading: isLoadingUsers, isError: isUsersError, error: usersError } = getUsersQuery;
   const { data: roleList = [] } = getRolesQuery;
-  const { data: dashboardData, isLoading: isDashboardLoading, isError: isDashboardError } = getDashboardQuery(showDashboard);
+  const { data: dashboardData, isLoading: isDashboardLoading, isError: isDashboardError } = getDashboardQuery(showDashboard, cabangFilter);
 
   // Extract user list and pagination info
   const userList = usersData?.data || [];
@@ -134,8 +134,7 @@ const UserManagementPage = () => {
 
   const toggleDashboard = () => setShowDashboard(!showDashboard);
 
-  // Table columns definition
-  const columns = [
+  const columns = useMemo(() => [
     {
       header: "Nama User",
       accessor: "namaLengkap",
@@ -228,7 +227,7 @@ const UserManagementPage = () => {
         </div>
       ),
     },
-  ];
+  ], []);
 
   if (isUsersError) {
     return (

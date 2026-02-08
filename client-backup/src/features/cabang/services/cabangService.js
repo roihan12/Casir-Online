@@ -145,6 +145,19 @@ export const getCabangUsers = async (id) => {
   }
 };
 
+/**
+ * Get map overview data for all branches
+ * @returns {Promise<Object>} Map overview with branch statistics
+ */
+export const getMapOverview = async () => {
+  try {
+    const response = await api.get(`${CABANG_ENDPOINT}/map-overview`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Eksport default dengan semua method
 export default {
   getCabangList,
@@ -155,4 +168,5 @@ export default {
   deleteCabang,
   updateCabangStatus,
   getCabangUsers,
+  getMapOverview,
 };

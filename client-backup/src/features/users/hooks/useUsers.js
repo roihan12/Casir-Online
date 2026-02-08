@@ -17,10 +17,10 @@ export const useUsers = (filters = {}) => {
   });
 
   // Get user dashboard data
-  const getDashboardQuery = (enabled = true) => useQuery({
-    queryKey: ["userManagement", "dashboard"],
+  const getDashboardQuery = (enabled = true, cabangId = null) => useQuery({
+    queryKey: ["userManagement", "dashboard", cabangId],
     queryFn: async () => {
-      const response = await userService.getUserDashboard();
+      const response = await userService.getUserDashboard(cabangId);
       return response.data;
     },
     refetchOnWindowFocus: false,
@@ -113,3 +113,22 @@ export const useUsers = (filters = {}) => {
 };
 
 export default useUsers;
+
+// Standalone hooks for specific user operations
+export const useUserById = (id) => {
+  return useQuery({
+    queryKey: ["users", id],
+    queryFn: () => userService.getUserById(id),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+};
+
+export const useUserTransactions = (userId, params = {}) => {
+  return useQuery({
+    queryKey: ["users", userId, "transactions", params],
+    queryFn: () => userService.getUserTransactions(userId, params),
+    enabled: !!userId,
+    keepPreviousData: true,
+  });
+};

@@ -247,11 +247,110 @@ const deleteCabang = async (cabangId) => {
   return deletedCabang;
 };
 
+/**
+ * Get map overview data for all branches
+ * Includes today's transactions, active shifts, and computed last_activity_at
+ */
+const getMapOverview = async (userId) => {
+  const cacheKey = createCacheKey("cabang-map-overview");
+
+  return await cacheOrFetch(
+    cacheKey,
+    async () => {
+      // Get start of today
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+
+      const branches = await prisma.cabang.findMany({
+        where: { deletedAt: null },
+        select: {
+          id: true,
+          namaCabang: true,
+          alamat: true,
+          latitude: true,
+          longitude: true,
+          status: true,
+          // Get today's transactions
+          Transaksi: {
+            select: {
+              transaksi_id: true,
+              total: true,
+              created_at: true,
+            },
+            where: {
+              deleted_at: null,
+              tanggal: { gte: startOfToday },
+            },
+            orderBy: { created_at: "desc" },
+          },
+          // Get active shifts
+          shifts: {
+            select: {
+              id: true,
+              waktuMulai: true,
+              status: true,
+            },
+            where: {
+              status: "dibuka",
+              deletedAt: null,
+            },
+            take: 1,
+          },
+          // Get low stock products count
+          produk: {
+            where: {
+              deletedAt: null,
+              stok: { lte: prisma.produk.fields.minStok },
+            },
+            select: { id: true },
+          },
+        },
+      });
+
+      // Transform data for map view
+      return branches.map((branch) => {
+        const todayTransactions = branch.Transaksi || [];
+        const latestTransaction = todayTransactions[0];
+        const activeShift = branch.shifts[0];
+        const lowStockCount = branch.produk?.length || 0;
+
+        // Calculate today's revenue
+        const todayRevenue = todayTransactions.reduce(
+          (sum, t) => sum + (parseFloat(t.total) || 0),
+          0
+        );
+
+        // Compute last activity timestamp
+        const lastActivityAt =
+          latestTransaction?.created_at ||
+          activeShift?.waktuMulai ||
+          null;
+
+        return {
+          branch_id: branch.id,
+          name: branch.namaCabang,
+          alamat: branch.alamat,
+          lat: branch.latitude ? parseFloat(branch.latitude) : null,
+          lng: branch.longitude ? parseFloat(branch.longitude) : null,
+          status: branch.status === "aktif" ? "ACTIVE" : "INACTIVE",
+          today_transaction_count: todayTransactions.length,
+          today_revenue: todayRevenue,
+          alert_count: lowStockCount,
+          has_active_shift: !!activeShift,
+          last_activity_at: lastActivityAt,
+        };
+      });
+    },
+    180 // Cache for 3 minutes
+  );
+};
+
 module.exports = {
   getAllCabang,
   getCabangById,
   createCabang,
   updateCabang,
   deleteCabang,
-  getCabangByUserId, // Fungsi baru yang ditambahkan
+  getCabangByUserId,
+  getMapOverview,
 };

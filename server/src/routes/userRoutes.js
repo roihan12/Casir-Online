@@ -9,16 +9,22 @@ const {
 } = require("../middleware/uploadMiddleware");
 
 // Dynamic permissions for user management
+router.use(authenticate);
+
 router.get(
   "/",
-  authenticate,
   hasPermission(["user:read"]),
   userController.getAllUsers
 );
 
 router.get(
+  "/activity-logs",
+  hasPermission(["user:read"]),
+  userController.getUserActivityLogs
+);
+
+router.get(
   "/:id",
-  authenticate,
   hasPermission(["user:read"]),
   userController.getUserById
 );
@@ -26,7 +32,6 @@ router.get(
 // Updated user creation route with file upload support
 router.post(
   "/",
-  authenticate,
   hasPermission(["user:create"]),
   handleMulterUpload(upload.single("avatar")),
   userController.createUser
@@ -34,7 +39,6 @@ router.post(
 
 router.put(
   "/:id",
-  authenticate,
   hasPermission(["user:update"]),
   handleMulterUpload(upload.single("avatar")),
   userController.updateUser
@@ -42,7 +46,6 @@ router.put(
 
 router.delete(
   "/:id",
-  authenticate,
   hasPermission(["user:delete"]),
   userController.deleteUser
 );
@@ -50,7 +53,6 @@ router.delete(
 // User status management (activate/deactivate)
 router.put(
   "/:id/status",
-  authenticate,
   hasPermission(["user:update"]),
   userController.changeUserStatus
 );
@@ -58,7 +60,6 @@ router.put(
 // Password reset
 router.post(
   "/:id/reset-password",
-  authenticate,
   hasPermission(["user:update"]),
   userController.resetUserPassword
 );
@@ -66,7 +67,6 @@ router.post(
 // Force logout user
 router.post(
   "/:id/force-logout",
-  authenticate,
   hasPermission(["user:manage"]),
   userController.forceUserLogout
 );
@@ -74,7 +74,6 @@ router.post(
 // Avatar management
 router.post(
   "/:id/avatar",
-  authenticate,
   hasPermission(["user:update"]),
   handleMulterUpload(upload.single("avatar")),
   userController.uploadUserAvatar
@@ -82,23 +81,16 @@ router.post(
 
 router.delete(
   "/:id/avatar",
-  authenticate,
   hasPermission(["user:update"]),
   userController.deleteUserAvatar
 );
 
 // User activity logs
-router.get(
-  "/activity-logs",
-  authenticate,
-  hasPermission(["user:read"]),
-  userController.getUserActivityLogs
-);
+
 
 // Cache invalidation
 router.get(
-  "/invalidate-cache/:id?",
-  authenticate,
+  "/invalidate-cache/:id?", hasPermission(["user:read"]),
   userController.invalidateCache
 );
 

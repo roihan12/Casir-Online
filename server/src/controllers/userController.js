@@ -264,6 +264,9 @@ const getUserActivityLogs = async (req, res, next) => {
       limit,
     } = req.query;
 
+
+
+    
     const filters = {
       userId,
       startDate: startDate ? new Date(startDate) : undefined,

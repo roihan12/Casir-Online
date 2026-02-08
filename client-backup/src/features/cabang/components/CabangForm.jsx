@@ -1,15 +1,17 @@
-import React from "react";
-import { MapPin, AlertCircle } from "lucide-react";
+import React, { useState } from "react";
+import { MapPin, AlertCircle, Map } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import cabangService from "../services/cabangService";
 import Input from "../../common/Input";
 import cabangSchema from "../validation/CabangValidation";
+import LocationPickerMap from "./LocationPickerMap";
 
 const CabangForm = ({ cabang, cabangList, onSubmitSuccess, onCancel }) => {
   const isEditMode = !!cabang;
   const queryClient = useQueryClient();
+  const [showMapPicker, setShowMapPicker] = useState(false);
 
   // Setup React Hook Form with Zod validation
   const {
@@ -115,6 +117,13 @@ const CabangForm = ({ cabang, cabangList, onSubmitSuccess, onCancel }) => {
     }
   };
 
+  // Handle location picked from map
+  const handleLocationFromMap = (position) => {
+    setValue("latitude", position.lat.toFixed(8), { shouldValidate: true });
+    setValue("longitude", position.lng.toFixed(8), { shouldValidate: true });
+    clearErrors(["latitude", "longitude", "location"]);
+  };
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="p-6 h-[calc(100vh-10rem)] overflow-y-auto">
       <div className="space-y-4">
@@ -182,14 +191,24 @@ const CabangForm = ({ cabang, cabangList, onSubmitSuccess, onCancel }) => {
         <div className="bg-gray-50 p-4 rounded-lg border">
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-sm font-medium text-gray-700">Geolokasi</h3>
-            <button
-              type="button"
-              onClick={handleGetCurrentLocation}
-              className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded flex items-center"
-            >
-              <MapPin className="h-3 w-3 mr-1" />
-              Gunakan Lokasi Saat Ini
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleGetCurrentLocation}
+                className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded flex items-center hover:bg-indigo-200"
+              >
+                <MapPin className="h-3 w-3 mr-1" />
+                Lokasi Saat Ini
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowMapPicker(true)}
+                className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded flex items-center hover:bg-green-200"
+              >
+                <Map className="h-3 w-3 mr-1" />
+                Pilih di Peta
+              </button>
+            </div>
           </div>
 
           {errors.location && (
@@ -321,6 +340,15 @@ const CabangForm = ({ cabang, cabangList, onSubmitSuccess, onCancel }) => {
           )}
         </button>
       </div>
+
+      {/* Location Picker Map Modal */}
+      <LocationPickerMap
+        isOpen={showMapPicker}
+        onClose={() => setShowMapPicker(false)}
+        onConfirm={handleLocationFromMap}
+        initialLat={control._formValues.latitude}
+        initialLng={control._formValues.longitude}
+      />
     </form>
   );
 };

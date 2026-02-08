@@ -12,12 +12,14 @@ import {
   Filter,
   Download,
   Eye,
+  Map,
 } from "lucide-react";
 import CabangForm from "../components/CabangForm";
 import Modal from "../../common/Modal";
 import Table from "../../common/Table";
 import CabangImportExport from "../components/CabangImportExport";
 import CabangDashboard from "../components/CabangDashboard";
+import BranchMapView from "../components/BranchMapView";
 import {
   useCabangList,
   useCreateCabang,
@@ -37,7 +39,7 @@ const CabangManagementPage = () => {
   const [showImportExportModal, setShowImportExportModal] = useState(false);
   const [selectedCabang, setSelectedCabang] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [showDashboard, setShowDashboard] = useState(true);
+  const [showMapView, setShowMapView] = useState(true);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     itemsPerPage: 10,
@@ -105,7 +107,7 @@ const CabangManagementPage = () => {
   // Handle view cabang details
   const handleViewCabang = (cabang) => {
     if (cabang && cabang.id) {
-      navigate(`/superadmin/cabang/${cabang.id}`);
+      navigate(`/cabang/${cabang.id}`);
     } else {
       setShowDashboard(false);
     }
@@ -168,11 +170,6 @@ const CabangManagementPage = () => {
   const handleExport = (options) => {
     console.log("Exporting with options:", options);
     setShowImportExportModal(false);
-  };
-
-  // Toggle dashboard view
-  const toggleDashboard = () => {
-    setShowDashboard(!showDashboard);
   };
 
   // Table columns definition
@@ -314,30 +311,38 @@ const CabangManagementPage = () => {
           </div>
         </div>
 
-        {/* Dashboard Section */}
-        {showDashboard && (
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-medium text-gray-900">
-                Dashboard Cabang
-              </h2>
-              <button
-                onClick={toggleDashboard}
-                className="text-sm text-gray-500 hover:text-gray-700"
-              >
-                {showDashboard ? "Sembunyikan" : "Tampilkan"} Dashboard
-              </button>
-            </div>
-            <CabangDashboard
-              totalCabang={cabangData?.pagination?.totalItems}
-              cabangList={cabangList}
-              onViewCabang={handleViewCabang}
-            />
-          </div>
-        )}
+        {/* Stats Section */}
+        <CabangDashboard
+          totalCabang={cabangData?.pagination?.totalItems}
+          cabangList={cabangList}
+          onViewCabang={handleViewCabang}
+          className="mb-6"
+        />
 
-        {/* Table Section */}
-        <div className="bg-white rounded-lg shadow-sm mb-6">
+        {/* Map Section - Full Width */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+              <Map className="w-5 h-5 text-indigo-600" />
+              Peta Cabang
+            </h2>
+            <button
+              onClick={() => setShowMapView(!showMapView)}
+              className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+            >
+              {showMapView ? "Sembunyikan Peta" : "Tampilkan Peta"}
+            </button>
+          </div>
+          {showMapView && (
+            <BranchMapView
+              height="400px"
+              onBranchClick={(branch) => navigate(`/cabang/${branch.branch_id}`)}
+            />
+          )}
+        </div>
+
+        {/* Table Section - Full Width */}
+        <div className="bg-white rounded-lg shadow-sm">
           <div className="p-4 border-b flex items-center justify-between flex-wrap gap-4">
             <div className="relative">
               <Search
@@ -380,15 +385,6 @@ const CabangManagementPage = () => {
                   <option value={50}>50</option>
                 </select>
               </div>
-
-              {!showDashboard && (
-                <button
-                  onClick={toggleDashboard}
-                  className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
-                >
-                  Tampilkan Dashboard
-                </button>
-              )}
             </div>
           </div>
 
