@@ -193,7 +193,7 @@ const DiscountForm = () => {
       }
 
       // Navigate back to discount list
-      navigate("/superadmin/promos/discounts");
+      navigate("/promos/discounts");
     } catch (error) {
       console.error("Error saving discount:", error);
       toast.error(
@@ -219,7 +219,7 @@ const DiscountForm = () => {
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-2">
           <button
-            onClick={() => navigate("/superadmin/promos/discounts")}
+            onClick={() => navigate("/promos/discounts")}
             className="flex items-center justify-center h-10 w-10 rounded-lg border hover:bg-gray-50"
           >
             <ChevronLeft size={20} />
@@ -542,7 +542,7 @@ const DiscountForm = () => {
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => navigate("/superadmin/promos/discounts")}
+                onClick={() => navigate("/promos/discounts")}
                 className="px-4 py-2 border rounded-lg hover:bg-gray-50"
               >
                 Batal

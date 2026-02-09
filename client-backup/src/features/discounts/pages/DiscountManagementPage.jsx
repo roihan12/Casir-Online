@@ -196,12 +196,12 @@ const DiscountManagement = () => {
 
   // Add handleCreateDiscount function
   const handleCreateDiscount = () => {
-    navigate("/superadmin/promos/discounts/create");
+    navigate("/promos/discounts/create");
   };
 
   // Add handleEditDiscount function
   const handleEditDiscount = (id) => {
-    navigate(`/superadmin/promos/discounts/edit/${id}`);
+    navigate(`/promos/discounts/edit/${id}`);
   };
 
   return (
@@ -493,7 +493,7 @@ const DiscountManagement = () => {
                         <button
                           onClick={() =>
                             navigate(
-                              `/superadmin/promos/discounts/${discount.id}`
+                              `/promos/${discount.id}`
                             )
                           }
                           className="p-1 text-blue-600 hover:text-blue-800"

@@ -63,7 +63,7 @@ const ShiftDetail = () => {
   };
 
   const handleViewTransaction = (transaction) => {
-    navigate(`/transactions/${transaction.id}`);
+    navigate(`/transactions/${transaction.transaksi_id}`);
   };
 
   const expectedCash = shift ? Number(shift.kasAwal) + (Number(shift.totalPendapatan) || 0) : 0;

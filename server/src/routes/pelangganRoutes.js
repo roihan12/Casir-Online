@@ -20,6 +20,9 @@ router.delete("/:id", hasPermission(["pelanggan:delete"]), pelangganController.d
 // Get all pelanggan with pagination & search
 router.get("/", hasPermission(["pelanggan:read"]), pelangganController.getAllPelanggan);
 
+// Get customer stats
+router.get("/stats", hasPermission(["pelanggan:read"]), pelangganController.getCustomerStats);
+
 // Get pelanggan by id
 router.get("/:id", hasPermission(["pelanggan:read"]), pelangganController.getPelangganById);
 

@@ -95,11 +95,26 @@ const deletePelanggan = async (id, { userId, ipAddress }) => {
   return { message: "Pelanggan deleted successfully" };
 };
 
-const getAllPelanggan = async ({ page = 1, limit = 10, search = "", cabang_id = null }) => {
+const getAllPelanggan = async ({
+  page = 1,
+  limit = 10,
+  search = "",
+  cabang_id = null,
+  segmen = null,
+  status = null,
+}) => {
   const skip = (page - 1) * limit;
   const whereClause = {
-    ...(search && { namaPelanggan: { contains: search, mode: "insensitive" } }),
+    ...(search && {
+      OR: [
+        { namaPelanggan: { contains: search, mode: "insensitive" } },
+        { telepon: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+      ],
+    }),
     ...(cabang_id && { cabang_id }),
+    ...(segmen && segmen !== "all" && { segmen }),
+    ...(status && status !== "all" && { status }),
   };
 
   const [data, total] = await Promise.all([
@@ -124,6 +139,32 @@ const getAllPelanggan = async ({ page = 1, limit = 10, search = "", cabang_id = 
       hasNextPage: page < totalPages,
       hasPrevPage: page > 1,
     },
+  };
+};
+
+const getCustomerStats = async (cabang_id = null) => {
+  const whereClause = cabang_id ? { cabang_id } : {};
+
+  const [total, vip, grosir, retail, active, inactive] = await Promise.all([
+    prisma.pelanggan.count({ where: whereClause }),
+    prisma.pelanggan.count({ where: { ...whereClause, segmen: "vip" } }),
+    prisma.pelanggan.count({ where: { ...whereClause, segmen: "grosir" } }),
+    prisma.pelanggan.count({ where: { ...whereClause, segmen: "retail" } }),
+    prisma.pelanggan.count({
+      where: { ...whereClause, status: "aktif" },
+    }),
+    prisma.pelanggan.count({
+      where: { ...whereClause, status: "nonaktif" },
+    }),
+  ]);
+
+  return {
+    total,
+    vip,
+    grosir,
+    retail,
+    active,
+    inactive,
   };
 };
 
@@ -181,4 +222,5 @@ module.exports = {
   getAllPelanggan,
   getPelangganById,
   getPelangganByCabang,
+  getCustomerStats,
 };

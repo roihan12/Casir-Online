@@ -384,6 +384,8 @@ const getShiftById = async (shiftId) => {
       throw new ResponseError(404, "Shift tidak ditemukan");
     }
 
+    console.log("shift", shift);
+
     // Hitung total berdasarkan metode pembayaran
     const paymentSummary = {};
 
@@ -409,7 +411,7 @@ const getShiftById = async (shiftId) => {
         0
       ),
     };
-  }, 3600); // Cache 1 jam
+  }, 300); // Cache 1 jam
 };
 
 // Service untuk mendapatkan daftar shift

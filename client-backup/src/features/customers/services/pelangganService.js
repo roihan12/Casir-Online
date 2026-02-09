@@ -2,9 +2,18 @@ import api from "@common/utils/api";
 
 const pelangganService = {
   // Get all customers
-  getAllPelanggan: async (searchQuery = "", page = 1, limit = 10, cabangId = null) => {
+  getAllPelanggan: async (
+    searchQuery = "",
+    page = 1,
+    limit = 10,
+    cabangId = null,
+    segmen = "all",
+    status = "all"
+  ) => {
     const params = { search: searchQuery, page, limit };
     if (cabangId) params.cabang_id = cabangId;
+    if (segmen && segmen !== "all") params.segmen = segmen;
+    if (status && status !== "all") params.status = status;
 
     const response = await api.get("/pelanggan", { params });
     return response.data;
@@ -45,6 +54,14 @@ const pelangganService = {
     const response = await api.get("/pelanggan", {
       params: { segment },
     });
+    return response.data;
+  },
+
+  // Get customer statistics
+  getCustomerStats: async (cabangId = null) => {
+    const params = {};
+    if (cabangId) params.cabang_id = cabangId;
+    const response = await api.get("/pelanggan/stats", { params });
     return response.data;
   },
 };

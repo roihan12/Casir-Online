@@ -25,6 +25,7 @@ import pelangganService from "../services/pelangganService";
 import Modal from "../../common/Modal.jsx";
 import Table from "../../common/Table.jsx";
 import { useCabang } from "../../cabang/context/CabangContext";
+import useDebounce from "../../../common/hooks/useDebounce";
 
 const CustomerManagementPage = () => {
   const navigate = useNavigate();
@@ -44,10 +45,18 @@ const CustomerManagementPage = () => {
   const availableBranches = adminMode ? allCabang : cabangList.filter(c => c.id !== "global");
   const hasSingleBranch = availableBranches.length === 1;
 
+  // Set default branch if single branch
+  useEffect(() => {
+    if (hasSingleBranch && availableBranches.length > 0) {
+      setSelectedBranchId(availableBranches[0].id);
+    }
+  }, [hasSingleBranch, availableBranches]);
+
   const [customers, setCustomers] = useState([]);
-  const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounce(searchQuery, 500);
+  
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [segmentFilter, setSegmentFilter] = useState("all");
@@ -56,29 +65,52 @@ const CustomerManagementPage = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [stats, setStats] = useState({
+    total: 0,
+    vip: 0,
+    grosir: 0,
+    retail: 0,
+    active: 0,
+    inactive: 0,
+  });
 
   // Load customer list from API
   useEffect(() => {
     loadCustomerList();
-  }, [currentPage, itemsPerPage, searchQuery, selectedBranchId]);
+    loadStats();
+  }, [currentPage, itemsPerPage, debouncedSearch, selectedBranchId, segmentFilter, statusFilter]);
+
+  const loadStats = async () => {
+    try {
+      const statsData = await pelangganService.getCustomerStats(selectedBranchId);
+
+
+      setStats(statsData.data);
+    } catch (error) {
+      console.error("Error loading stats:", error);
+    }
+  };
 
   const loadCustomerList = async () => {
     try {
       setIsLoading(true);
       const response = await pelangganService.getAllPelanggan(
-        searchQuery,
+        debouncedSearch,
         currentPage,
         itemsPerPage,
-        selectedBranchId
+        selectedBranchId,
+        segmentFilter,
+        statusFilter
       );
 
+      console.log(response);
       // Ensure data is an array
       const customerData = Array.isArray(response.data.data) ? response.data.data : [];
 
-      console.log("customerData", customerData);
+      console.log(customerData);
+
       setCustomers(customerData);
-      setFilteredCustomers(customerData);
-      setTotalItems(response.total || customerData.length);
+      setTotalItems(response.pagination?.totalItems || 0);
     } catch (error) {
       console.error("Error loading customer list:", error);
       toast.error("Gagal memuat data pelanggan");
@@ -94,34 +126,13 @@ const CustomerManagementPage = () => {
   const handleRefresh = () => {
     setIsRefreshing(true);
     loadCustomerList();
+    loadStats();
   };
 
-  // Filter customer list when filters change
+  // Reset page when filters change
   useEffect(() => {
-    const filterCustomerList = () => {
-      let filtered = customers;
-
-      // Apply segment filter
-      if (segmentFilter !== "all") {
-        filtered = filtered.filter(
-          (customer) => customer.segmen === segmentFilter
-        );
-      }
-
-      // Apply status filter
-      if (statusFilter !== "all") {
-        filtered = filtered.filter(
-          (customer) => customer.status === statusFilter
-        );
-      }
-
-      setFilteredCustomers(filtered);
-      // Reset to first page when filters change
-      setCurrentPage(1);
-    };
-
-    filterCustomerList();
-  }, [customers, segmentFilter, statusFilter]);
+    setCurrentPage(1);
+  }, [segmentFilter, statusFilter, debouncedSearch, selectedBranchId]);
 
   // Handle add new customer
   const handleAddCustomer = () => {
@@ -363,24 +374,6 @@ const CustomerManagementPage = () => {
     },
   ];
 
-  // Get segment display and counts safely
-  const getVipCount = () => {
-    return Array.isArray(customers)
-      ? customers.filter((c) => c.segmen === "vip").length
-      : 0;
-  };
-
-  const getGrosirCount = () => {
-    return Array.isArray(customers)
-      ? customers.filter((c) => c.segmen === "grosir").length
-      : 0;
-  };
-
-  const getNonaktifCount = () => {
-    return Array.isArray(customers)
-      ? customers.filter((c) => c.status === "nonaktif").length
-      : 0;
-  };
 
   return (
     <div className="p-4 md:p-6">
@@ -394,26 +387,25 @@ const CustomerManagementPage = () => {
       </div>
 
       {/* Branch Filter Section */}
-      {availableBranches.length > 1 && (
-        <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center text-sm text-gray-600">
-            <Building2 className="h-4 w-4 mr-2 text-indigo-500" />
-            <span className="font-medium">Filter Cabang:</span>
-          </div>
-          <select
-            className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
-            value={selectedBranchId || "all"}
-            onChange={(e) => setSelectedBranchId(e.target.value === "all" ? null : e.target.value)}
-          >
-            <option value="all">Semua Cabang</option>
-            {availableBranches.map((branch) => (
-              <option key={branch.id} value={branch.id}>
-                {branch.namaCabang}
-              </option>
-            ))}
-          </select>
+      <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center text-sm text-gray-600">
+          <Building2 className="h-4 w-4 mr-2 text-indigo-500" />
+          <span className="font-medium">Filter Cabang:</span>
         </div>
-      )}
+        <select
+          className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white disabled:bg-gray-100 disabled:text-gray-500"
+          value={selectedBranchId || (hasSingleBranch && availableBranches[0]?.id) || "all"}
+          onChange={(e) => setSelectedBranchId(e.target.value === "all" ? null : e.target.value)}
+          disabled={!adminMode && hasSingleBranch}
+        >
+          {!hasSingleBranch && <option value="all">Semua Cabang</option>}
+          {availableBranches.map((branch) => (
+            <option key={branch.id} value={branch.id}>
+              {branch.namaCabang}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {/* Single branch indicator */}
       {hasSingleBranch && availableBranches.length === 1 && (
@@ -434,7 +426,7 @@ const CustomerManagementPage = () => {
                 Total Pelanggan
               </p>
               <p className="text-2xl font-semibold text-gray-900">
-                {totalItems}
+                {stats.total}
               </p>
             </div>
             <Users className="h-10 w-10 text-indigo-500" />
@@ -446,7 +438,7 @@ const CustomerManagementPage = () => {
             <div>
               <p className="text-sm font-medium text-gray-500">Pelanggan VIP</p>
               <p className="text-2xl font-semibold text-purple-600">
-                {getVipCount()}
+                {stats.vip}
               </p>
             </div>
             <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
@@ -462,7 +454,7 @@ const CustomerManagementPage = () => {
                 Pelanggan Grosir
               </p>
               <p className="text-2xl font-semibold text-blue-600">
-                {getGrosirCount()}
+                {stats.grosir}
               </p>
             </div>
             <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
@@ -478,7 +470,7 @@ const CustomerManagementPage = () => {
                 Pelanggan Nonaktif
               </p>
               <p className="text-2xl font-semibold text-red-600">
-                {getNonaktifCount()}
+                {stats.inactive}
               </p>
             </div>
             <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
@@ -590,7 +582,7 @@ const CustomerManagementPage = () => {
 
         <Table
           columns={columns}
-          data={filteredCustomers}
+          data={customers}
           isLoading={isLoading}
           pagination={{
             currentPage,

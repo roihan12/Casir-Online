@@ -56,18 +56,35 @@ const deletePelanggan = async (req, res, next) => {
 
 const getAllPelanggan = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10, search = "", cabang_id } = req.query;
+    const { page = 1, limit = 10, search = "", cabang_id, segmen, status } = req.query;
     const result = await pelangganService.getAllPelanggan({
       page: parseInt(page),
       limit: parseInt(limit),
       search,
       cabang_id,
+      segmen,
+      status,
     });
 
     return res.status(200).json({
       success: true,
       message: "Get all pelanggan successfully",
       data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getCustomerStats = async (req, res, next) => {
+  try {
+    const { cabang_id } = req.query;
+    const stats = await pelangganService.getCustomerStats(cabang_id);
+    
+    return res.status(200).json({
+      success: true,
+      message: "Get customer stats successfully",
+      data: stats,
     });
   } catch (error) {
     next(error);
@@ -92,5 +109,7 @@ module.exports = {
   updatePelanggan,
   deletePelanggan,
   getAllPelanggan,
+  getAllPelanggan,
   getPelangganById,
+  getCustomerStats,
 };
