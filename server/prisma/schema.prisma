@@ -1428,6 +1428,9 @@ model BotConfig {
   thankYouMessage String?       @map("thank_you_message")
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
+  name            String?       @map("name") @db.VarChar(255)
+  apiUrl          String?       @map("api_url") @db.VarChar(255)
+  deviceId        String?       @map("device_id") @db.VarChar(255)
   cabang          Cabang        @relation(fields: [cabangId], references: [id])
   botOrders       BotOrder[]
   botSessions     BotSession[]
@@ -2162,13 +2165,6 @@ enum PromoDiskonStatus {
   nonaktif
 }
 
-enum TipeDiskon {
-  persentase
-  nominal
-  bogo
-  bundle
-}
-
 enum loyalty_point_type {
   EARN
   REDEEM
@@ -2187,4 +2183,11 @@ enum tipe_discount_member {
   PERCENTAGE
   NOMINAL
   TIER_BASED
+}
+
+enum TipeDiskon {
+  persentase
+  nominal
+  bogo
+  bundle
 }

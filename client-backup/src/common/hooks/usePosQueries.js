@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import posService, { searchHistoryService } from "../services/posService";
+import posService, { searchHistoryService } from "../../services/posService";
 import toast from "react-hot-toast";
 import { useState, useEffect } from "react";
 

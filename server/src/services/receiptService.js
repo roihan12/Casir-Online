@@ -6,6 +6,7 @@ const ejs = require("ejs");
 const puppeteer = require("puppeteer");
 const qrcode = require("qrcode");
 const nodemailer = require("nodemailer");
+const whatsappService = require("./whatsappService");
 
 
 /**
@@ -855,6 +856,80 @@ const handlePaymentReceipt = async (transaksiId, options = {}, auditInfo = {}) =
   };
 };
 
+/**
+ * Send receipt by WhatsApp
+ * @param {Object} data - WhatsApp data
+ * @param {Object} auditInfo - Audit information
+ * @returns {Promise<Object>} - Result
+ */
+const sendReceiptByWhatsapp = async (data, auditInfo) => {
+  const { transaksiId, phone, message } = data;
+
+  if (!phone) {
+    throw new ResponseError(400, "Nomor WhatsApp penerima harus diisi");
+  }
+
+  // Get transaction data
+  const transactionData = await getTransactionDataForReceipt(transaksiId);
+
+  // Generate receipt in PDF format (Thermal optimized for phone view)
+  const html = await generateReceiptHtml(transactionData, {
+    language: "id",
+    includeHeader: true,
+    includeFooter: true,
+    includeLogo: true,
+    paperWidth: 80,
+    paperType: "thermal",
+  });
+
+  const pdfBuffer = await generatePdfFromHtml(html, {
+    paperWidth: 80,
+    paperType: "thermal",
+  });
+
+  // Prepare caption
+  const caption = message || `*Struk Pembelian*\n${transactionData.branchName}\nNo: ${transactionData.number}\nTanggal: ${new Date(transactionData.date).toLocaleDateString('id-ID')}\nTotal: ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(transactionData.total)}\n\nTerima kasih telah berbelanja!`;
+
+  try {
+    // Send PDF via WhatsApp
+    // Normalize phone
+    let formattedPhone = phone.replace(/[^0-9]/g, '');
+    if (formattedPhone.startsWith('0')) formattedPhone = '62' + formattedPhone.slice(1);
+    if (!formattedPhone.endsWith('@s.whatsapp.net')) formattedPhone += '@s.whatsapp.net';
+
+    const result = await whatsappService.sendFile(
+        formattedPhone,
+        pdfBuffer,
+        `receipt-${transactionData.number}.pdf`,
+        null, // deviceId - use default
+        { caption }
+    );
+
+    // Add audit log
+    await prisma.auditLog.create({
+      data: {
+        user_id: auditInfo.userId,
+        ip_address: auditInfo.ipAddress,
+        action: "WHATSAPP_RECEIPT",
+        table_name: "transaksi",
+        record_id: transaksiId,
+        new_values: JSON.stringify({
+           phone,
+           messageId: result?.id || 'sent'
+        }),
+      },
+    });
+
+    return {
+      success: true,
+      message: `Struk berhasil dikirim ke ${phone}`,
+    };
+  } catch (error) {
+    console.error("Failed to send WhatsApp receipt:", error);
+    throw new ResponseError(500, `Gagal mengirim WhatsApp: ${error.message}`);
+  }
+};
+
 module.exports = {
   getOrCreateReceiptConfig,
   getTransactionDataForReceipt,
@@ -863,6 +938,7 @@ module.exports = {
   generatePdfFromHtml,
   getReceiptPreview,
   sendReceiptByEmail,
+  sendReceiptByWhatsapp,
   updateReceiptConfig,
   handlePaymentReceipt
 };

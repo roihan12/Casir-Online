@@ -51,6 +51,8 @@ const promoPreviewRoutes = require("./routes/promoPreviewRoutes");
 const promoRoutes = require("./routes/promoRoutes");
 const discountConfigRoutes = require("./routes/discountConfigRoutes");
 const loyaltyRoutes = require("./routes/loyaltyRoutes");
+const whatsappRoutes = require('./routes/whatsappRoutes');
+const broadcastRoutes = require("./routes/broadcastRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const reportExportRoutes = require("./routes/reportExportRoutes");
 const shiftReportRoutes = require("./routes/shiftReportRoutes");
@@ -160,6 +162,8 @@ app.use("/api/reports/shift", shiftReportRoutes);
 app.use("/api/reports/transactions", transactionReportRoutes);
 app.use("/api/reports/customer", customerReportRoutes);
 app.use("/api/reports/promo", promoReportRoutes);
+app.use("/api/whatsapp", whatsappRoutes);
+app.use("/api/broadcast", broadcastRoutes);
 
 // 404 handler
 app.use((req, res) => {

@@ -1,8 +1,11 @@
-import React from "react";
-import { FileText, X, Printer, Calendar, Clock } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { FileText, X, Printer, Calendar, Clock, Send } from "lucide-react";
+import { FaWhatsapp } from "react-icons/fa";
 import { useAuth } from "@features/auth/hooks/useAuth.js";
 import { ReceiptFactory } from "./templates";
 import { determineReceiptTemplate } from "./templates";
+import api from "../../../../common/utils/api";
+import toast from "react-hot-toast";
 
 // Utility function to format currency
 const formatCurrency = (amount) => {
@@ -17,6 +20,49 @@ const ReceiptModal = ({ show, onClose, data, onPrint }) => {
   if (!show || !data) return null;
 
   const { user } = useAuth();
+  const [whatsappPhone, setWhatsappPhone] = useState("");
+  const [showPhoneInput, setShowPhoneInput] = useState(false);
+  const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
+
+  // Initialize phone from customer data
+  useEffect(() => {
+    if (data?.customerInfo?.contact) {
+      // Simple check if it looks like a phone number
+      if (/^[\d+]+$/.test(data.customerInfo.contact)) {
+         setWhatsappPhone(data.customerInfo.contact);
+      }
+    }
+  }, [data]);
+
+  const handleSendWhatsapp = async () => {
+    if (!whatsappPhone && !showPhoneInput) {
+        setShowPhoneInput(true);
+        return;
+    }
+
+    if (!whatsappPhone) {
+        toast.error("Nomor WhatsApp harus diisi");
+        return;
+    }
+
+    try {
+        setSendingWhatsapp(true);
+        const transactionId = data.id || data.transaksi_id || data.transaction?.transaksi_id;
+        
+        await api.post('/receipt/whatsapp', {
+            transaksiId: transactionId,
+            phone: whatsappPhone
+        });
+        
+        toast.success("Struk berhasil dikirim ke WhatsApp");
+        setShowPhoneInput(false);
+    } catch (error) {
+        console.error("Failed to send WhatsApp:", error);
+        toast.error(error.response?.data?.message || "Gagal mengirim WhatsApp");
+    } finally {
+        setSendingWhatsapp(false);
+    }
+  };
 
   // Get template type for dynamic title
   const templateType = determineReceiptTemplate(data);
@@ -65,19 +111,51 @@ const ReceiptModal = ({ show, onClose, data, onPrint }) => {
           )}
         </div>
 
-        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-4">
-          <button
-            onClick={onPrint}
-            className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black flex items-center justify-center gap-3 shadow-lg shadow-indigo-200 transition-all active:scale-95"
-          >
-            <Printer size={20} />
-            CETAK STRUK
-          </button>
+        <div className="p-6 bg-gray-50 border-t border-gray-100 flex flex-col gap-3">
+          {showPhoneInput && (
+              <div className="flex gap-2 animate-fadeIn">
+                  <input
+                      type="text"
+                      placeholder="Nomor WhatsApp (contoh: 08123...)"
+                      value={whatsappPhone}
+                      onChange={(e) => setWhatsappPhone(e.target.value)}
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                      autoFocus
+                  />
+                  <button 
+                      onClick={() => setShowPhoneInput(false)}
+                      className="p-2 text-gray-500 hover:text-gray-700 bg-gray-200 rounded-xl"
+                  >
+                      <X size={20} />
+                  </button>
+              </div>
+          )}
+          <div className="flex gap-3">
+            <button
+                onClick={handleSendWhatsapp}
+                disabled={sendingWhatsapp}
+                className="flex-1 py-4 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-100 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+                {sendingWhatsapp ? (
+                    <span className="loading loading-spinner loading-sm"></span>
+                ) : (
+                    <FaWhatsapp size={22} />
+                )}
+                {showPhoneInput ? "KIRIM SEKARANG" : "KIRIM WHATSAPP"}
+            </button>
+            <button
+                onClick={onPrint}
+                className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 transition-all active:scale-95"
+            >
+                <Printer size={20} />
+                CETAK
+            </button>
+          </div>
           <button
             onClick={onClose}
-            className="px-6 py-4 bg-white border border-gray-200 text-gray-600 rounded-2xl font-bold hover:bg-gray-50 transition-all active:scale-95"
+            className="w-full py-3 bg-white border border-gray-200 text-gray-500 rounded-2xl font-semibold hover:bg-gray-50 transition-all active:scale-95 text-sm"
           >
-            SELESAI
+            TUTUP
           </button>
         </div>
       </div>

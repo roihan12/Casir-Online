@@ -163,10 +163,49 @@ const getTransactionData = async (req, res, next) => {
   }
 };
 
+/**
+ * Controller to send receipt by WhatsApp
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware
+ * @returns {Promise<void>}
+ */
+const sendReceiptByWhatsapp = async (req, res, next) => {
+  try {
+    // Basic validation
+    const { transaksiId, phone, message } = req.body;
+    if (!transaksiId || !phone) {
+        throw new ResponseError(400, "transaksiId dan phone diperlukan");
+    }
+
+    // Get user information for audit log
+    const userId = req.user?.id || "system";
+    const ipAddress = req.ip || req.socket.remoteAddress || "unknown";
+
+    const result = await receiptService.sendReceiptByWhatsapp({
+        transaksiId,
+        phone,
+        message
+    }, {
+      userId,
+      ipAddress,
+    });
+
+    res.status(200).json({
+      status: true,
+      message: "Struk berhasil dikirim via WhatsApp",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getReceiptPreview,
   getReceiptConfig,
   updateReceiptConfig,
   sendReceiptByEmail,
+  sendReceiptByWhatsapp,
   getTransactionData,
 };

@@ -1,3 +1,5 @@
+const http = require('http');
+const { Server } = require("socket.io");
 const app = require("./src/app");
 const prisma = require("./src/config/db");
 // const superAdmin = require("./src/utils/createSuperAdmin");
@@ -18,8 +20,35 @@ async function bootstrap() {
       process.exit(1);
     });
 
+    // Create HTTP server
+    const server = http.createServer(app);
+
+    // Initialize Socket.io
+    const io = new Server(server, {
+      cors: {
+        origin: [
+          "http://localhost:5173",
+          "http://localhost:3000",
+          "http://127.0.0.1:5173",
+        ],
+        methods: ["GET", "POST"],
+        credentials: true
+      }
+    });
+
+    // Attach io to app so it can be used in controllers
+    app.set('io', io);
+
+    io.on('connection', (socket) => {
+      console.log('Client connected to socket');
+      
+      socket.on('disconnect', () => {
+        console.log('Client disconnected from socket');
+      });
+    });
+
     // Start server
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
   } catch (error) {

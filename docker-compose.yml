@@ -45,9 +45,28 @@ services:
     networks:
       - app-network
 
+  whatsapp:
+    image: aldinokemal2104/go-whatsapp-web-multidevice
+    container_name: whatsapp
+    restart: always
+    ports:
+      - "5000:5000"
+    volumes:
+      - whatsapp:/app/storages
+    command:
+      - rest
+      - --basic-auth=admin:admin
+      - --port=5000
+      - --debug=true
+      - --os=Chrome
+      - --account-validation=false
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge
 
 volumes:
   postgres_data:
+  whatsapp:

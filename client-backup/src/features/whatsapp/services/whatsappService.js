@@ -1,6 +1,4 @@
-import axios from "axios";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+import api from "@common/utils/api";
 
 /**
  * Service for WhatsApp bot related operations
@@ -15,7 +13,7 @@ const whatsappService = {
    */
   getBotConfig: async () => {
     try {
-      const response = await axios.get(`${API_URL}/whatsapp/config`);
+      const response = await api.get(`/whatsapp/config`);
       return response.data;
     } catch (error) {
       console.error("Error fetching WhatsApp bot config:", error);
@@ -30,7 +28,7 @@ const whatsappService = {
    */
   updateBotConfig: async (config) => {
     try {
-      const response = await axios.put(`${API_URL}/whatsapp/config`, config);
+      const response = await api.put(`/whatsapp/config`, config);
       return response.data;
     } catch (error) {
       console.error("Error updating WhatsApp bot config:", error);
@@ -46,7 +44,7 @@ const whatsappService = {
    */
   getBotStatus: async () => {
     try {
-      const response = await axios.get(`${API_URL}/whatsapp/status`);
+      const response = await api.get(`/whatsapp/status`);
       return response.data;
     } catch (error) {
       console.error("Error fetching WhatsApp bot status:", error);
@@ -60,7 +58,7 @@ const whatsappService = {
    */
   restartBot: async () => {
     try {
-      const response = await axios.post(`${API_URL}/whatsapp/restart`);
+      const response = await api.post(`/whatsapp/restart`);
       return response.data;
     } catch (error) {
       console.error("Error restarting WhatsApp bot:", error);
@@ -74,7 +72,7 @@ const whatsappService = {
    */
   logoutBot: async () => {
     try {
-      const response = await axios.post(`${API_URL}/whatsapp/logout`);
+      const response = await api.post(`/whatsapp/logout`);
       return response.data;
     } catch (error) {
       console.error("Error logging out WhatsApp bot:", error);
@@ -94,7 +92,7 @@ const whatsappService = {
    */
   sendMessage: async (customerId, data) => {
     try {
-      const response = await axios.post(`${API_URL}/whatsapp/send${customerId ? `/${customerId}` : ''}`, data);
+      const response = await api.post(`/whatsapp/send${customerId ? `/${customerId}` : ''}`, data);
       return response.data;
     } catch (error) {
       console.error("Error sending WhatsApp message:", error);
@@ -123,7 +121,7 @@ const whatsappService = {
         formData = data;
       }
 
-      const response = await axios.post(`${API_URL}/whatsapp/send-image`, formData, {
+      const response = await api.post(`/whatsapp/send-image`, formData, {
         headers: formData instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {}
       });
       return response.data;
@@ -145,7 +143,7 @@ const whatsappService = {
    */
   sendLocation: async (data) => {
     try {
-      const response = await axios.post(`${API_URL}/whatsapp/send-location`, data);
+      const response = await api.post(`/whatsapp/send-location`, data);
       return response.data;
     } catch (error) {
       console.error("Error sending WhatsApp location:", error);
@@ -164,7 +162,7 @@ const whatsappService = {
    */
   sendPoll: async (data) => {
     try {
-      const response = await axios.post(`${API_URL}/whatsapp/send-poll`, data);
+      const response = await api.post(`/whatsapp/send-poll`, data);
       return response.data;
     } catch (error) {
       console.error("Error sending WhatsApp poll:", error);
@@ -180,7 +178,7 @@ const whatsappService = {
    */
   reactMessage: async (messageId, emoji) => {
     try {
-      const response = await axios.post(`${API_URL}/whatsapp/message/${messageId}/react`, { emoji });
+      const response = await api.post(`/whatsapp/message/${messageId}/react`, { emoji });
       return response.data;
     } catch (error) {
       console.error(`Error reacting to message ${messageId}:`, error);
@@ -196,7 +194,7 @@ const whatsappService = {
    */
   getTemplates: async () => {
     try {
-      const response = await axios.get(`${API_URL}/whatsapp/templates`);
+      const response = await api.get(`/whatsapp/templates`);
       return response.data;
     } catch (error) {
       console.error("Error fetching WhatsApp templates:", error);
@@ -211,7 +209,7 @@ const whatsappService = {
    */
   createTemplate: async (template) => {
     try {
-      const response = await axios.post(`${API_URL}/whatsapp/templates`, template);
+      const response = await api.post(`/whatsapp/templates`, template);
       return response.data;
     } catch (error) {
       console.error("Error creating WhatsApp template:", error);
@@ -227,7 +225,7 @@ const whatsappService = {
    */
   updateTemplate: async (id, template) => {
     try {
-      const response = await axios.put(`${API_URL}/whatsapp/templates/${id}`, template);
+      const response = await api.put(`/whatsapp/templates/${id}`, template);
       return response.data;
     } catch (error) {
       console.error(`Error updating WhatsApp template ${id}:`, error);
@@ -242,7 +240,7 @@ const whatsappService = {
    */
   deleteTemplate: async (id) => {
     try {
-      const response = await axios.delete(`${API_URL}/whatsapp/templates/${id}`);
+      const response = await api.delete(`/whatsapp/templates/${id}`);
       return response.data;
     } catch (error) {
       console.error(`Error deleting WhatsApp template ${id}:`, error);
@@ -262,8 +260,8 @@ const whatsappService = {
    */
   getAllChats: async (params = {}) => {
     try {
-      const response = await axios.get(`${API_URL}/whatsapp/chats`, { params });
-      return response.data;
+      const response = await api.get(`/whatsapp/chats`, { params });
+      return response.data.results.data;
     } catch (error) {
       console.error("Error fetching WhatsApp chats:", error);
       throw error.response?.data || { message: "Failed to fetch WhatsApp chats" };
@@ -281,7 +279,7 @@ const whatsappService = {
    */
   getChatMessages: async (chatJid, params = {}) => {
     try {
-      const response = await axios.get(`${API_URL}/whatsapp/chats/${chatJid}/messages`, { params });
+      const response = await api.get(`/whatsapp/chats/${chatJid}/messages`, { params });
       return response.data;
     } catch (error) {
       console.error(`Error fetching messages for chat ${chatJid}:`, error);
@@ -298,7 +296,7 @@ const whatsappService = {
    */
   getChatHistory: async (customerId, params = {}) => {
     try {
-      const response = await axios.get(`${API_URL}/whatsapp/history/${customerId}`, { params });
+      const response = await api.get(`/whatsapp/history/${customerId}`, { params });
       return response.data;
     } catch (error) {
       console.error(`Error fetching chat history for customer ${customerId}:`, error);
@@ -314,7 +312,7 @@ const whatsappService = {
    */
   getDevices: async () => {
     try {
-      const response = await axios.get(`${API_URL}/whatsapp/devices`);
+      const response = await api.get(`/whatsapp/devices`);
       return response.data;
     } catch (error) {
       console.error("Error fetching WhatsApp devices:", error);
@@ -329,7 +327,7 @@ const whatsappService = {
    */
   createDevice: async (description) => {
     try {
-      const response = await axios.post(`${API_URL}/whatsapp/devices`, { description });
+      const response = await api.post(`/whatsapp/devices`, { description });
       return response.data;
     } catch (error) {
       console.error("Error creating WhatsApp device:", error);
@@ -344,7 +342,7 @@ const whatsappService = {
    */
   removeDevice: async (deviceId) => {
     try {
-      const response = await axios.delete(`${API_URL}/whatsapp/devices/${deviceId}`);
+      const response = await api.delete(`/whatsapp/devices/${deviceId}`);
       return response.data;
     } catch (error) {
       console.error(`Error removing device ${deviceId}:`, error);
@@ -359,7 +357,7 @@ const whatsappService = {
    */
   getDeviceStatus: async (deviceId) => {
     try {
-      const response = await axios.get(`${API_URL}/whatsapp/devices/${deviceId}/status`);
+      const response = await api.get(`/whatsapp/devices/${deviceId}/status`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching status for device ${deviceId}:`, error);
@@ -374,7 +372,7 @@ const whatsappService = {
    */
   loginQR: async (deviceId) => {
     try {
-      const response = await axios.get(`${API_URL}/whatsapp/devices/${deviceId}/login`);
+      const response = await api.get(`/whatsapp/devices/${deviceId}/login/qr`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching QR for device ${deviceId}:`, error);
@@ -390,7 +388,7 @@ const whatsappService = {
    */
   loginWithCode: async (deviceId, phone) => {
     try {
-      const response = await axios.post(`${API_URL}/whatsapp/devices/${deviceId}/login/code`, { phone });
+      const response = await api.post(`/whatsapp/devices/${deviceId}/login/code`, { phone });
       return response.data;
     } catch (error) {
       console.error(`Error requesting pairing code for device ${deviceId}:`, error);
@@ -407,7 +405,7 @@ const whatsappService = {
    */
   checkUser: async (phones) => {
     try {
-      const response = await axios.post(`${API_URL}/whatsapp/user/check`, {
+      const response = await api.post(`/whatsapp/user/check`, {
         phones: Array.isArray(phones) ? phones.join(',') : phones
       });
       return response.data;
@@ -424,7 +422,7 @@ const whatsappService = {
    */
   getUserInfo: async (phone) => {
     try {
-      const response = await axios.get(`${API_URL}/whatsapp/user/info/${phone}`);
+      const response = await api.get(`/whatsapp/user/info/${phone}`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching info for ${phone}:`, error);
@@ -438,7 +436,7 @@ const whatsappService = {
    */
   getMyContacts: async () => {
     try {
-      const response = await axios.get(`${API_URL}/whatsapp/user/contacts`);
+      const response = await api.get(`/whatsapp/user/contacts`);
       return response.data;
     } catch (error) {
       console.error("Error fetching contacts:", error);
@@ -452,11 +450,65 @@ const whatsappService = {
    */
   getMyGroups: async () => {
     try {
-      const response = await axios.get(`${API_URL}/whatsapp/user/groups`);
+      const response = await api.get(`/whatsapp/user/groups`);
       return response.data;
     } catch (error) {
       console.error("Error fetching groups:", error);
       throw error.response?.data || { message: "Failed to fetch groups" };
+    }
+  },
+
+  // ==================== BROADCAST ====================
+
+  /**
+   * Create a new broadcast
+   * @param {Object} data - Broadcast data
+   * @returns {Promise<Object>} Created broadcast
+   */
+  createBroadcast: async (data) => {
+    try {
+      const response = await api.post(`/broadcast/send`, data);
+      return response.data;
+    } catch (error) {
+      console.error("Error creating broadcast:", error);
+      throw error.response?.data || { message: "Failed to create broadcast" };
+    }
+  },
+
+  /**
+   * Get broadcast history
+   * @returns {Promise<Array>} List of broadcasts
+   */
+  getBroadcastHistory: async () => {
+    try {
+      const response = await api.get(`/broadcast/history`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching broadcast history:", error);
+      throw error.response?.data || { message: "Failed to fetch broadcast history" };
+    }
+  },
+
+  /**
+   * Get broadcast segments
+   * @returns {Promise<Array>} List of segments
+   */
+  getBroadcastSegments: async () => {
+    try {
+      const response = await api.get(`/broadcast/segments`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching broadcast segments:", error);
+      // Fallback if API fails or not implemented yet
+      return { 
+        success: true, 
+        data: [
+          { id: 'all', name: 'Semua Pelanggan' },
+          { id: 'vip', name: 'Pelanggan VIP' },
+          { id: 'grosir', name: 'Pelanggan Grosir' },
+          { id: 'retail', name: 'Pelanggan Retail' }
+        ] 
+      };
     }
   },
 };

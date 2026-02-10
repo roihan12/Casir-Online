@@ -1,8 +1,10 @@
 import React from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { FaRobot, FaQrcode, FaPlug, FaSave, FaSync } from 'react-icons/fa';
+import whatsappService from '../services/whatsappService';
+import { FaRobot, FaQrcode, FaPlug, FaSave, FaSync, FaCheckDouble } from 'react-icons/fa';
 
 const schema = z.object({
   botName: z.string().min(1, 'Nama bot wajib diisi'),
@@ -12,7 +14,31 @@ const schema = z.object({
 });
 
 const BotConfigPage = () => {
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const queryClient = useQueryClient();
+  
+  // Fetch Bot Status & QR
+  const { data: status, isLoading: isLoadingStatus } = useQuery({
+    queryKey: ['whatsapp-status'],
+    queryFn: whatsappService.getBotStatus,
+    refetchInterval: (data) => {
+      // Stop polling if connected or logged in
+      console.log("status", data);
+      if (data?.state?.data?.state === 'connected' || data?.state?.data?.state === 'logged_in') {
+        return false;
+      }
+      return 30000; // Poll every 30 seconds to match QR expiry
+    },
+  });
+
+  console.log("status", status);
+
+  // Fetch Bot Config for form defaults
+  const { data: config } = useQuery({
+    queryKey: ['whatsapp-config'],
+    queryFn: whatsappService.getBotConfig,
+  });
+
+  const { register, handleSubmit, reset, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
       botName: 'My Business Bot',
@@ -22,9 +48,33 @@ const BotConfigPage = () => {
     }
   });
 
+  // Update form when config is loaded
+  React.useEffect(() => {
+    if (config) {
+      reset({
+        botName: config.name || 'My Business Bot',
+        phoneNumber: config.phoneNumber || '',
+        webhookUrl: config.apiUrl || '',
+        autoReply: config.autoReply || false, // Assuming schema has this
+      });
+    }
+  }, [config, reset]);
+
+  // Update Config Mutation
+  const updateConfigMutation = useMutation({
+    mutationFn: whatsappService.updateBotConfig,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['whatsapp-config']);
+      // Ideally show a toast here
+      alert('Konfigurasi berhasil disimpan!');
+    },
+    onError: (error) => {
+        alert(`Gagal menyimpan: ${error.message}`);
+    }
+  });
+
   const onSubmit = (data) => {
-    console.log('Bot Config Data:', data);
-    // TODO: Connect to API
+    updateConfigMutation.mutate(data);
   };
 
   return (
@@ -35,10 +85,17 @@ const BotConfigPage = () => {
           Konfigurasi Bot WhatsApp
         </h1>
         <div className="flex items-center gap-2">
-            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium flex items-center gap-1">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                Connected
-            </span>
+            {status?.state === 'connected' || status?.state === 'logged_in' ? (
+                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium flex items-center gap-1">
+                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                    Connected: {status.phoneNumber}
+                </span>
+            ) : (
+                <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-medium flex items-center gap-1">
+                    <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                    Disconnected
+                </span>
+            )}
         </div>
       </div>
 
@@ -51,20 +108,49 @@ const BotConfigPage = () => {
               Koneksi Perangkat
             </h2>
             <div className="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-              <div className="w-48 h-48 bg-white p-2 rounded-lg shadow-sm mb-4">
-                 {/* Placeholder for QR Code */}
-                 <img 
-                    src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=ExampleData" 
-                    alt="Scan QR" 
-                    className="w-full h-full object-contain opacity-50"
-                 />
-              </div>
-              <p className="text-sm text-gray-500 text-center mb-4">
-                Scan QR code ini dengan aplikasi WhatsApp Anda untuk menghubungkan bot.
-              </p>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 shadow-md">
-                <FaSync /> Generate QR Baru
-              </button>
+              {status?.state === 'connected' || status?.state === 'logged_in' ? (
+                  <div className="text-center">
+                      <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <FaCheckDouble size={32} />
+                      </div>
+                      <p className="font-medium text-gray-900">WhatsApp Terhubung</p>
+                      <p className="text-sm text-gray-500 mt-1">{status.phoneNumber}</p>
+                      <button 
+                        onClick={() => {/* Implement Logout */}}
+                        className="mt-4 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium transition"
+                      >
+                        Putus Koneksi
+                      </button>
+                  </div>
+              ) : (
+                  <>
+                    <div className="w-48 h-48 bg-white p-2 rounded-lg shadow-sm mb-4">
+                        {status?.qrCode ? (
+                            <img 
+                                src={status.qrCode} 
+                                alt="Scan QR" 
+                                className="w-full h-full object-contain"
+                            />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-xs">
+                                {isLoadingStatus ? 'Loading...' : 'Waiting for QR...'}
+                            </div>
+                        )}
+                    </div>
+                    <p className="text-sm text-gray-500 text-center mb-4">
+                        QR akan berakhir dalam {status?.qrDuration} detik auto refresh
+                    </p>
+                    <p className="text-sm text-gray-500 text-center mb-4">
+                        Scan QR code ini dengan aplikasi WhatsApp Anda untuk menghubungkan bot.
+                    </p>
+                    <button 
+                        onClick={() => queryClient.invalidateQueries(['whatsapp-status'])}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 shadow-md"
+                    >
+                        <FaSync /> Refresh QR
+                    </button>
+                  </>
+              )}
             </div>
           </div>
         </div>

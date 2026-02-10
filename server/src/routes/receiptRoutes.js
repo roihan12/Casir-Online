@@ -35,6 +35,13 @@ router.post(
   receiptController.sendReceiptByEmail
 );
 
+// POST - Send receipt by WhatsApp
+router.post(
+  "/whatsapp",
+  hasPermission(["transaksi:read"]),
+  receiptController.sendReceiptByWhatsapp
+);
+
 // GET - Get transaction data for receipt (JSON format)
 router.get(
   "/transaction/:transaksiId",
