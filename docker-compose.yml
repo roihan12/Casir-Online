@@ -12,8 +12,14 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/transaksi
+      # WhatsApp Service Configuration
+      - WHATSAPP_SERVICE_URL=http://whatsapp:5000
+      - WHATSAPP_WEBHOOK_SECRET=your-super-secret-key-change-this
+      - WHATSAPP_BASIC_AUTH_USERNAME=admin
+      - WHATSAPP_BASIC_AUTH_PASSWORD=admin
     depends_on:
       - db
+      - whatsapp
     networks:
       - app-network
 
@@ -53,13 +59,18 @@ services:
       - "5000:5000"
     volumes:
       - whatsapp:/app/storages
-    command:
-      - rest
-      - --basic-auth=admin:admin
-      - --port=5000
-      - --debug=true
-      - --os=Chrome
-      - --account-validation=false
+    environment:
+      # Webhook Configuration
+      - WHATSAPP_WEBHOOK=http://host.docker.internal:3000/api/whatsapp/webhook
+      - WHATSAPP_WEBHOOK_SECRET=your-super-secret-key-change-this
+      - WHATSAPP_WEBHOOK_EVENTS=message,message.ack,message.reaction,message.edited,message.revoked,group.participants
+      - WHATSAPP_WEBHOOK_INSECURE_SKIP_VERIFY=false
+      # Basic Auth
+      - APP_BASIC_AUTH=admin:admin
+      - APP_PORT=5000
+      - APP_DEBUG=true
+      - APP_OS=Chrome
+      - APP_ACCOUNT_VALIDATION=false
     networks:
       - app-network
 

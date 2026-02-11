@@ -607,21 +607,312 @@ exports.reactMessage = async (req, res) => {
 };
 /**
  * Webhook handler for incoming WhatsApp messages
+ * POST /api/whatsapp/webhook
+ *
+ * Payload structure from go-whatsapp-web-multidevice:
+ * {
+ *   "event": "message | message.reaction | message.ack | group.participants | message.revoked | message.edited",
+ *   "device_id": "628123456789@s.whatsapp.net",
+ *   "payload": { ... }
+ * }
+ *
+ * Documentation: https://github.com/aldinokemal/go-whatsapp-web-multidevice/blob/main/docs/webhook-payload.md
  */
 exports.webhook = async (req, res) => {
   try {
     const data = req.body;
-    console.log('WhatsApp Webhook:', JSON.stringify(data, null, 2));
+    console.log('WhatsApp Webhook Event:', data.event);
+    console.log('WhatsApp Webhook Payload:', data);
 
-    // Get IO instance
+    // Get IO instance for real-time push to frontend
     const io = req.app.get('io');
-    if (io) {
-      io.emit('whatsapp_message', data);
+
+    // Route to appropriate handler based on event type
+    switch (data.event) {
+      case 'message':
+        await handleMessage(data.payload, data.device_id, io);
+        break;
+
+      case 'message.ack':
+        await handleMessageAck(data.payload, data.device_id, io);
+        break;
+
+      case 'message.reaction':
+        await handleMessageReaction(data.payload, data.device_id, io);
+        break;
+
+      case 'message.revoked':
+        await handleMessageRevoked(data.payload, data.device_id, io);
+        break;
+
+      case 'message.edited':
+        await handleMessageEdited(data.payload, data.device_id, io);
+        break;
+
+      case 'group.participants':
+        await handleGroupParticipants(data.payload, data.device_id, io);
+        break;
+
+      default:
+        console.log('Unhandled webhook event:', data.event);
+        // Still emit unknown events
+        if (io) {
+          io.emit('whatsapp_message', data);
+        }
     }
 
+    // Always respond quickly (webhook timeout is 10 seconds)
     res.json({ status: 'ok' });
   } catch (error) {
     console.error('Webhook Error:', error);
+    // Still return 200 to prevent webhook retries (if error is logged/handled)
     res.status(500).json({ message: error.message });
   }
 };
+
+/**
+ * Handle incoming message (text, media, location, contact, etc.)
+ */
+async function handleMessage(payload, deviceId, io) {
+  const { id, chat_id, from, from_name, timestamp, body, image, video, audio, document, sticker, location, contact, extendedTextMessage } = payload;
+
+  // Determine message type and content
+  let messageType = 'text';
+  let content = body || extendedTextMessage?.text || null;
+  let mediaUrl = null;
+
+  if (image) {
+    messageType = 'image';
+    mediaUrl = typeof image === 'string' ? image : (image.url || null);
+    content = (typeof image === 'object' && image.caption) ? image.caption : content;
+  } else if (video) {
+    messageType = 'video';
+    mediaUrl = typeof video === 'string' ? video : (video.url || null);
+  } else if (audio) {
+    messageType = 'audio';
+    mediaUrl = typeof audio === 'string' ? audio : (audio.url || null);
+  } else if (document) {
+    messageType = 'document';
+    mediaUrl = typeof document === 'string' ? document : (document.url || null);
+  } else if (sticker) {
+    messageType = 'sticker';
+    mediaUrl = sticker;
+  } else if (location) {
+    messageType = 'location';
+    content = JSON.stringify(location);
+  } else if (contact) {
+    messageType = 'contact';
+    content = JSON.stringify(contact);
+  }
+
+  // Extract phone number from JID (remove @s.whatsapp.net)
+  const fromPhone = from.replace('@s.whatsapp.net', '');
+
+  // Try to find customer by phone number
+  let customerId = null;
+  let branchId = null;
+  // try {
+  //   // Normalize phone number (remove +, spaces, etc.)
+  //   const normalizedPhone = fromPhone.replace(/[^0-9]/g, '');
+
+  //   // Try to find customer with this phone
+  //   const customer = await prisma.pelanggan.findFirst({
+  //     where: {
+  //       OR: [
+  //         { telepon: { contains: normalizedPhone } },
+  //         { noHp: { contains: normalizedPhone } },
+  //         { telepon: fromPhone },
+  //         { noHp: fromPhone },
+  //       ]
+  //     },
+  //     select: { id: true, cabangId: true }
+  //   });
+
+  //   if (customer) {
+  //     customerId = customer.id;
+  //     branchId = customer.cabangId;
+  //   }
+  // } catch (err) {
+  //   // Customer lookup failed, continue without it
+  //   console.error('Customer lookup failed:', err.message);
+  // }
+
+  // // Store message in database
+  // try {
+  //   await prisma.whatsappMessage.create({
+  //     data: {
+  //       messageId: id,
+  //       chatId: chat_id,
+  //       deviceId: deviceId,
+  //       fromPhone: fromPhone,
+  //       fromName: from_name || null,
+  //       messageType: messageType,
+  //       body: content,
+  //       mediaUrl: mediaUrl,
+  //       timestamp: new Date(timestamp),
+  //       status: 'sent',
+  //       customerId: customerId,
+  //       branchId: branchId
+  //     }
+  //   });
+  //   console.log(`Message stored: ${id} from ${from_name || fromPhone}`);
+  // } catch (dbError) {
+  //   // Ignore duplicate errors (idempotent processing)
+  //   if (dbError.code === 'P2002' || dbError.message?.includes('unique constraint')) {
+  //     console.log(`Duplicate message ignored: ${id}`);
+  //   } else {
+  //     console.error('Error saving message to DB:', dbError);
+  //   }
+  // }
+
+  // Push to connected clients via Socket.IO
+  if (io) {
+    io.emit('whatsapp_message', {
+      type: 'message',
+      device_id: deviceId,
+      data: payload
+    });
+  }
+}
+
+/**
+ * Handle message acknowledgment (delivered/read)
+ */
+async function handleMessageAck(payload, deviceId, io) {
+  const { ids, chat_id, from, receipt_type, receipt_type_description } = payload;
+
+  console.log(`Message ACK: ${receipt_type} for ${ids.length} message(s)`);
+
+  // Update message status in database
+  try {
+    await prisma.whatsappMessage.updateMany({
+      where: {
+        messageId: { in: ids },
+        deviceId: deviceId
+      },
+      data: {
+        status: receipt_type === 'read' ? 'read' : 'delivered',
+        readAt: receipt_type === 'read' ? new Date() : null
+      }
+    });
+  } catch (dbError) {
+    console.error('Error updating message ACK status:', dbError);
+  }
+
+  // Push to connected clients
+  if (io) {
+    io.emit('whatsapp_message', {
+      type: 'ack',
+      device_id: deviceId,
+      data: payload
+    });
+  }
+}
+
+/**
+ * Handle message reaction
+ */
+async function handleMessageReaction(payload, deviceId, io) {
+  const { id, chat_id, from, from_name, reaction, reacted_message_id } = payload;
+
+  console.log(`Message reaction: ${reaction} on message ${reacted_message_id}`);
+
+  // Store or update reaction in database (optional)
+  // You could add a reactions table or store it in message metadata
+
+  // Push to connected clients
+  if (io) {
+    io.emit('whatsapp_message', {
+      type: 'reaction',
+      device_id: deviceId,
+      data: payload
+    });
+  }
+}
+
+/**
+ * Handle message revoked/deleted
+ */
+async function handleMessageRevoked(payload, deviceId, io) {
+  const { id, chat_id, from, from_name, revoked_message_id, revoked_from_me } = payload;
+
+  console.log(`Message revoked: ${revoked_message_id}`);
+
+  // Mark message as deleted in database
+  try {
+    await prisma.whatsappMessage.updateMany({
+      where: {
+        messageId: revoked_message_id,
+        deviceId: deviceId
+      },
+      data: {
+        deletedAt: new Date()
+      }
+    });
+  } catch (dbError) {
+    console.error('Error marking message as deleted:', dbError);
+  }
+
+  // Push to connected clients
+  if (io) {
+    io.emit('whatsapp_message', {
+      type: 'revoked',
+      device_id: deviceId,
+      data: payload
+    });
+  }
+}
+
+/**
+ * Handle message edited
+ */
+async function handleMessageEdited(payload, deviceId, io) {
+  const { id, chat_id, from, from_name, timestamp, original_message_id, body } = payload;
+
+  console.log(`Message edited: ${original_message_id}`);
+
+  // Update message in database
+  try {
+    await prisma.whatsappMessage.updateMany({
+      where: {
+        messageId: original_message_id,
+        deviceId: deviceId
+      },
+      data: {
+        body: body,
+        editedAt: new Date(timestamp)
+      }
+    });
+  } catch (dbError) {
+    console.error('Error updating edited message:', dbError);
+  }
+
+  // Push to connected clients
+  if (io) {
+    io.emit('whatsapp_message', {
+      type: 'edited',
+      device_id: deviceId,
+      data: payload
+    });
+  }
+}
+
+/**
+ * Handle group participants changes
+ */
+async function handleGroupParticipants(payload, deviceId, io) {
+  const { chat_id, type, jids } = payload;
+
+  console.log(`Group participants: ${type} ${jids.length} member(s) in ${chat_id}`);
+
+  // You could store group metadata or trigger notifications
+
+  // Push to connected clients
+  if (io) {
+    io.emit('whatsapp_message', {
+      type: 'group_participants',
+      device_id: deviceId,
+      data: payload
+    });
+  }
+}

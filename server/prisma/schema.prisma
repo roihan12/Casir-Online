@@ -1485,6 +1485,36 @@ model BotMessage {
   @@map("bot_message")
 }
 
+/// WhatsApp Message model for storing all WhatsApp communications
+/// Supports webhook integration with go-whatsapp-web-multidevice
+model WhatsappMessage {
+  id              Int       @id @default(autoincrement())
+  messageId       String    @unique @map("message_id") @db.VarChar(255)
+  chatId          String    @map("chat_id") @db.VarChar(255)
+  deviceId        String    @map("device_id") @db.VarChar(255)
+  fromPhone       String    @map("from_phone") @db.VarChar(20)
+  fromName        String?   @map("from_name") @db.VarChar(100)
+  messageType     String    @map("message_type") @db.VarChar(50) // text, image, video, audio, document, sticker, location, contact
+  body            String?   @db.Text
+  mediaUrl        String?   @map("media_url") @db.VarChar(500)
+  timestamp       DateTime  @map("timestamp")
+  status          String    @default("sent") @db.VarChar(20) // sent, delivered, read
+  readAt          DateTime? @map("read_at")
+  editedAt        DateTime? @map("edited_at")
+  deletedAt       DateTime? @map("deleted_at")
+  customerId      String?   @map("customer_id") @db.VarChar(36)
+  branchId        String?   @map("branch_id") @db.VarChar(36)
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@index([chatId], map: "idx_whatsapp_message_chat")
+  @@index([deviceId], map: "idx_whatsapp_message_device")
+  @@index([fromPhone], map: "idx_whatsapp_message_from")
+  @@index([customerId], map: "idx_whatsapp_message_customer")
+  @@index([branchId], map: "idx_whatsapp_message_branch")
+  @@index([timestamp], map: "idx_whatsapp_message_timestamp")
+  @@map("whatsapp_message")
+}
+
 model LoyaltyConfig {
   id                 String   @id @default(uuid()) @map("loyalty_config_id")
   cabangId           String?  @map("cabang_id") @db.VarChar(36)

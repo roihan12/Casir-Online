@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const whatsappController = require('../controllers/whatsappController');
+const verifyWebhookSignature = require('../middleware/webhookSignatureMiddleware');
 
 // ==================== CONFIGURATION ====================
 
@@ -82,7 +83,7 @@ router.get('/user/contacts', whatsappController.getMyContacts);
 // Get user's groups
 router.get('/user/groups', whatsappController.getMyGroups);
 
-// Webhook for incoming messages
-router.post('/webhook', whatsappController.webhook);
+// Webhook for incoming messages (with signature verification)
+router.post('/webhook', verifyWebhookSignature, whatsappController.webhook);
 
 module.exports = router;

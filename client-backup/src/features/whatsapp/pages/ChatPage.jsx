@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWhatsappChats, useWhatsappMessages, useWhatsappSendMessage, useWhatsappStatus } from '../hooks/useWhatsapp';
 import { useCustomerSearch } from '../../../common/hooks/usePosQueries';
+import socket from '../../../common/services/socketService';
 import { FaSearch, FaPaperclip, FaSmile, FaMicrophone, FaEllipsisV, FaCheck, FaCheckDouble, FaPhone, FaVideo, FaPlus, FaTimes } from 'react-icons/fa';
 
 const ChatPage = () => {
@@ -9,12 +10,11 @@ const ChatPage = () => {
   const [messageInput, setMessageInput] = useState('');
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [realtimeMessages, setRealtimeMessages] = useState([]); // Store real-time messages
   const messagesEndRef = useRef(null);
 
   // Fetch chats
-  const { data: contacts = [], isLoading: isLoadingChats } = useWhatsappChats({ limit: 50 });
-
-  
+  const { data: contacts = [], isLoading: isLoadingChats, refetch: refetchChats } = useWhatsappChats({ limit: 50 });
 
   // Customer search for new chat
   const { data: customers = [], isLoading: isLoadingCustomers } = useCustomerSearch(customerSearchQuery, null, {
@@ -22,7 +22,7 @@ const ChatPage = () => {
   });
 
   // Fetch messages for selected chat
-  const { data: messages = [], isLoading: isLoadingMessages } = useWhatsappMessages(selectedChat?.jid, { limit: 50 });
+  const { data: messages = [], isLoading: isLoadingMessages, refetch: refetchMessages } = useWhatsappMessages(selectedChat?.jid, { limit: 50 });
 
   // Send message mutation
   const sendMessageMutation = useWhatsappSendMessage();
@@ -30,20 +30,95 @@ const ChatPage = () => {
   // Status bot
   const { data: botStatus } = useWhatsappStatus();
 
+  // Socket listener for real-time messages
+  useEffect(() => {
+    const handleWhatsAppMessage = (event) => {
+      console.log('Real-time WhatsApp event:', event);
+
+      if (event.type === 'message' && event.data) {
+        const msgData = event.data;
+
+        // Create normalized helper
+        const normalizeJid = (jid) => jid ? jid.replace('@s.whatsapp.net', '') : '';
+        const selectedJid = normalizeJid(selectedChat?.jid);
+        const msgChatId = normalizeJid(msgData.chat_id || msgData.key?.remoteJid);
+        
+        console.log('Comparing JIDs:', { selected: selectedJid, incoming: msgChatId });
+
+        // If message belongs to current chat, add it to real-time messages
+        if (selectedJid && msgChatId === selectedJid) {
+          const isFromMe = msgData.from_me || msgData.key?.fromMe || false;
+          
+          const newMessage = {
+            id: msgData.id || msgData.key?.id,
+            text: msgData.body || msgData.message?.conversation || msgData.message?.extendedTextMessage?.text || 'Media Message',
+            sender: isFromMe ? 'me' : 'other', 
+            time: new Date(msgData.timestamp * 1000 || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timestamp: (msgData.timestamp * 1000) || Date.now(),
+            status: 'sent',
+            fromMe: isFromMe,
+            ...msgData
+          };
+
+          console.log('Adding real-time message:', newMessage);
+          setRealtimeMessages(prev => [...prev, newMessage]);
+          
+          // Scroll to bottom
+          setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+          }, 100);
+        }
+
+        // Always refresh chat list for last message preview
+        refetchChats();
+      }
+    };
+
+    socket.on('whatsapp_message', handleWhatsAppMessage);
+
+    return () => {
+      socket.off('whatsapp_message', handleWhatsAppMessage);
+    };
+  }, [selectedChat, refetchChats]);
+
+  // Clear real-time messages when switching chats
+  useEffect(() => {
+    setRealtimeMessages([]);
+  }, [selectedChat?.jid]);
+
+  // Combine fetched messages with real-time messages
+  const allMessages = [...messages, ...realtimeMessages];
+
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [allMessages]);
 
   const handleSendMessage = () => {
     if (!messageInput.trim() || !selectedChat) return;
-    
+
+    // Optimistically add message to real-time messages
+    const optimisticMessage = {
+      id: `temp-${Date.now()}`,
+      text: messageInput,
+      sender: 'me',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: Date.now(),
+      status: 'sent',
+      fromMe: true
+    };
+    setRealtimeMessages(prev => [...prev, optimisticMessage]);
+
     sendMessageMutation.mutate({
         chatJid: selectedChat.jid,
         message: messageInput
     }, {
         onSuccess: () => {
             setMessageInput('');
+        },
+        onError: () => {
+            // Remove optimistic message on error
+            setRealtimeMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
         }
     });
   };
@@ -173,35 +248,69 @@ const ChatPage = () => {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 z-10 scrollbar-thin scrollbar-thumb-gray-300">
-            {isLoadingMessages && (
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 z-10 scrollbar-thin scrollbar-thumb-gray-300">
+            {isLoadingMessages && allMessages.length === 0 && (
                 <div className="flex justify-center py-4">
                     <span className="loading loading-spinner loading-md text-blue-500"></span>
                 </div>
             )}
-            {messages.map((msg, index) => (
-                <div key={msg.id || index} className={`flex ${msg.fromMe || msg.key?.fromMe ? 'justify-end' : 'justify-start'}`}>
-                <div 
-                    className={`max-w-[70%] rounded-lg px-4 py-2 relative shadow-md ${
-                    msg.fromMe || msg.key?.fromMe
-                        ? 'bg-[#d9fdd3] text-gray-800 rounded-tr-none' 
-                        : 'bg-white text-gray-800 rounded-tl-none'
-                    }`}
-                >
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                        {msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.content || 'Media Message'}
-                    </p>
-                    <div className="flex items-center justify-end gap-1 mt-1">
-                    <span className="text-[10px] text-gray-500">
-                        {msg.messageTimestamp ? formatTime(msg.messageTimestamp.low || msg.messageTimestamp) : ''}
-                    </span>
-                    {(msg.fromMe || msg.key?.fromMe) && (
-                        <FaCheckDouble className={`${msg.status >= 3 ? 'text-blue-500' : 'text-gray-400'} text-[10px]`} />
-                    )}
+
+            {allMessages.map((msg, index) => {
+                const isFromMe = msg.fromMe || msg.key?.fromMe || msg.sender === 'me';
+                const messageText = msg.text || msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.content || 'Media Message';
+                const messageTime = msg.time || (msg.messageTimestamp ? formatTime(msg.messageTimestamp.low || msg.messageTimestamp) : '');
+
+                return (
+                <div key={msg.id || index} className={`flex ${isFromMe ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`flex max-w-[75%] ${isFromMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                        {/* Avatar for received messages */}
+                        {!isFromMe && (
+                            <div className="flex-shrink-0 mr-2">
+                                <img
+                                    src={selectedChat?.avatar || `https://ui-avatars.com/api/?name=${selectedChat?.name || 'User'}&background=random`}
+                                    alt={selectedChat?.name}
+                                    className="w-8 h-8 rounded-full object-cover"
+                                />
+                            </div>
+                        )}
+
+                        {/* Message Bubble */}
+                        <div
+                            className={`px-4 py-2 relative ${
+                                isFromMe
+                                    ? 'bg-[#d9fdd3] text-gray-800 rounded-lg rounded-tr-sm'
+                                    : 'bg-white text-gray-800 rounded-lg rounded-tl-sm'
+                            } shadow-sm`}
+                        >
+                            {/* Sender name for group chats or received messages */}
+                            {!isFromMe && selectedChat?.name && (
+                                <p className="text-xs font-semibold text-gray-600 mb-1">{selectedChat.name}</p>
+                            )}
+
+                            {/* Message content */}
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                                {messageText}
+                            </p>
+
+                            {/* Time and status */}
+                            <div className={`flex items-center gap-1 mt-1 ${isFromMe ? 'justify-end' : 'justify-start'}`}>
+                                <span className="text-[10px] text-gray-500">
+                                    {messageTime}
+                                </span>
+                                {isFromMe && (
+                                    <span className="flex items-center">
+                                        {msg.status >= 3 || msg.status === 'read' ? (
+                                            <FaCheckDouble className="text-blue-500 text-[10px]" />
+                                        ) : (
+                                            <FaCheckDouble className="text-gray-400 text-[10px]" />
+                                        )}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
-                </div>
-            ))}
+            );})}
             <div ref={messagesEndRef} />
             </div>
 

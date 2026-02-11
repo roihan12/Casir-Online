@@ -97,10 +97,21 @@ app.use((req, res, next) => {
 // Apply middleware
 app.use(cookieParser());
 app.use(helmet());
+
+// Raw body parser for webhook signature verification
+// Must be before express.json() to capture raw body
+app.use('/api/whatsapp/webhook',
+  bodyParser.json({
+    verify: (req, res, buf) => {
+      // Store raw body for HMAC signature verification
+      req.rawBody = buf.toString('utf8');
+    }
+  })
+);
+
+// Regular JSON parser for other routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// app.use(bodyParser.json());
-// app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use(morgan("combined"));
 
