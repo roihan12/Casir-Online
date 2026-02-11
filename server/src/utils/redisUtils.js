@@ -67,12 +67,47 @@ const cacheDelete = async (key) => {
  * Menghapus beberapa data dari Redis berdasarkan pattern
  * @param {string} pattern - Pattern kunci Redis (misal: "user:*")
  * @returns {Promise<number>} - Jumlah key yang dihapus
+ * @deprecated - Use cacheDeletePatternScan for non-blocking deletion
  */
 const cacheDeletePattern = async (pattern) => {
   const keys = await redisClient.keys(pattern);
   if (keys.length === 0) return 0;
 
   return await redisClient.del(keys);
+};
+
+/**
+ * Menghapus beberapa data dari Redis berdasarkan pattern menggunakan SCAN (non-blocking)
+ * @param {string} pattern - Pattern kunci Redis (misal: "user:*")
+ * @param {number} batchCount - Number of keys to fetch per SCAN iteration (default: 100)
+ * @returns {Promise<number>} - Jumlah key yang dihapus
+ */
+const cacheDeletePatternScan = async (pattern, batchCount = 100) => {
+  let cursor = "0";
+  let totalDeleted = 0;
+
+  do {
+    try {
+      const [nextCursor, keys] = await redisClient.scan(
+        cursor,
+        "MATCH",
+        pattern,
+        "COUNT",
+        batchCount
+      );
+
+      if (keys && keys.length > 0) {
+        totalDeleted += await redisClient.del(keys);
+      }
+
+      cursor = nextCursor;
+    } catch (error) {
+      console.error(`Error in cacheDeletePatternScan for pattern "${pattern}":`, error);
+      throw error;
+    }
+  } while (cursor !== "0");
+
+  return totalDeleted;
 };
 
 /**
@@ -158,6 +193,7 @@ module.exports = {
   cacheGet,
   cacheDelete,
   cacheDeletePattern,
+  cacheDeletePatternScan,
   cacheExists,
   cacheTtl,
   createCacheKey,

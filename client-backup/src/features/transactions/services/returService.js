@@ -59,6 +59,22 @@ const returService = {
     const response = await api.post("/transaksi", transactionData);
     return response.data;
   },
+
+  // Get Return PDF
+  getReturPdf: async (id) => {
+    const response = await api.get(`/transaksi/${id}/pdf`, {
+        responseType: 'blob'
+    });
+    
+    // Error handling for JSON response in Blob
+    if (response.data.type === 'application/json') {
+        const text = await response.data.text();
+        const errorData = JSON.parse(text);
+        throw new Error(errorData.message || 'Gagal mengunduh PDF');
+    }
+
+    return response.data;
+  },
 };
 
 export default returService;

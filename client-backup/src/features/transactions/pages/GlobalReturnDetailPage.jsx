@@ -22,7 +22,7 @@ import {
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import toast from "react-hot-toast";
-import { useReturById } from "../hooks/useReturQueries";
+import { useReturById, useGenerateReturnPdf } from "../hooks/useReturQueries";
 import PelunasanModal from "../components/PelunasanModal";
 
 // Formatter untuk uang
@@ -114,9 +114,68 @@ const GlobalReturnDetail = () => {
     navigate("/returns");
   };
 
+  // PDF Generation Hook
+  const {
+    refetch: generatePdf,
+    isLoading: isGeneratingPdf,
+  } = useGenerateReturnPdf(id);
+
+  const [isPrinting, setIsPrinting] = useState(false);
+
   // Print receipt
-  const handlePrintReceipt = () => {
-    toast.success("Fitur cetak tanda terima retur akan segera tersedia");
+  const handlePrintReceipt = async () => {
+    try {
+      setIsPrinting(true);
+      const { data } = await generatePdf();
+      
+      if (!data) {
+        throw new Error("Gagal mengambil data PDF");
+      }
+
+      const blob = new Blob([data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create hidden iframe
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = url;
+      document.body.appendChild(iframe);
+      
+      iframe.onload = () => {
+        setTimeout(() => {
+          iframe.contentWindow.print();
+        }, 500);
+      };
+    } catch (error) {
+      console.error("Error printing return:", error);
+      toast.error("Gagal mencetak tanda terima retur");
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
+  // Download PDF
+  const handleDownloadPdf = async () => {
+    try {
+      const { data } = await generatePdf();
+      
+      if (!data) {
+        throw new Error("Gagal mengambil data PDF");
+      }
+
+      const blob = new Blob([data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `return-${returnData?.nomor_transaksi || id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+      toast.error("Gagal mengunduh PDF");
+    }
   };
 
   if (loading) {
@@ -236,21 +295,27 @@ const GlobalReturnDetail = () => {
 
         <div className="flex space-x-2">
           <button
-            className="flex items-center text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-md px-4 py-2 text-sm"
+            className="flex items-center text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-md px-4 py-2 text-sm disabled:opacity-50"
             onClick={handlePrintReceipt}
+            disabled={isPrinting || isGeneratingPdf}
           >
-            <Printer size={16} className="mr-2" />
+            {isPrinting ? (
+                <Loader className="animate-spin h-4 w-4 mr-2" />
+            ) : (
+                <Printer size={16} className="mr-2" />
+            )}
             Cetak
           </button>
           <button
-            className="flex items-center text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-md px-4 py-2 text-sm"
-            onClick={() =>
-              toast.success(
-                "Fitur unduh tanda terima retur akan segera tersedia"
-              )
-            }
+            className="flex items-center text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-md px-4 py-2 text-sm disabled:opacity-50"
+            onClick={handleDownloadPdf}
+            disabled={isGeneratingPdf}
           >
-            <Download size={16} className="mr-2" />
+             {isGeneratingPdf && !isPrinting ? (
+                <Loader className="animate-spin h-4 w-4 mr-2" />
+            ) : (
+                <Download size={16} className="mr-2" />
+            )}
             Unduh PDF
           </button>
           {/* Tampilkan tombol pelunasan jika retur belum lunas */}

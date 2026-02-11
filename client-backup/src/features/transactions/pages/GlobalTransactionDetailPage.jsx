@@ -27,6 +27,10 @@ import toast from "react-hot-toast";
 import { useTransactionDetail } from "../hooks/useTransactions";
 import PelunasanModal from "../components/PelunasanModal";
 import formatDate from "@common/utils/formatDate";
+import {
+  getReceiptPreview,
+  getReceiptPDF,
+} from "../../../services/receiptService";
 
 // Formatter untuk uang
 const formatCurrency = (amount) => {
@@ -41,6 +45,8 @@ const GlobalTransactionDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [pelunasanModalOpen, setPelunasanModalOpen] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Fetch transaction detail using React Query
   const {
@@ -267,8 +273,59 @@ const GlobalTransactionDetail = () => {
   };
 
   // Print receipt
-  const handlePrintReceipt = () => {
-    toast.success("Fitur cetak struk akan segera tersedia");
+  const handlePrintReceipt = async () => {
+    try {
+      setIsPrinting(true);
+      const htmlContent = await getReceiptPreview(id);
+      
+      // Create an iframe to print
+      const printWindow = window.open('', '_blank', 'width=800,height=600');
+      if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        printWindow.focus();
+        
+        // Wait for content to load then print
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 500);
+      } else {
+        toast.error("Pop-up diblokir. Izinkan pop-up untuk mencetak.");
+      }
+    } catch (error) {
+      console.error("Failed to print receipt:", error);
+      toast.error("Gagal mencetak struk");
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
+  // Download PDF
+  const handleDownloadPdf = async () => {
+    try {
+      setIsDownloading(true);
+      const pdfBlob = await getReceiptPDF(id);
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([pdfBlob]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `receipt-${displayData.nomor_transaksi}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success("Struk berhasil diunduh");
+    } catch (error) {
+      console.error("Failed to download PDF:", error);
+      toast.error("Gagal mengunduh PDF");
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   if (isLoading) {
@@ -316,9 +373,6 @@ const GlobalTransactionDetail = () => {
     );
   }
 
-
-
-
   return (
     <div className="w-full p-6">
       {/* Dashboard Header */}
@@ -339,20 +393,28 @@ const GlobalTransactionDetail = () => {
 
         <div className="flex space-x-2">
           <button
-            className="flex items-center text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-md px-4 py-2 text-sm"
+            className="flex items-center text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-md px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handlePrintReceipt}
+            disabled={isPrinting}
           >
-            <Printer size={16} className="mr-2" />
-            Cetak Struk
+            {isPrinting ? (
+              <Loader size={16} className="mr-2 animate-spin" />
+            ) : (
+              <Printer size={16} className="mr-2" />
+            )}
+            {isPrinting ? "Mencetak..." : "Cetak Struk"}
           </button>
           <button
-            className="flex items-center text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-md px-4 py-2 text-sm"
-            onClick={() =>
-              toast.success("Fitur unduh PDF akan segera tersedia")
-            }
+            className="flex items-center text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-md px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleDownloadPdf}
+            disabled={isDownloading}
           >
-            <Download size={16} className="mr-2" />
-            Unduh PDF
+            {isDownloading ? (
+              <Loader size={16} className="mr-2 animate-spin" />
+            ) : (
+              <Download size={16} className="mr-2" />
+            )}
+            {isDownloading ? "Mengunduh..." : "Unduh PDF"}
           </button>
           {/* Tampilkan tombol pelunasan jika transaksi belum lunas */}
           {displayData.status_pembayaran === "BELUM_LUNAS" && (
@@ -398,7 +460,7 @@ const GlobalTransactionDetail = () => {
               <div className="flex items-center text-gray-600">
                 <User size={16} className="mr-2" />
                 <span className="text-sm">
-                  Kasir: {displayData.cashierName   || "Tidak tersedia"}
+                  Kasir: {displayData.user?.namaLengkap || "Tidak tersedia"}
                 </span>
               </div>
             </div>
@@ -885,4 +947,3 @@ const GlobalTransactionDetail = () => {
 };
 
 export default GlobalTransactionDetail;
-

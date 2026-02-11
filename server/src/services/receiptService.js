@@ -627,7 +627,7 @@ const getReceiptPreview = async (transaksiId, options = {}) => {
   const pdfBuffer = await generatePdfFromHtml(html, { paperWidth, paperType });
 
   return {
-    pdf: pdfBuffer,
+    pdf: Buffer.from(pdfBuffer),
     contentType: "application/pdf",
   };
 };
@@ -897,13 +897,16 @@ const sendReceiptByWhatsapp = async (data, auditInfo) => {
     if (formattedPhone.startsWith('0')) formattedPhone = '62' + formattedPhone.slice(1);
     if (!formattedPhone.endsWith('@s.whatsapp.net')) formattedPhone += '@s.whatsapp.net';
 
+
     const result = await whatsappService.sendFile(
         formattedPhone,
-        pdfBuffer,
+        Buffer.from(pdfBuffer),
         `receipt-${transactionData.number}.pdf`,
-        null, // deviceId - use default
+        "cd6666df-b821-4c90-b619-056179af5e62", // deviceId - use default
         { caption }
     );
+
+    console.log("result", result);
 
     // Add audit log
     await prisma.auditLog.create({

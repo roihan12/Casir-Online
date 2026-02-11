@@ -30,6 +30,7 @@ import {
   useChangeSupplierStatus,
 } from "../hooks/useSupplierQueries";
 import { useSupplierPurchase } from "../hooks/useSupplierPurchase";
+import formatCurrency from "../../../common/utils/formatCurrency";
 
 const SupplierDetail = () => {
   const { id } = useParams();
@@ -49,6 +50,8 @@ const SupplierDetail = () => {
     isLoadingHistory,
     supplierError,
   } = useSupplierPurchase(id);
+
+  console.log(supplier);
 
   // Mutations for actions
   const deleteSupplierMutation = useDeleteSupplier();
@@ -357,7 +360,7 @@ const SupplierDetail = () => {
                       Total Produk
                     </span>
                     <span className="block mt-1 text-xl font-semibold">
-                      {products?.length || 0}
+                      {supplier?.stats.totalProduk || 0}
                     </span>
                   </div>
 
@@ -366,9 +369,7 @@ const SupplierDetail = () => {
                       Total Transaksi
                     </span>
                     <span className="block mt-1 text-xl font-semibold">
-                      {purchaseHistoryPagination?.total ||
-                        transactions?.length ||
-                        0}
+                      {supplier?.stats.totalTransaksi || 0}
                     </span>
                   </div>
 
@@ -377,16 +378,7 @@ const SupplierDetail = () => {
                       Nilai Transaksi
                     </span>
                     <span className="block mt-1 text-xl font-semibold text-indigo-600">
-                      {new Intl.NumberFormat("id-ID", {
-                        style: "currency",
-                        currency: "IDR",
-                        minimumFractionDigits: 0,
-                      }).format(
-                        transactions?.reduce(
-                          (total, t) => total + (t.total || 0),
-                          0
-                        ) || 0
-                      )}
+                      {formatCurrency(supplier.stats?.totalTransaksi || 0)}
                     </span>
                   </div>
 

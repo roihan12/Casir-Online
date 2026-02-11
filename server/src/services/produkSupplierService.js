@@ -8,6 +8,7 @@ const {
   createCacheKey,
   cacheOrFetch,
   cacheDeletePattern,
+  cacheDeletePatternScan,
 } = require("../utils/redisUtils");
 
 /**
@@ -19,34 +20,35 @@ const {
 const createProdukSupplier = async (data, context) => {
   const { userId, ipAddress, userName } = context;
 
-  // Check if product master exists
-  const produkMaster = await prisma.produkMaster.findUnique({
-    where: { id: data.produkMasterId, deletedAt: null },
-    select: { id: true },
-  });
+  // Parallelize all validation checks for better performance
+  const [produkMaster, supplier, existingRelation] = await Promise.all([
+    // Check if product master exists (use count for faster validation)
+    prisma.produkMaster.findFirst({
+      where: { id: data.produkMasterId, deletedAt: null },
+      select: { id: true },
+    }),
+    // Check if supplier exists
+    prisma.supplier.findFirst({
+      where: { id: data.supplierId, deletedAt: null },
+      select: { id: true, cabang_id: true },
+    }),
+    // Check if relationship already exists
+    prisma.produkSupplier.findFirst({
+      where: {
+        produkMasterId: data.produkMasterId,
+        supplierId: data.supplierId,
+      },
+      select: { id: true },
+    }),
+  ]);
 
   if (!produkMaster) {
     throw new ResponseError(404, "Produk master tidak ditemukan");
   }
 
-  // Check if supplier exists
-  const supplier = await prisma.supplier.findUnique({
-    where: { id: data.supplierId, deletedAt: null },
-    select: { id: true, cabang_id: true },
-  });
-
   if (!supplier) {
     throw new ResponseError(404, "Supplier tidak ditemukan");
   }
-
-  // Check if relationship already exists
-  const existingRelation = await prisma.produkSupplier.findFirst({
-    where: {
-      produkMasterId: data.produkMasterId,
-      supplierId: data.supplierId,
-    },
-    select: { id: true },
-  });
 
   if (existingRelation) {
     throw new ResponseError(
@@ -100,10 +102,10 @@ const createProdukSupplier = async (data, context) => {
       new_values: data,
     });
 
-    // Invalidate relevant caches
-    await cacheDeletePattern(`produk-master:${data.produkMasterId}*`);
-    await cacheDeletePattern(`supplier:${data.supplierId}*`);
-    await cacheDeletePattern("produk-supplier:*");
+    // Invalidate relevant caches using non-blocking SCAN
+    await cacheDeletePatternScan(`produk-master:${data.produkMasterId}*`);
+    await cacheDeletePatternScan(`supplier:${data.supplierId}*`);
+    await cacheDeletePatternScan("produk-supplier:*");
 
     return newRelation;
   });
@@ -119,37 +121,37 @@ const createProdukSupplier = async (data, context) => {
 const updateProdukSupplier = async (id, data, context) => {
   const { userId, ipAddress, userName } = context;
 
-  // Find existing relationship
-  const existingRelation = await prisma.produkSupplier.findUnique({
-    where: { id },
-    include: {
-      supplier: {
-        select: { cabang_id: true },
-      },
-    },
-  });
-
-  if (!existingRelation) {
-    throw new ResponseError(404, "Hubungan produk-supplier tidak ditemukan");
-  }
-
-  // If setting as primary, unset other primary relationships
-  if (data.isPrimary) {
-    await prisma.produkSupplier.updateMany({
-      where: {
-        produkMasterId: existingRelation.produkMasterId,
-        id: { not: id },
-        isPrimary: true,
-      },
-      data: {
-        isPrimary: false,
-        updated_by_user_Id: userId,
-        updated_by: userName,
+  return prisma.$transaction(async (tx) => {
+    // Find existing relationship inside transaction
+    const existingRelation = await tx.produkSupplier.findUnique({
+      where: { id },
+      include: {
+        supplier: {
+          select: { cabang_id: true },
+        },
       },
     });
-  }
 
-  return prisma.$transaction(async (tx) => {
+    if (!existingRelation) {
+      throw new ResponseError(404, "Hubungan produk-supplier tidak ditemukan");
+    }
+
+    // If setting as primary, unset other primary relationships inside transaction
+    if (data.isPrimary) {
+      await tx.produkSupplier.updateMany({
+        where: {
+          produkMasterId: existingRelation.produkMasterId,
+          id: { not: id },
+          isPrimary: true,
+        },
+        data: {
+          isPrimary: false,
+          updated_by_user_Id: userId,
+          updated_by: userName,
+        },
+      });
+    }
+
     const oldValues = { ...existingRelation };
 
     const updatedRelation = await tx.produkSupplier.update({
@@ -344,44 +346,54 @@ const getProductsBySupplier = async (
   const skip = (page - 1) * limit;
   const take = Number(limit);
 
-  // Build search condition
-  let whereCondition = {
-    supplierId,
-    status: "aktif",
-  };
+  // Create cache key based on all filter parameters
+  const cacheKey = createCacheKey(
+    "produk-supplier",
+    `supplier:${supplierId}`,
+    `page:${page}:limit:${limit}:search:${search}:cabang:${cabangId || "all"}:produk:${produkMasterId || "all"}:kategori:${kategoriId || "all"}`
+  );
 
-  // Add cabangId filter if specified
-  if (cabangId) {
-    whereCondition.cabangId = cabangId;
-  }
+  return await cacheOrFetch(
+    cacheKey,
+    async () => {
+      // Build search condition
+      let whereCondition = {
+        supplierId,
+        status: "aktif",
+      };
 
-  // Add produkMasterId filter if specified
-  if (produkMasterId) {
-    whereCondition.produkMasterId = produkMasterId;
-  }
+      // Add cabangId filter if specified
+      if (cabangId) {
+        whereCondition.cabangId = cabangId;
+      }
 
-  // Add category filter if specified
-  if (kategoriId) {
-    whereCondition.produkMaster = {
-      ...whereCondition.produkMaster,
-      kategoriId,
-    };
-  }
+      // Add produkMasterId filter if specified
+      if (produkMasterId) {
+        whereCondition.produkMasterId = produkMasterId;
+      }
 
-  if (search) {
-    whereCondition = {
-      ...whereCondition,
-      produkMaster: {
-        ...(whereCondition.produkMaster || {}),
-        namaProduk: {
-          contains: search,
-          mode: "insensitive",
-        },
-      },
-    };
-  }
+      // Add category filter if specified
+      if (kategoriId) {
+        whereCondition.produkMaster = {
+          ...whereCondition.produkMaster,
+          kategoriId,
+        };
+      }
 
-  // Execute queries in parallel
+      if (search) {
+        whereCondition = {
+          ...whereCondition,
+          produkMaster: {
+            ...(whereCondition.produkMaster || {}),
+            namaProduk: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+        };
+      }
+
+      // Execute queries in parallel
   const [products, total] = await Promise.all([
     prisma.produkSupplier.findMany({
       skip,
@@ -453,19 +465,22 @@ const getProductsBySupplier = async (
     return formattedProduct;
   });
 
-  const totalPages = Math.ceil(total / limit);
+      const totalPages = Math.ceil(total / limit);
 
-  return {
-    data: formattedProducts,
-    pagination: {
-      totalItems: total,
-      totalPages,
-      currentPage: parseInt(page),
-      itemsPerPage: parseInt(limit),
-      hasNextPage: page < totalPages,
-      hasPrevPage: page > 1,
+      return {
+        data: formattedProducts,
+        pagination: {
+          totalItems: total,
+          totalPages,
+          currentPage: parseInt(page),
+          itemsPerPage: parseInt(limit),
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      };
     },
-  };
+    1800 // 30 minutes cache for paginated data
+  );
 };
 
 /**
@@ -474,50 +489,58 @@ const getProductsBySupplier = async (
  * @returns {Promise<Array>} - List of branches with access to supplier's products
  */
 const getBranchesWithSupplierAccess = async (supplierId) => {
-  // Get the supplier info to know its branch
-  const supplier = await prisma.supplier.findUnique({
-    where: { id: supplierId },
-    select: { cabang_id: true },
-  });
+  const cacheKey = createCacheKey("produk-supplier", `branches:${supplierId}`);
 
-  if (!supplier) {
-    throw new ResponseError(404, "Supplier tidak ditemukan");
-  }
+  return await cacheOrFetch(
+    cacheKey,
+    async () => {
+      // Get the supplier info to know its branch
+      const supplier = await prisma.supplier.findUnique({
+        where: { id: supplierId },
+        select: { cabang_id: true },
+      });
 
-  // Find all product masters connected to this supplier
-  const productSuppliers = await prisma.produkSupplier.findMany({
-    where: { supplierId },
-    select: { produkMasterId: true },
-  });
+      if (!supplier) {
+        throw new ResponseError(404, "Supplier tidak ditemukan");
+      }
 
-  const productMasterIds = productSuppliers.map((ps) => ps.produkMasterId);
+      // Find all product masters connected to this supplier
+      const productSuppliers = await prisma.produkSupplier.findMany({
+        where: { supplierId },
+        select: { produkMasterId: true },
+      });
 
-  // Find all branches that have these products
-  const branches = await prisma.cabang.findMany({
-    where: {
-      OR: [
-        // The supplier's branch
-        { id: supplier.cabang_id },
-        // Branches with products from this supplier's product masters
-        {
-          produk: {
-            some: {
-              produkMasterId: { in: productMasterIds },
-              deletedAt: null,
+      const productMasterIds = productSuppliers.map((ps) => ps.produkMasterId);
+
+      // Find all branches that have these products
+      const branches = await prisma.cabang.findMany({
+        where: {
+          OR: [
+            // The supplier's branch
+            { id: supplier.cabang_id },
+            // Branches with products from this supplier's product masters
+            {
+              produk: {
+                some: {
+                  produkMasterId: { in: productMasterIds },
+                  deletedAt: null,
+                },
+              },
             },
-          },
+          ],
         },
-      ],
-    },
-    select: {
-      id: true,
-      namaCabang: true,
-      alamat: true,
-      telepon: true,
-    },
-  });
+        select: {
+          id: true,
+          namaCabang: true,
+          alamat: true,
+          telepon: true,
+        },
+      });
 
-  return branches;
+      return branches;
+    },
+    3600 // 1 hour cache for branch access data
+  );
 };
 
 /**
@@ -540,8 +563,8 @@ const getProductsForSupplier = async (
   const skip = (page - 1) * limit;
   const take = Number(limit);
 
-  // First, check if supplier exists
-  const supplier = await prisma.supplier.findUnique({
+  // First, check if supplier exists (don't cache validation)
+  const supplier = await prisma.supplier.findFirst({
     where: {
       id: supplierId,
       status: status,
@@ -556,104 +579,117 @@ const getProductsForSupplier = async (
     throw new ResponseError(404, "Supplier tidak ditemukan atau tidak aktif");
   }
 
-  // Find all product masters already associated with this supplier
-  const existingProductMasters = await prisma.produkSupplier.findMany({
-    where: { supplierId },
-    select: { produkMasterId: true },
-  });
-
-  const existingProductMasterIds = existingProductMasters.map(
-    (pm) => pm.produkMasterId
+  // Create cache key based on all filter parameters
+  const cacheKey = createCacheKey(
+    "produk-supplier",
+    `available:${supplierId}`,
+    `page:${page}:limit:${limit}:search:${search}:cabang:${cabangId || "all"}:kategori:${kategoriId || "all"}:status:${status}`
   );
 
-  // Build the where condition for products that can be added
-  let whereCondition = {
-    deletedAt: null,
-    status: status,
-  };
+  return await cacheOrFetch(
+    cacheKey,
+    async () => {
+      // Find all product masters already associated with this supplier
+      const existingProductMasters = await prisma.produkSupplier.findMany({
+        where: { supplierId },
+        select: { produkMasterId: true },
+      });
 
-  // Exclude products already associated with this supplier
-  if (existingProductMasterIds.length > 0) {
-    whereCondition.id = {
-      notIn: existingProductMasterIds,
-    };
-  }
+      const existingProductMasterIds = existingProductMasters.map(
+        (pm) => pm.produkMasterId
+      );
 
-  // Add branch filter if specified (to get products that exist in a specific branch)
-  if (cabangId) {
-    whereCondition.produk = {
-      some: {
-        cabangId: cabangId,
+      // Build the where condition for products that can be added
+      let whereCondition = {
         deletedAt: null,
-      },
-    };
-  }
+        status: status,
+      };
 
-  // Add category filter if specified
-  if (kategoriId) {
-    whereCondition.kategoriId = kategoriId;
-  }
+      // Exclude products already associated with this supplier
+      if (existingProductMasterIds.length > 0) {
+        whereCondition.id = {
+          notIn: existingProductMasterIds,
+        };
+      }
 
-  // Add search filter if specified
-  if (search) {
-    whereCondition.OR = [
-      { namaProduk: { contains: search, mode: "insensitive" } },
-      { sku: { contains: search, mode: "insensitive" } },
-      { barcode: { contains: search, mode: "insensitive" } },
-    ];
-  }
-
-  // Execute queries in parallel for better performance
-  const [products, total] = await Promise.all([
-    prisma.produkMaster.findMany({
-      skip,
-      take,
-      where: whereCondition,
-      include: {
-        kategori: {
-          select: {
-            id: true,
-            namaKategori: true,
+      // Add branch filter if specified (to get products that exist in a specific branch)
+      if (cabangId) {
+        whereCondition.produk = {
+          some: {
+            cabangId: cabangId,
+            deletedAt: null,
           },
-        },
-        produk: cabangId
-          ? {
-              where: {
-                cabangId: cabangId,
-                deletedAt: null,
-              },
+        };
+      }
+
+      // Add category filter if specified
+      if (kategoriId) {
+        whereCondition.kategoriId = kategoriId;
+      }
+
+      // Add search filter if specified
+      if (search) {
+        whereCondition.OR = [
+          { namaProduk: { contains: search, mode: "insensitive" } },
+          { sku: { contains: search, mode: "insensitive" } },
+          { barcode: { contains: search, mode: "insensitive" } },
+        ];
+      }
+
+      // Execute queries in parallel for better performance
+      const [products, total] = await Promise.all([
+        prisma.produkMaster.findMany({
+          skip,
+          take,
+          where: whereCondition,
+          include: {
+            kategori: {
               select: {
                 id: true,
-                hargaBeli: true,
-                hargaJual: true,
-                stok: true,
-                cabangId: true,
+                namaKategori: true,
               },
-            }
-          : undefined,
-      },
-      orderBy: {
-        namaProduk: "asc",
-      },
-    }),
-    prisma.produkMaster.count({
-      where: whereCondition,
-    }),
-  ]);
+            },
+            produk: cabangId
+              ? {
+                  where: {
+                    cabangId: cabangId,
+                    deletedAt: null,
+                  },
+                  select: {
+                    id: true,
+                    hargaBeli: true,
+                    hargaJual: true,
+                    stok: true,
+                    cabangId: true,
+                  },
+                }
+              : undefined,
+          },
+          orderBy: {
+            namaProduk: "asc",
+          },
+        }),
+        prisma.produkMaster.count({
+          where: whereCondition,
+        }),
+      ]);
 
-  const totalPages = Math.ceil(total / limit);
+      const totalPages = Math.ceil(total / limit);
 
-  return {
-    data: products,
-    pagination: {
-      totalItems: total,
-      totalPages,
-      currentPage: parseInt(page),
-      itemsPerPage: parseInt(limit),
-      hasNextPage: page < totalPages,
-      hasPrevPage: page > 1,
+      return {
+        data: products,
+        pagination: {
+          totalItems: total,
+          totalPages,
+          currentPage: parseInt(page),
+          itemsPerPage: parseInt(limit),
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      };
     },
-  };
+    1800 // 30 minutes cache for paginated data
+  );
 };
 
 module.exports = {

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import api from "@services/api"
+import api from "../../../services/api";
 
 /**
  * Hook untuk mengambil daftar invoice dengan filter
@@ -118,6 +118,14 @@ export const useGenerateInvoicePdf = (id) => {
       const response = await api.get(`/invoices/${id}/pdf`, {
         responseType: 'blob',
       });
+      
+      // Check if the response is actually JSON (error) despite requesting blob
+      if (response.data.type === 'application/json') {
+        const text = await response.data.text();
+        const errorData = JSON.parse(text);
+        throw new Error(errorData.message || 'Gagal mengunduh Invoice PDF');
+      }
+
       return response.data;
     },
     enabled: false, // Tidak otomatis dijalankan, harus dipanggil secara manual

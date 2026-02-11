@@ -648,6 +648,13 @@ model ProdukSupplier {
   updatedByUser      User?          @relation("ProdukSupplierUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
 
   @@map("produk_supplier")
+
+  // Performance indexes for common query patterns
+  @@index([produkMasterId, supplierId], name: "idx_produk_supplier_unique")
+  @@index([supplierId, status], name: "idx_supplier_status")
+  @@index([produkMasterId, status], name: "idx_produk_status")
+  @@index([cabangId, status], name: "idx_cabang_status")
+  @@index([supplierId, produkMasterId, isPrimary], name: "idx_supplier_produk_primary")
 }
 
 model ProdukPriceHistory {
@@ -1960,17 +1967,6 @@ enum TipeScopePromo {
   CUSTOM
 
   @@map("tipe_scope_promo")
-}
-
-enum TipeDiskon {
-  PERSENTASE
-  NOMINAL
-  BUY_X_GET_Y
-  HARGA_SPESIAL
-  CASHBACK
-  VOUCHER
-
-  @@map("tipe_diskon")
 }
 
 enum ShiftStatus {

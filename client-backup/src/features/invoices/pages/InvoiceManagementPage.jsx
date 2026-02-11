@@ -36,8 +36,6 @@ const InvoiceManagement = () => {
   const navigate = useNavigate();
   const { selectedCabang, cabangList = [] } = useCabang();
 
-console.log("cabangList",cabangList);
-
   // Filter state
   const [filters, setFilters] = useState({
     startDate: dayjs().subtract(30, "day"),
@@ -144,7 +142,7 @@ console.log("cabangList",cabangList);
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="w-full p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Manajemen Invoice</h1>
         <p className="mt-1 text-sm text-gray-500">

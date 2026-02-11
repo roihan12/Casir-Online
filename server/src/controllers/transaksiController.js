@@ -326,6 +326,151 @@ const previewAllDiscounts = async (req, res, next) => {
   }
 };
 
+
+
+// Controller untuk generate PDF Retur
+const generateReturnPdf = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    // Validate ID
+    if (!id) {
+       throw new ResponseError(400, "ID Retur diperlukan");
+    }
+
+    // Reuse existing service to get details
+    const returnData = await transaksiService.getTransaksiById(id);
+    
+    if (!returnData) {
+      throw new ResponseError(404, "Data retur tidak ditemukan");
+    }
+
+    // Get Original Transaction if exists (usually stored in keterangan or we can search by ref)
+    // The current service might not link it directly as a relation in Prisma schema depending on implementation
+    // But let's check if we can parse it from keterangan "Transaksi Asli: xxx" if not explicitly linked
+    // Or we rely on what's available.
+    
+    // Prepare template data
+    // Helper to format date
+    const formatDate = (date) => {
+      if (!date) return '-';
+      return new Date(date).toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    };
+
+    const formatCurrency = (val) => {
+      return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0
+      }).format(val || 0);
+    };
+
+    // Determine party (Customer or Supplier)
+    let party = null;
+    if (returnData.type === 'RETUR_PENJUALAN' && returnData.customerInfo) {
+        party = {
+            nama: returnData.customerInfo.nama || returnData.customerInfo.namaPelanggan || returnData.customerInfo.name,
+            alamat: returnData.customerInfo.alamat || '-',
+            telepon: returnData.customerInfo.telepon || returnData.customerInfo.phone || '-'
+        };
+    } else if (returnData.type === 'RETUR_PEMBELIAN' && returnData.supplierInfo) {
+        party = {
+            nama: returnData.supplierInfo.nama || returnData.supplierInfo.namaSupplier || returnData.supplierInfo.name,
+            alamat: returnData.supplierInfo.alamat || '-',
+            telepon: returnData.supplierInfo.telepon || '-'
+        };
+    }
+
+    console.log("RETURN DATA", returnData)
+
+    // Map items
+    const items = returnData.items.map(item => ({
+        namaProduk: item.name,
+        sku: item.sku || '-',
+        jumlah: item.quantity,
+        hargaSatuan: item.price,
+        subtotal: item.subtotal,
+        kondisi: 'Baik', // Default
+        alasan: item.alasan || null // If stored in detailed field
+    }));
+
+    // Map payments
+    const payments = returnData.payments.map(payment => ({
+        metode: payment.method.replace('_', ' '),
+        jumlah: payment.amount, 
+        tanggal: payment.date
+    }));
+    
+    // Try to find original transaction info from text
+    // Example Keterangan: "Alasan: test | Transaksi Asli: TRX-123 | ..."
+    let originalTransaction = null;
+    if (returnData.notes && returnData.notes.includes('Transaksi Asli:')) {
+        const parts = returnData.notes.split('|');
+        const refPart = parts.find(p => p.trim().startsWith('Transaksi Asli:'));
+        if (refPart) {
+            const refNo = refPart.split(':')[1].trim();
+            originalTransaction = { nomor_transaksi: refNo, tanggal: null };
+        }
+    }
+
+    // Template Data Object
+    const templateData = {
+        language: 'id',
+        returnData,
+        party,
+        items,
+        payments,
+        originalTransaction,
+        formatDate,
+        formatCurrency
+    };
+
+    const path = require('path');
+    const fs = require('fs');
+    const ejs = require('ejs');
+    const puppeteer = require('puppeteer');
+    
+    const templatePath = path.join(__dirname, "../../templates/return_template.ejs");
+    
+    if (!fs.existsSync(templatePath)) {
+        throw new ResponseError(500, "Template retur tidak ditemukan");
+    }
+
+    const html = await ejs.renderFile(templatePath, templateData);
+
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+    
+    try {
+        const page = await browser.newPage();
+        await page.setContent(html);
+        const pdfBuffer = await page.pdf({
+            format: 'A4',
+            printBackground: true,
+            margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' }
+        });
+        
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="return-${returnData.nomor_transaksi}.pdf"`);
+        
+        return res.send(Buffer.from(pdfBuffer));
+    } finally {
+        await browser.close();
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 module.exports = {
   createTransaksi,
   createTransaksiWithPromo,
@@ -340,4 +485,6 @@ module.exports = {
   createKreditTransaction,
   previewPromo,
   previewAllDiscounts,
+  generateReturnPdf,
 };
+

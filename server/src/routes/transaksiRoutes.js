@@ -100,4 +100,11 @@ router.put(
   transaksiController.cancelTransaksi
 );
 
+// GET - Download Return PDF
+router.get(
+  "/:id/pdf",
+  hasPermission(["transaksi:read"]),
+  transaksiController.generateReturnPdf
+);
+
 module.exports = router;

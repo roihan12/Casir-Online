@@ -24,6 +24,9 @@ const SupplierDetail = () => {
   }
 
   const supplier = data?.data;
+
+  console.log(supplier);
+
   if (!supplier) return null;
 
   return (

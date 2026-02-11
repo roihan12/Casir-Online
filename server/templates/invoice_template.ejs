@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Invoice <%= invoice.nomorInvoice %></title>
+  <title>Invoice <%= invoice.nomor_invoice %></title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -309,7 +309,7 @@
       </div>
       <div class="logo-container">
         <div class="invoice-title">INVOICE</div>
-        <div class="invoice-number">No: <%= invoice.nomorInvoice %></div>
+        <div class="invoice-number">No: <%= invoice.nomor_invoice %></div>
       </div>
     </div>
 
@@ -345,11 +345,11 @@
       <div class="invoice-details">
         <h3>Invoice Details</h3>
         <div class="info-row">
-          <span class="info-label">Invoice Date:</span> <%= formatDate(invoice.tanggalInvoice) %>
+          <span class="info-label">Invoice Date:</span> <%= formatDate(invoice.tanggal_invoice) %>
         </div>
-        <% if (invoice.tanggalJatuhTempo) { %>
+        <% if (invoice.tanggal_jatuh_tempo) { %>
         <div class="info-row">
-          <span class="info-label">Due Date:</span> <%= formatDate(invoice.tanggalJatuhTempo) %>
+          <span class="info-label">Due Date:</span> <%= formatDate(invoice.tanggal_jatuh_tempo) %>
         </div>
         <% } %>
         <div class="info-row">

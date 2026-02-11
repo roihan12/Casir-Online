@@ -28,10 +28,22 @@ export const getReceiptPreview = async (transaksiId) => {
  * @returns {Promise<Blob>} PDF blob
  */
 export const getReceiptPDF = async (transaksiId) => {
-  const response = await api.get(`/receipt/preview/${transaksiId}?format=pdf`, {
-    responseType: 'blob',
-  });
-  return response.data;
+  try {
+    const response = await api.get(`/receipt/preview/${transaksiId}?format=pdf`, {
+      responseType: 'blob',
+    });
+    
+    // Check if the response is actually JSON (error) despite requesting blob
+    if (response.data.type === 'application/json') {
+      const text = await response.data.text();
+      const errorData = JSON.parse(text);
+      throw new Error(errorData.message || 'Gagal mengunduh PDF');
+    }
+    
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };
 
 /**

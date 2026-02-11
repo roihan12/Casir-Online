@@ -524,7 +524,7 @@ exports.generateInvoicePdf = async (req, res) => {
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `inline; filename="invoice-${invoice.nomor_invoice}.pdf"`);
 
-      return res.send(pdfBuffer);
+      return res.send(Buffer.from(pdfBuffer));
     } catch (error) {
       logger.error("Error generating PDF:", error);
       throw error;

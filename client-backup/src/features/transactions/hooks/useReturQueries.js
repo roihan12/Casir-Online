@@ -83,3 +83,15 @@ export const useCreateRetur = () => {
     },
   });
 };
+
+// Generate Return PDF
+export const useGenerateReturnPdf = (id) => {
+  return useQuery({
+    queryKey: ["retur", "pdf", id],
+    queryFn: async () => {
+       const response = await returService.getReturPdf(id);
+       return response;
+    },
+    enabled: false, // Manual trigger
+  });
+};

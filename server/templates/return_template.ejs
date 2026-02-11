@@ -1,0 +1,333 @@
+<!-- File: src/templates/return_template.ejs -->
+<!DOCTYPE html>
+<html lang="<%= language || 'id' %>">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Return <%= returnData.number %></title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      width: 210mm;
+      margin: 0 auto;
+      padding: 10mm;
+      box-sizing: border-box;
+      line-height: 1.4;
+      color: #333;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 190mm;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #dc2626; /* Red for returns */
+    }
+
+    .company-info {
+      flex: 1;
+    }
+
+    .logo-container {
+      text-align: right;
+      flex: 1;
+    }
+
+    .company-name {
+      font-size: 1.6em;
+      font-weight: bold;
+      margin: 5px 0;
+      color: #1f2937;
+    }
+
+    .contact-info {
+      margin-bottom: 3px;
+      color: #6b7280;
+    }
+
+    .doc-title {
+      text-align: right;
+      font-size: 2em;
+      font-weight: bold;
+      margin: 10px 0;
+      color: #dc2626; /* Red for returns */
+      text-transform: uppercase;
+    }
+
+    .doc-number {
+      font-size: 1.1em;
+      color: #6b7280;
+      text-align: right;
+    }
+
+    .info-section {
+      display: flex;
+      justify-content: space-between;
+      margin: 25px 0;
+    }
+
+    .info-col {
+      flex: 1;
+    }
+
+    .info-col h3 {
+      font-size: 1em;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #374151;
+      text-transform: uppercase;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 5px;
+    }
+
+    .info-row {
+      margin-bottom: 5px;
+    }
+
+    .info-label {
+      font-weight: 600;
+      color: #6b7280;
+    }
+
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+
+    .items-table th {
+      padding: 10px 8px;
+      text-align: left;
+      border-bottom: 2px solid #dc2626; /* Red for returns */
+      background-color: #fef2f2; /* Light red bg */
+      font-weight: bold;
+      color: #374151;
+      font-size: 0.9em;
+      text-transform: uppercase;
+    }
+
+    .items-table td {
+      padding: 10px 8px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .amount-column {
+      text-align: right;
+    }
+
+    .center-column {
+      text-align: center;
+    }
+
+    .summary {
+      width: 50%;
+      margin-left: auto;
+      margin-top: 25px;
+      border-collapse: collapse;
+    }
+
+    .summary td {
+      padding: 8px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .summary-label {
+      text-align: left;
+      color: #6b7280;
+    }
+
+    .summary-value {
+      text-align: right;
+      font-weight: 600;
+    }
+
+    .summary-total {
+      font-weight: bold;
+      border-top: 2px solid #dc2626;
+      border-bottom: 2px solid #dc2626;
+      font-size: 1.1em;
+      padding: 12px 8px;
+      color: #dc2626;
+    }
+
+    .footer {
+      margin-top: 40px;
+      padding-top: 15px;
+      border-top: 1px solid #e5e7eb;
+      text-align: center;
+      font-size: 0.8em;
+      color: #9ca3af;
+    }
+
+    .notes {
+      margin: 15px 0;
+      padding: 12px;
+      border-left: 3px solid #f59e0b;
+      background-color: #fffbeb;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .status-badge {
+       display: inline-block;
+       padding: 4px 10px;
+       border-radius: 4px;
+       font-size: 0.85em;
+       font-weight: 600;
+       text-transform: uppercase;
+       border: 1px solid #e5e7eb;
+    }
+
+    @media print {
+      body {
+        margin: 0;
+        padding: 5mm;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="company-info">
+        <h1 class="company-name"><%= returnData.branchName %></h1>
+        <% if (returnData.branchAddress) { %>
+        <div class="contact-info"><%= returnData.branchAddress %></div>
+        <% } %>
+        <% if (returnData.branchPhone) { %>
+        <div class="contact-info">Tel: <%= returnData.branchPhone %></div>
+        <% } %>
+        <% if (returnData.branchEmail) { %>
+        <div class="contact-info"><%= returnData.branchEmail %></div>
+        <% } %>
+      </div>
+      <div class="logo-container">
+        <div class="doc-title">NOTA RETUR</div>
+        <div class="doc-number">No: <%= returnData.number %></div>
+      </div>
+    </div>
+
+    <!-- Info Section -->
+    <div class="info-section">
+      <div class="info-col" style="padding-right: 20px;">
+        <h3>
+            <%= returnData.type === 'RETUR_PENJUALAN' ? 'Dari Pelanggan' : 'Kepada Supplier' %>
+        </h3>
+        <% if (party) { %>
+            <div class="info-row">
+            <span class="info-label">Nama:</span> <%= party.nama %>
+            </div>
+            <% if (party.alamat) { %>
+            <div class="info-row">
+            <span class="info-label">Alamat:</span> <%= party.alamat %>
+            </div>
+            <% } %>
+            <% if (party.telepon) { %>
+            <div class="info-row">
+            <span class="info-label">Telp:</span> <%= party.telepon %>
+            </div>
+            <% } %>
+        <% } else { %>
+            <div class="info-row">
+            <span class="info-label">Nama:</span> <%= returnData.jenis_transaksi === 'RETUR_PENJUALAN' ? 'Pelanggan Umum' : '-' %>
+            </div>
+        <% } %>
+      </div>
+      <div class="info-col">
+        <h3>Detail Retur</h3>
+        <div class="info-row">
+          <span class="info-label">Tanggal:</span> <%= formatDate(returnData.date) %>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Jenis:</span> <%= returnData.type.replace('RETUR_', '').replace('_', ' ') %>
+        </div>
+        <% if (originalTransaction) { %>
+        <div class="info-row">
+          <span class="info-label">Ref Transaksi:</span> <%= originalTransaction.nomor_transaksi %>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Tgl Transaksi:</span> <%= formatDate(originalTransaction.tanggal) %>
+        </div>
+        <% } %>
+        <div class="info-row">
+            <span class="info-label">Status:</span> 
+            <span class="status-badge"><%= returnData.status %></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Items -->
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th width="5%">No</th>
+          <th width="35%">Produk</th>
+          <th width="15%" class="center-column">Kondisi</th>
+          <th width="15%" class="center-column">Qty Retur</th>
+          <th width="15%" class="amount-column">Harga Satuan</th>
+          <th width="15%" class="amount-column">Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% items.forEach((item, index) => { %>
+        <tr>
+          <td><%= index + 1 %></td>
+          <td>
+            <strong><%= item.namaProduk %></strong>
+            <% if (item.sku) { %>
+            <div style="font-size: 0.85em; color: #6b7280;">SKU: <%= item.sku %></div>
+            <% } %>
+            <% if (item.alasan) { %>
+            <div style="font-size: 0.85em; color: #dc2626; font-style: italic;">Note: <%= item.alasan %></div>
+            <% } %>
+          </td>
+          <td class="center-column"><%= item.kondisi || '-' %></td>
+          <td class="center-column"><%= item.jumlah %></td>
+          <td class="amount-column"><%= formatCurrency(item.hargaSatuan) %></td>
+          <td class="amount-column"><%= formatCurrency(item.subtotal) %></td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+
+    <!-- Summary -->
+    <table class="summary">
+       <tr class="summary-total">
+        <td class="summary-label"><strong>Total Pengembalian:</strong></td>
+        <td class="summary-value"><strong><%= formatCurrency(returnData.total) %></strong></td>
+      </tr>
+      <!-- Payments/Refunds -->
+       <% if (payments && payments.length > 0) { %>
+        <tr><td colspan="2" style="border: none; height: 10px;"></td></tr>
+        <tr><td colspan="2" style="font-weight: bold; border-bottom: 2px solid #ddd;">Riwayat Pembayaran:</td></tr>
+        <% payments.forEach(p => { %>
+        <tr>
+            <td class="summary-label"><%= p.metode %> (<%= formatDate(p.tanggal) %>)</td>
+            <td class="summary-value"><%= formatCurrency(p.jumlah) %></td>
+        </tr>
+        <% }) %>
+       <% } %>
+    </table>
+
+    <!-- Notes -->
+    <% if (returnData.notes || returnData.catatan) { %>
+    <div class="notes">
+      <strong>Catatan:</strong>
+      <p><%= returnData.notes || returnData.catatan %></p>
+    </div>
+    <% } %>
+
+    <div class="footer">
+      Dokumen ini diterbitkan secara otomatis oleh sistem Casir Online.<br>
+      Terima kasih.
+    </div>
+  </div>
+</body>
+</html>
