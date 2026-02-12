@@ -1,34 +1,23 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useParams, useLocation, useNavigate } from "react-router-dom";
-import { useForm, Controller, useFieldArray } from "react-hook-form";
+import { useParams, useNavigate } from "react-router-dom";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import {
-  ArrowLeft,
-  Plus,
-  Trash2,
-  Info,
-  AlertTriangle,
-  Search,
-  Building,
-  User,
-  ShoppingBag,
-  Package,
-  Grid,
-  List,
-  Filter,
-} from "lucide-react";
-import {
-  useSupplierById,
-  useSupplierList,
-} from "../../suppliers/hooks/useSupplierQueries";
+import { ArrowLeft, Info, AlertTriangle, Search, Plus } from "lucide-react";
+import { useSupplierById, useSupplierList } from "../../suppliers/hooks/useSupplierQueries";
 import { useSupplierProducts } from "../../suppliers/hooks/useSupplierProducts";
 import { useCreateTransaksi } from "../../transactions/hooks/useTransaksiQueries";
-import { useCabang } from "../../../features/cabang/hooks/useCabang";
-import Spinner from "../../../features/common/Spinner";
+import { useCabang } from "../../cabang/hooks/useCabang";
+import Spinner from "../../common/Spinner";
 import { toast } from "react-hot-toast";
 
-// Validation schema
+// Imported components
+import BranchSelector from "../components/BranchSelector";
+import SupplierSelector from "../components/SupplierSelector";
+import ProductSelector from "../components/ProductSelector";
+import PurchaseItemList from "../components/PurchaseItemList";
+
+// Validation schemas
 const purchaseItemSchema = z.object({
   produkId: z.string().min(1, "Produk harus dipilih"),
   produkSupplier: z.object({
@@ -48,7 +37,7 @@ const purchaseItemSchema = z.object({
 
 const purchaseSchema = z.object({
   tanggal: z.string().min(1, "Tanggal harus diisi"),
-  jatuhTempo: z.string().optional(), // Required only for HUTANG, validated manually or via refinement
+  jatuhTempo: z.string().optional(),
   jenisTransaksi: z.literal("PEMBELIAN"),
   supplierId: z.string().min(1, "Supplier harus dipilih"),
   items: z.array(purchaseItemSchema).min(1, "Minimal 1 item"),
@@ -68,50 +57,40 @@ const purchaseSchema = z.object({
 const PurchaseCreate = () => {
   const { id: supplierId } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const { selectedCabang, setSelectedCabang, cabangList: branches } = useCabang();
-  
+
   // Local state
-  const [localSelectedBranch, setLocalSelectedBranch] = useState(selectedCabang);
   const [selectingSupplier, setSelectingSupplier] = useState(!supplierId);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchProductQuery, setSearchProductQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [showProductGrid, setShowProductGrid] = useState(true);
 
-  // Sync with global branch context
+  // Update selectingSupplier when supplierId changes
   useEffect(() => {
-    if (selectedCabang) {
-      setLocalSelectedBranch(selectedCabang);
+    if (supplierId) {
+      setSelectingSupplier(false);
     }
-  }, [selectedCabang]);
+  }, [supplierId]);
 
   // Queries
-  const { 
-    data: supplierData, 
-    isLoading: isLoadingSupplierById 
-  } = useSupplierById(supplierId);
-  
+  const { data: supplierData, isLoading: isLoadingSupplierById } = useSupplierById(supplierId);
   const supplier = supplierData?.data;
 
-  // Use the useSupplierProducts hook to get products and loading states
   const {
     supplierProducts: products,
     isLoadingSupplierProducts,
-    isLoadingSupplier, 
+    isLoadingSupplier,
   } = useSupplierProducts({
     supplierId,
-    branchId: localSelectedBranch?.id,
+    branchId: selectedCabang?.id !== "global" ? selectedCabang?.id : undefined,
     enabled: !!supplierId,
   });
 
   const createTransaksiMutation = useCreateTransaksi();
 
-  const { 
-    data: supplierList, 
-    isLoading: isLoadingSuppliers 
-  } = useSupplierList({ 
-    cabangId: localSelectedBranch?.id !== "global" ? localSelectedBranch?.id : undefined
+  const { data: supplierList, isLoading: isLoadingSuppliers } = useSupplierList({
+    cabangId: selectedCabang?.id !== "global" ? selectedCabang?.id : undefined,
   });
 
   // Form setup
@@ -122,12 +101,11 @@ const PurchaseCreate = () => {
     watch,
     setValue,
     formState: { errors, isSubmitting },
-    reset,
   } = useForm({
     resolver: zodResolver(purchaseSchema),
     defaultValues: {
       tanggal: new Date().toISOString().split("T")[0],
-      jatuhTempo: "", // Default empty
+      jatuhTempo: "",
       jenisTransaksi: "PEMBELIAN",
       supplierId,
       items: [],
@@ -149,39 +127,48 @@ const PurchaseCreate = () => {
     }
   }, [metodePembayaran, tanggal, setValue, watch]);
 
+  // Sync supplierId when it changes (e.g., from route params)
+  useEffect(() => {
+    if (supplierId) {
+      setValue("supplierId", supplierId);
+    }
+  }, [supplierId, setValue]);
+
   const { fields, append, remove } = useFieldArray({
     control,
     name: "items",
   });
 
-  // Watch items for calculations
   const watchItems = watch("items");
 
   // Calculate total whenever items change
   useEffect(() => {
     if (!watchItems) return;
+    
+    // Calculate total from subtotals
     const total = watchItems.reduce((acc, item) => {
-      // Ensure values are numbers
       const subtotal = Number(item.subtotal) || 0;
       return acc + subtotal;
     }, 0);
+    
     setValue("totalBayar", total);
   }, [watchItems, setValue]);
 
   // Derived state
   const filteredSuppliers = useMemo(() => {
-     if (!supplierList?.data) return [];
-     return supplierList.data.filter(s => 
-       s.namaSupplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       (s.kodeSupplier && s.kodeSupplier.toLowerCase().includes(searchTerm.toLowerCase()))
-     );
+    if (!supplierList?.data) return [];
+    return supplierList.data.filter(
+      (s) =>
+        s.namaSupplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.kodeSupplier && s.kodeSupplier.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
   }, [supplierList?.data, searchTerm]);
 
   const productCategories = useMemo(() => {
     if (!products) return [];
     const categories = [];
     const seen = new Set();
-    products.forEach(p => {
+    products.forEach((p) => {
       const cat = p.produkMaster?.kategori;
       if (cat && !seen.has(cat.id)) {
         seen.add(cat.id);
@@ -193,194 +180,56 @@ const PurchaseCreate = () => {
 
   const filteredProducts = useMemo(() => {
     if (!products) return [];
-    return products.filter(p => {
-      const matchesSearch = !searchProductQuery || (
+    return products.filter((p) => {
+      const matchesSearch =
+        !searchProductQuery ||
         (p.produkMaster?.namaProduk || "").toLowerCase().includes(searchProductQuery.toLowerCase()) ||
-        (p.produkMaster?.sku || "").toLowerCase().includes(searchProductQuery.toLowerCase())
-      );
+        (p.produkMaster?.sku || "").toLowerCase().includes(searchProductQuery.toLowerCase());
       const matchesCategory = categoryFilter ? p.produkMaster?.kategori?.id === categoryFilter : true;
       return matchesSearch && matchesCategory;
     });
   }, [products, searchProductQuery, categoryFilter]);
 
   // Handlers
-  const handleCreateNewSupplier = () => {
-    navigate("/suppliers/new");
-  };
+  const handleCreateNewSupplier = () => navigate("/suppliers/new");
 
   const handleSelectSupplier = (id) => {
-    navigate(`/purchases/create/${id}`); 
+    navigate(`/purchases/create/${id}?cabangId=${selectedCabang?.id}`);
     setSelectingSupplier(false);
   };
 
-  const handleChangeBranch = (branchId) => {
-    const branch = branches.find(b => b.id === branchId);
-    if (branch) {
-      setLocalSelectedBranch(branch);
-    }
-  };
+  const handleChangeBranch = (branch) => setSelectedCabang(branch);
 
   const handleAddProduct = (product) => {
-    // Check if exists
     const currentItems = watch("items") || [];
-    const exists = currentItems.some(item => item.produkId === product.produkMasterId);
-    
+    const exists = currentItems.some((item) => item.produkId === product.produkMasterId);
+
     if (exists) {
       toast.error("Produk sudah ada dalam daftar");
       return;
     }
-    
-    // Parse values
+
     const hargaBeli = parseFloat(product.hargaBeli);
-    
+
     append({
-        produkId: product.produkMasterId,
-        produkSupplier: {
-          id: product.id,
-          hargaBeli: hargaBeli,
-          kodeProdukSupplier: product.kodeProdukSupplier,
-          namaProduk: product.produkMaster?.namaProduk || "Produk",
-        },
-        quantity: 1,
-        hargaSatuan: hargaBeli,
-        subtotal: hargaBeli,
-        diskon: 0,
-        keterangan: "",
-        batchNumber: "",
-        expiredDate: "",
+      produkId: product.produkMasterId,
+      produkSupplier: {
+        id: product.id,
+        hargaBeli: hargaBeli,
+        kodeProdukSupplier: product.kodeProdukSupplier,
+        namaProduk: product.produkMaster?.namaProduk || "Produk",
+      },
+      quantity: 1,
+      hargaSatuan: hargaBeli,
+      subtotal: hargaBeli,
+      diskon: 0,
+      keterangan: "",
+      batchNumber: "",
+      expiredDate: "",
     });
     toast.success("Produk ditambahkan ke daftar");
   };
 
-  // Handle form submission
-  const onSubmit = async (data) => {
-    try {
-      console.log("Current branch state:", localSelectedBranch);
-      console.log("Form data to submit:", data);
-
-      // Ensure we have a cabangId
-      if (!localSelectedBranch?.id) {
-        toast.error("Harap pilih cabang terlebih dahulu");
-        return;
-      }
-
-      // Skip if global view is selected for super admin
-      if (localSelectedBranch?.id === "global") {
-        toast.error("Harap pilih cabang spesifik untuk pembelian");
-        return;
-      }
-
-      // Additional check for supplier ID
-      if (!data.supplierId) {
-        console.error("No supplier ID in form data");
-        toast.error(
-          "Data supplier tidak tersedia, silakan pilih supplier terlebih dahulu"
-        );
-        return;
-      }
-
-      // Check for items
-      if (!data.items || data.items.length === 0) {
-        toast.error("Harap tambahkan minimal 1 item produk");
-        return;
-      }
-
-      console.log("Data items:", data.items);
-      console.log("Local selected branch:", localSelectedBranch);
-      console.log("Supplier data:", supplier);
-
-      // Try to get the cabangId from the first product's data
-      // This should be the most accurate as it comes directly from the API
-      const productCabangId =
-        products?.[0]?.cabangId || products?.[0]?.cabang?.id;
-
-      console.log("Branch IDs for comparison:");
-      console.log("- Product cabangId:", productCabangId);
-      console.log("- Supplier cabangId:", supplier?.cabangId);
-      console.log("- Selected branch ID:", localSelectedBranch?.id);
-
-      // Transform data to match backend validation schema (snake_case)
-      const purchaseData = {
-        // Use cabangId from: 1. Product data, 2. Supplier data, 3. Selected branch
-        cabang_id:
-          productCabangId || supplier?.cabangId || localSelectedBranch.id,
-        jenis_transaksi: "PEMBELIAN",
-        tanggal: data.tanggal,
-        jatuh_tempo: data.metodePembayaran === "HUTANG" ? data.jatuhTempo : null, // Send jatuh_tempo
-        supplier_id: data.supplierId,
-        pelanggan_id: null,
-        shift_id: null,
-        promo_id: null,
-        details: data.items.map((item) => {
-          // Find product data from products array
-          const productItem = products.find(
-            (product) => product.produkMasterId === item.produkId
-          );
-
-          if (!productItem) {
-            throw new Error(
-              `Produk dengan ID ${item.produkId} tidak ditemukan dalam daftar produk supplier`
-            );
-          }
-
-          // Get the actual produk_id with proper validation
-          const produkArray = productItem?.produkMaster?.produk;
-          let actualProductId;
-
-          if (Array.isArray(produkArray) && produkArray.length > 0) {
-            actualProductId = produkArray[0].id;
-          } else if (productItem?.produkMaster?.id) {
-            // Fallback to produkMaster.id if produk array doesn't exist
-            actualProductId = productItem.produkMaster.id;
-          } else {
-            throw new Error(
-              `ID produk tidak valid untuk produk: ${productItem?.produkMaster?.namaProduk || item.produkId}`
-            );
-          }
-
-          return {
-            produk_id: actualProductId,
-            produk_supplier_id: item.produkSupplier?.id || null,
-            batch_number: item.batchNumber || "", 
-            expired_date: item.expiredDate || null, 
-            jumlah:
-              typeof item.quantity === "string"
-                ? parseInt(item.quantity, 10)
-                : item.quantity,
-            harga_satuan:
-              typeof item.hargaSatuan === "string"
-                ? parseFloat(item.hargaSatuan)
-                : item.hargaSatuan,
-            diskon_persen: 0, // Default to 0 as the form uses direct amount
-            // pajak_persen omitted - backend will use default from tax_config table
-          };
-        }),
-        metode_pembayaran: data.metodePembayaran, // Ensure this is sent
-        biaya_tambahan: 0, // Default to 0 as it's not in the form
-        keterangan: data.catatan || "",
-      };
-
-      console.log("Submitting purchase data:", purchaseData);
-
-      // Submit purchase
-      const result = await createTransaksiMutation.mutateAsync(purchaseData);
-      console.log("Purchase created successfully:", result);
-
-      // Show success message
-      toast.success("Pembelian berhasil dibuat");
-
-      // Redirect back to supplier detail
-      navigate(`/suppliers/${supplierId}`);
-    } catch (error) {
-      console.error("Error creating purchase:", error);
-      console.error("Current branch state during error:", localSelectedBranch);
-      toast.error(
-        `Gagal membuat pembelian: ${error.message || "Terjadi kesalahan"}`
-      );
-    }
-  };
-
-  // Add new item to form
   const addItem = () => {
     append({
       produkId: "",
@@ -399,28 +248,14 @@ const PurchaseCreate = () => {
       expiredDate: "",
     });
   };
-    
 
-  // Handle product selection in the form items
   const handleProductSelect = (e, index) => {
     const selectedProductId = e.target.value;
-
-    console.log("Selected product ID:", selectedProductId);
-    console.log("Products array:", products);
-
-    const selectedProduct = products.find(
-      (product) => product.produkMasterId === selectedProductId
-    );
+    const selectedProduct = products.find((product) => product.produkMasterId === selectedProductId);
 
     if (selectedProduct) {
-      console.log("Selected product:", selectedProduct);
-
-      // Get the actual product ID from the produk array
       const actualProductId =
-        selectedProduct.produkMaster?.produk?.[0]?.id ||
-        selectedProduct.produkMasterId;
-
-      // Parse hargaBeli as float
+        selectedProduct.produkMaster?.produk?.[0]?.id || selectedProduct.produkMasterId;
       const hargaBeli = parseFloat(selectedProduct.hargaBeli);
 
       setValue(`items.${index}.produkId`, selectedProductId);
@@ -433,20 +268,95 @@ const PurchaseCreate = () => {
       });
       setValue(`items.${index}.hargaSatuan`, hargaBeli);
 
-      // Recalculate subtotal
       const quantity = watchItems[index]?.quantity || 1;
       setValue(`items.${index}.subtotal`, quantity * hargaBeli);
+      
+      // Recalculate total
+      recalculateTotal();
     }
   };
 
-  // Determine if page is loading
+  // Function to recalculate total from all items
+  const recalculateTotal = () => {
+    const items = watch("items");
+    const total = items.reduce((acc, item) => {
+      const subtotal = Number(item.subtotal) || 0;
+      return acc + subtotal;
+    }, 0);
+    setValue("totalBayar", total);
+  };
+
+  const onSubmit = async (data) => {
+    try {
+      console.log("=== SUBMIT STARTED ===");
+      console.log("Form data:", data);
+      console.log("Selected cabang:", selectedCabang);
+      
+      if (!selectedCabang?.id || selectedCabang?.id === "global") {
+        toast.error("Harap pilih cabang spesifik untuk pembelian");
+        return;
+      }
+
+      const purchaseData = {
+        cabang_id: selectedCabang.id,
+        jenis_transaksi: "PEMBELIAN",
+        tanggal: data.tanggal,
+        jatuh_tempo: data.metodePembayaran === "HUTANG" ? data.jatuhTempo : null,
+        supplier_id: data.supplierId,
+        pelanggan_id: null,
+        shift_id: null,
+        promo_id: null,
+        details: data.items.map((item) => {
+          console.log("Processing item:", item);
+          const productItem = products.find((product) => product.produkMasterId === item.produkId);
+
+          if (!productItem) {
+            throw new Error(`Produk dengan ID ${item.produkId} tidak ditemukan`);
+          }
+
+          const produkArray = productItem?.produkMaster?.produk;
+          const actualProductId =
+            Array.isArray(produkArray) && produkArray.length > 0
+              ? produkArray[0].id
+              : productItem?.produkMaster?.id;
+
+          if (!actualProductId) {
+            throw new Error(`ID produk tidak valid untuk produk: ${productItem?.produkMaster?.namaProduk || item.produkId}`);
+          }
+
+          return {
+            produk_id: actualProductId,
+            produk_supplier_id: item.produkSupplier?.id || null,
+            batch_number: item.batchNumber || "",
+            expired_date: item.expiredDate || null,
+            jumlah: typeof item.quantity === "string" ? parseInt(item.quantity, 10) : item.quantity,
+            harga_satuan:
+              typeof item.hargaSatuan === "string" ? parseFloat(item.hargaSatuan) : item.hargaSatuan,
+            diskon_persen: 0,
+          };
+        }),
+        metode_pembayaran: data.metodePembayaran,
+        biaya_tambahan: 0,
+        keterangan: data.catatan || "",
+      };
+
+      console.log("Purchase data to send:", purchaseData);
+      
+      await createTransaksiMutation.mutateAsync(purchaseData);
+      toast.success("Pembelian berhasil dibuat");
+      navigate(`/suppliers/${supplierId}`);
+    } catch (error) {
+      console.error("Error submitting purchase:", error);
+      toast.error(`Gagal membuat pembelian: ${error.message || "Terjadi kesalahan"}`);
+    }
+  };
+
   const isLoading = isLoadingSupplier || isLoadingSupplierProducts;
 
-  // If we're in supplier selection mode, show the supplier selection UI
+  // Supplier selection mode
   if (selectingSupplier) {
     return (
       <div className="pb-8">
-        {/* Header */}
         <div className="bg-indigo-600 text-white py-6">
           <div className="mx-6">
             <button
@@ -456,194 +366,31 @@ const PurchaseCreate = () => {
               <ArrowLeft size={16} className="mr-1" />
               <span>Kembali</span>
             </button>
-            <h1 className="text-2xl font-bold">
-              Pilih Supplier untuk Pembelian
-            </h1>
+            <h1 className="text-2xl font-bold">Pilih Supplier untuk Pembelian</h1>
             <div className="flex items-center mt-2">
               <Info size={18} className="mr-2" />
-              <span className="text-indigo-100">
-                Pilih supplier terlebih dahulu untuk melanjutkan
-              </span>
+              <span className="text-indigo-100">Pilih supplier terlebih dahulu untuk melanjutkan</span>
             </div>
           </div>
         </div>
 
-        {/* Branch Selection */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-medium mb-4 flex items-center">
-            <Building size={20} className="mr-2 text-indigo-600" />
-            Pilih Cabang
-            {localSelectedBranch && localSelectedBranch.id !== "global" && (
-              <span className="ml-2 text-sm text-gray-500">
-                (Cabang terpilih: {localSelectedBranch.namaCabang})
-              </span>
-            )}
-          </h2>
+        <div className="mx-6 mt-6 space-y-6">
+          <BranchSelector
+            branches={branches}
+            selectedBranch={selectedCabang}
+            onBranchChange={handleChangeBranch}
+            globalBranch={selectedCabang}
+            onSaveToContext={setSelectedCabang}
+          />
 
-          {branches && branches.length > 0 ? (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
-                {branches
-                  .filter((branch) => branch.id !== "global")
-                  .map((branch) => (
-                    <div
-                      key={branch.id}
-                      onClick={() => handleChangeBranch(branch.id)}
-                      className={`p-4 rounded-lg border-2 cursor-pointer transition-colors duration-200 ${
-                        localSelectedBranch?.id === branch.id
-                          ? "border-indigo-600 bg-indigo-50"
-                          : "border-gray-200 hover:bg-gray-50"
-                      }`}
-                    >
-                      <div className="font-medium">{branch.namaCabang}</div>
-                      <div className="text-sm text-gray-500 mt-1 truncate">
-                        {branch.alamat || "Tidak ada alamat"}
-                      </div>
-                      {localSelectedBranch?.id === branch.id && (
-                        <div className="mt-2 text-xs font-medium text-indigo-600">
-                          ✓ Cabang terpilih
-                        </div>
-                      )}
-                    </div>
-                  ))}
-              </div>
-
-              {/* Only show the update context button if the local branch is different from the context branch */}
-              {localSelectedBranch &&
-                localSelectedBranch.id !== selectedCabang?.id && (
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedCabang(localSelectedBranch);
-                        toast.success(
-                          `Cabang berhasil diubah ke ${localSelectedBranch.namaCabang}`
-                        );
-                      }}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center"
-                    >
-                      <Building size={14} className="mr-2" />
-                      Simpan Pilihan Cabang
-                    </button>
-                  </div>
-                )}
-            </>
-          ) : (
-            <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
-              <div className="flex items-start">
-                <AlertTriangle
-                  size={20}
-                  className="text-amber-500 mt-0.5 mr-2 flex-shrink-0"
-                />
-                <div>
-                  <p className="text-amber-800 font-medium">
-                    Tidak ada cabang tersedia
-                  </p>
-                  <p className="text-amber-700 text-sm mt-1">
-                    Anda tidak memiliki akses ke cabang manapun atau belum ada
-                    cabang yang dibuat.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Supplier Selection */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-medium mb-4 flex items-center">
-            <User size={20} className="mr-2 text-indigo-600" />
-            Pilih Supplier
-          </h2>
-
-          {/* Search */}
-          <div className="relative mb-6">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="Cari supplier..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          {isLoadingSuppliers ? (
-            <div className="flex justify-center items-center h-32">
-              <Spinner size="md" />
-            </div>
-          ) : (
-            <>
-              {filteredSuppliers.length === 0 ? (
-                <div className="bg-gray-50 p-8 text-center rounded-lg">
-                  <AlertTriangle
-                    size={40}
-                    className="mx-auto text-amber-500 mb-2"
-                  />
-                  <h4 className="text-gray-700 font-medium">
-                    Supplier tidak ditemukan
-                  </h4>
-                  <p className="text-gray-500 mt-1 mb-4">
-                    Tidak ada supplier yang sesuai dengan pencarian atau untuk
-                    cabang ini
-                  </p>
-                  <button
-                    onClick={handleCreateNewSupplier}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-                  >
-                    Buat Supplier Baru
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {filteredSuppliers.map((supplier) => (
-                    <div
-                      key={supplier.id}
-                      onClick={() => handleSelectSupplier(supplier.id)}
-                      className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="font-medium text-indigo-600">
-                            {supplier.namaSupplier}
-                          </div>
-                          <div className="text-sm text-gray-500 mt-1">
-                            {supplier.alamat || "Tidak ada alamat"}
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end">
-                          <div className="text-sm font-medium">
-                            {supplier.telepon || "Tidak ada nomor telepon"}
-                          </div>
-                          <div
-                            className={`px-2 py-1 rounded-full text-xs mt-2 ${
-                              supplier.status === "aktif"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {supplier.status === "aktif" ? "Aktif" : "Nonaktif"}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  <div className="flex justify-center mt-4">
-                    <button
-                      onClick={handleCreateNewSupplier}
-                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center"
-                    >
-                      <Plus size={16} className="mr-1" />
-                      Buat Supplier Baru
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+          <SupplierSelector
+            suppliers={filteredSuppliers}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            onSupplierSelect={handleSelectSupplier}
+            onCreateNew={handleCreateNewSupplier}
+            isLoading={isLoadingSuppliers}
+          />
         </div>
       </div>
     );
@@ -662,36 +409,18 @@ const PurchaseCreate = () => {
       <div className="mx-6 mt-6 p-6 bg-white shadow-sm rounded-xl">
         <div className="text-center">
           <AlertTriangle size={48} className="mx-auto text-amber-500 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Data supplier tidak ditemukan
-          </h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Data supplier tidak ditemukan</h3>
           <p className="text-gray-500 mb-6">
-            Supplier dengan ID ini tidak tersedia atau tidak dapat diakses dari
-            cabang saat ini
+            Supplier dengan ID ini tidak tersedia atau tidak dapat diakses
           </p>
-
-          <div className="flex flex-col space-y-4 items-center justify-center">
+          <div className="flex flex-col space-y-4 items-center">
             <button
               onClick={() => setSelectingSupplier(true)}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
             >
-              <Search size={16} className="mr-2" />
               Pilih Supplier Lain
             </button>
-
-            <button
-              onClick={handleCreateNewSupplier}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center"
-            >
-              <Plus size={16} className="mr-2" />
-              Buat Supplier Baru
-            </button>
-
-            <button
-              onClick={() => navigate(-1)}
-              className="px-4 py-2 text-gray-600 hover:text-gray-900 flex items-center"
-            >
-              <ArrowLeft size={16} className="mr-2" />
+            <button onClick={() => navigate(-1)} className="px-4 py-2 text-gray-600 hover:text-gray-900">
               Kembali
             </button>
           </div>
@@ -717,9 +446,7 @@ const PurchaseCreate = () => {
             <Info size={18} className="mr-2" />
             <span className="text-indigo-100">
               Supplier: {supplier.namaSupplier}
-              {localSelectedBranch && localSelectedBranch.id !== "global" && (
-                <> • Cabang: {localSelectedBranch.namaCabang}</>
-              )}
+              {selectedCabang && selectedCabang.id !== "global" && <> • Cabang: {selectedCabang.namaCabang}</>}
             </span>
           </div>
         </div>
@@ -734,448 +461,109 @@ const PurchaseCreate = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tanggal Pembelian
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Pembelian</label>
                 <input
                   type="date"
                   {...register("tanggal")}
                   className="w-full border border-gray-300 rounded-md py-2 px-3"
                 />
-                {errors.tanggal && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {errors.tanggal.message}
-                  </p>
-                )}
+                {errors.tanggal && <p className="text-red-500 text-xs mt-1">{errors.tanggal.message}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Metode Pembayaran
-                </label>
-                <select
-                  {...register("metodePembayaran")}
-                  className="w-full border border-gray-300 rounded-md py-2 px-3"
-                >
+                <label className="block text-sm font-medium text-gray-700 mb-1">Metode Pembayaran</label>
+                <select {...register("metodePembayaran")} className="w-full border border-gray-300 rounded-md py-2 px-3">
                   <option value="TUNAI">Tunai</option>
                   <option value="TRANSFER">Transfer</option>
                   <option value="HUTANG">Hutang</option>
                 </select>
                 {errors.metodePembayaran && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {errors.metodePembayaran.message}
-                  </p>
+                  <p className="text-red-500 text-xs mt-1">{errors.metodePembayaran.message}</p>
                 )}
               </div>
+
+              {metodePembayaran === "HUTANG" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Jatuh Tempo</label>
+                  <input
+                    type="date"
+                    {...register("jatuhTempo")}
+                    className="w-full border border-gray-300 rounded-md py-2 px-3"
+                  />
+                  {errors.jatuhTempo && <p className="text-red-500 text-xs mt-1">{errors.jatuhTempo.message}</p>}
+                </div>
+              )}
             </div>
 
             <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Catatan
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
               <textarea
                 {...register("catatan")}
                 rows={3}
                 className="w-full border border-gray-300 rounded-md py-2 px-3"
                 placeholder="Catatan tambahan untuk pembelian ini..."
-              ></textarea>
+              />
             </div>
           </div>
 
-          {/* Product Selection Section */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-lg font-medium mb-4 flex items-center">
-              <Package size={20} className="mr-2 text-indigo-600" />
-              Pilih Produk
-            </h2>
+          {/* Product Selection */}
+          <ProductSelector
+            products={filteredProducts}
+            categories={productCategories}
+            searchQuery={searchProductQuery}
+            categoryFilter={categoryFilter}
+            showGrid={showProductGrid}
+            onSearchChange={setSearchProductQuery}
+            onCategoryChange={setCategoryFilter}
+            onViewToggle={() => setShowProductGrid(!showProductGrid)}
+            onProductSelect={handleAddProduct}
+            isLoading={isLoadingSupplierProducts}
+          />
 
-            {/* Search and Filter */}
-            <div className="flex flex-wrap gap-4 mb-6">
-              <div className="relative flex-grow max-w-md">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="Cari produk..."
-                  value={searchProductQuery}
-                  onChange={(e) => setSearchProductQuery(e.target.value)}
-                />
-              </div>
+          {/* Items List */}
+          <PurchaseItemList
+            fields={fields}
+            control={control}
+            register={register}
+            setValue={setValue}
+            errors={errors}
+            watchItems={watchItems}
+            products={filteredProducts}
+            onAddItem={addItem}
+            onRemoveItem={remove}
+            onProductSelect={handleProductSelect}
+            onRecalculateTotal={recalculateTotal}
+          />
 
-              <select
-                className="border border-gray-300 rounded-md py-2 px-3"
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-              >
-                <option value="">Semua Kategori</option>
-                {productCategories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.namaKategori}
-                  </option>
-                ))}
-              </select>
-
-              <button
-                type="button"
-                onClick={() => setShowProductGrid(!showProductGrid)}
-                className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md flex items-center"
-              >
-                {showProductGrid ? (
-                  <List size={16} className="mr-2" />
-                ) : (
-                  <Grid size={16} className="mr-2" />
-                )}
-                {showProductGrid ? "Tampilan List" : "Tampilan Grid"}
-              </button>
-            </div>
-
-            {/* Loading State */}
-            {isLoadingSupplierProducts ? (
-              <div className="flex justify-center items-center h-32">
-                <Spinner size="md" />
-              </div>
-            ) : filteredProducts.length === 0 ? (
-              <div className="bg-gray-50 p-8 text-center rounded-lg">
-                <Package size={40} className="mx-auto text-gray-400 mb-2" />
-                <h4 className="text-gray-500 font-medium">Tidak ada produk</h4>
-                <p className="text-gray-400 mt-1">
-                  Tidak ada produk yang tersedia atau sesuai dengan filter
-                </p>
-              </div>
-            ) : showProductGrid ? (
-              /* Grid View */
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filteredProducts.map((product) => (
-                  <div
-                    key={product.id}
-                    onClick={() => handleAddProduct(product)}
-                    className="border border-gray-200 p-4 rounded-lg hover:bg-gray-50 cursor-pointer transition duration-150"
-                  >
-                    <div className="font-medium text-indigo-600 truncate">
-                      {product.produkMaster?.namaProduk || "Produk"}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1 flex justify-between">
-                      <span>{product.produkMaster?.sku || "-"}</span>
-                     
-                    </div>
-                    <div className="mt-2 text-sm font-medium">
-                      {new Intl.NumberFormat("id-ID", {
-                        style: "currency",
-                        currency: "IDR",
-                        minimumFractionDigits: 0,
-                      }).format(parseFloat(product.hargaBeli))}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {product.produkMaster?.kategori?.namaKategori ||
-                        "Tanpa Kategori"} - <span>{product.produkMaster.satuan || "-"}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              /* List View */
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Produk
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Kode
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Kategori
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Harga Beli
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Aksi
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredProducts.map((product) => (
-                      <tr key={product.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {product.produkMaster?.namaProduk || "Produk"}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div className="flex flex-col">
-                            <span>SKU: {product.produkMaster?.sku || "-"}</span>
-                            <span className="text-xs">
-                              Supp: {product.kodeProdukSupplier || "-"}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {product.produkMaster?.kategori?.namaKategori || "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {new Intl.NumberFormat("id-ID", {
-                            style: "currency",
-                            currency: "IDR",
-                            minimumFractionDigits: 0,
-                          }).format(parseFloat(product.hargaBeli))}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                          <button
-                            type="button"
-                            onClick={() => handleAddProduct(product)}
-                            className="text-indigo-600 hover:text-indigo-900"
-                          >
-                            Tambahkan
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          {/* Items Section */}
+          {/* Summary & Submit */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-medium">Daftar Item Pembelian</h2>
+              <span className="text-lg font-medium">Total Pembelian</span>
+              <span className="text-2xl font-bold text-indigo-600">
+                {new Intl.NumberFormat("id-ID", {
+                  style: "currency",
+                  currency: "IDR",
+                  minimumFractionDigits: 0,
+                }).format(watch("totalBayar") || 0)}
+              </span>
+            </div>
+
+            <div className="flex gap-4">
               <button
                 type="button"
-                onClick={addItem}
-                className="px-3 py-1 bg-indigo-600 text-white rounded-md flex items-center text-sm"
+                onClick={() => navigate(-1)}
+                className="px-6 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
               >
-                <Plus size={14} className="mr-1" />
-                Tambah Item Manual
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting || fields.length === 0}
+                className="flex-1 px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Menyimpan..." : "Simpan Pembelian"}
               </button>
             </div>
-
-            {fields.length === 0 ? (
-              <div className="bg-gray-50 p-6 text-center rounded-lg">
-                <p className="text-gray-500">
-                  Belum ada item. Klik "Tambah Item" untuk menambahkan produk.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Items header on larger screens */}
-                <div className="hidden md:grid md:grid-cols-12 gap-4 text-sm font-medium text-gray-500 px-4">
-                  <div className="col-span-4">Produk</div>
-                  <div className="col-span-2">Batch/Exp</div>
-                  <div className="col-span-2">Harga Satuan</div>
-                  <div className="col-span-1">Qty</div>
-                  <div className="col-span-2">Subtotal</div>
-                  <div className="col-span-1"></div>
-                </div>
-
-                {/* Items */}
-                {fields.map((field, index) => (
-                  <div
-                    key={field.id}
-                    className="border border-gray-200 rounded-lg p-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-start"
-                  >
-                    {/* Product selection */}
-                    <div className="col-span-1 md:col-span-4 space-y-1">
-                      <label className="block text-sm font-medium text-gray-700 md:hidden">
-                        Produk
-                      </label>
-                      <select
-                        {...register(`items.${index}.produkId`)}
-                        onChange={(e) => handleProductSelect(e, index)}
-                        className="w-full border border-gray-300 rounded-md py-2 px-3"
-                      >
-                        <option value="">Pilih Produk</option>
-                        {filteredProducts.map((product) => (
-                          <option
-                            key={product.id}
-                            value={product.produkMasterId}
-                          >
-                            {product.produkMaster?.namaProduk || "Produk"} (
-                            {product.produkMaster?.sku || "-"}) -{" "}
-                            {new Intl.NumberFormat("id-ID", {
-                              style: "currency",
-                              currency: "IDR",
-                              minimumFractionDigits: 0,
-                            }).format(parseFloat(product.hargaBeli))}
-                          </option>
-                        ))}
-                      </select>
-                      {errors.items?.[index]?.produkId && (
-                        <p className="text-red-500 text-xs">
-                          {errors.items[index].produkId.message}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Batch and Expiry - New Fields */}
-                    <div className="col-span-1 md:col-span-2 space-y-2">
-                       <div>
-                        <label className="block text-xs font-medium text-gray-500 md:hidden">
-                          Batch Number
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Batch No"
-                          {...register(`items.${index}.batchNumber`)}
-                          className="w-full border border-gray-300 rounded-md py-1 px-2 text-sm"
-                        />
-                       </div>
-                       <div>
-                        <label className="block text-xs font-medium text-gray-500 md:hidden">
-                          Expired Date
-                        </label>
-                        <input
-                          type="date"
-                          {...register(`items.${index}.expiredDate`)}
-                          className="w-full border border-gray-300 rounded-md py-1 px-2 text-sm"
-                        />
-                       </div>
-                    </div>
-
-                    {/* Price per unit */}
-                    <div className="col-span-1 md:col-span-2 space-y-1">
-                      <label className="block text-sm font-medium text-gray-700 md:hidden">
-                        Harga Satuan
-                      </label>
-                      <Controller
-                        control={control}
-                        name={`items.${index}.hargaSatuan`}
-                        render={({ field }) => (
-                          <input
-                            type="number"
-                            {...field}
-                            onChange={(e) => {
-                              field.onChange(parseFloat(e.target.value) || 0);
-                            }}
-                            className="w-full border border-gray-300 rounded-md py-2 px-3"
-                          />
-                        )}
-                      />
-                      {errors.items?.[index]?.hargaSatuan && (
-                        <p className="text-red-500 text-xs">
-                          {errors.items[index].hargaSatuan.message}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Quantity */}
-                    <div className="col-span-1 md:col-span-1 space-y-1">
-                      <label className="block text-sm font-medium text-gray-700 md:hidden">
-                        Qty
-                      </label>
-                      <Controller
-                        control={control}
-                        name={`items.${index}.quantity`}
-                        render={({ field }) => (
-                          <input
-                            type="number"
-                            {...field}
-                            onChange={(e) => {
-                              field.onChange(parseInt(e.target.value) || 0);
-                            }}
-                            className="w-full border border-gray-300 rounded-md py-2 px-3"
-                          />
-                        )}
-                      />
-                      {errors.items?.[index]?.quantity && (
-                        <p className="text-red-500 text-xs">
-                          {errors.items[index].quantity.message}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Discount */}
-                    {/* Removed as per instruction */}
-
-                    {/* Subtotal */}
-                    <div className="col-span-1 md:col-span-2 space-y-1">
-                        <label className="block text-sm font-medium text-gray-700 md:hidden">
-                          Subtotal
-                        </label>
-                        <div className="text-gray-900 font-medium py-2">
-                          {new Intl.NumberFormat("id-ID", {
-                            style: "currency",
-                            currency: "IDR",
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0,
-                          }).format(watchItems[index]?.subtotal || 0)}
-                        </div>
-                    </div>
-                    
-                    {/* Delete Button */}
-                    <div className="col-span-1 md:col-span-1 flex justify-center md:justify-end">
-                      <button
-                        type="button"
-                        onClick={() => remove(index)}
-                        className="text-red-500 hover:text-red-700 p-2"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Total */}
-            <div className="mt-6 flex justify-end">
-              <div className="bg-gray-50 p-4 rounded-lg w-full md:w-1/3">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700 font-medium">Total:</span>
-                  <span className="text-indigo-600 text-xl font-semibold">
-                    {new Intl.NumberFormat("id-ID", {
-                      style: "currency",
-                      currency: "IDR",
-                      minimumFractionDigits: 0,
-                    }).format(watch("totalBayar"))}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Submit button */}
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={() => navigate(`/suppliers/${supplierId}`)}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 mr-2"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting || createTransaksiMutation.isPending}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-indigo-400"
-            >
-              {isSubmitting || createTransaksiMutation.isPending ? (
-                <>
-                  <Spinner size="sm" className="mr-2" />
-                  Menyimpan...
-                </>
-              ) : (
-                "Simpan Pembelian"
-              )}
-            </button>
           </div>
         </form>
       </div>

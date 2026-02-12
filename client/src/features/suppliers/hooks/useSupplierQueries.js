@@ -13,12 +13,14 @@ export const supplierKeys = {
   stat: (cabangId) => [...supplierKeys.stats(), cabangId],
 };
 
+import { keepPreviousData } from "@tanstack/react-query";
+
 // Get supplier list with filters and pagination
 export const useSupplierList = (filters = {}) => {
   return useQuery({
     queryKey: supplierKeys.list(filters),
     queryFn: () => supplierService.getAllSuppliers(filters),
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 };
 

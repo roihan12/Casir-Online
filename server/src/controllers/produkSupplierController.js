@@ -182,7 +182,7 @@ const getAvailableProductsForSupplier = async (req, res, next) => {
       page = 1,
       limit = 10,
       search = "",
-      cabangId = null,
+      cabangId,
       produkMasterId = null,
       kategoriId = null,
       status = "aktif",

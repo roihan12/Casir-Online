@@ -348,6 +348,7 @@ function App() {
                 </ProtectedRoute>
               }
             >
+              <Route path="create" element={<PurchaseCreate />} />
               <Route path="create/:id" element={<PurchaseCreate />} />
               <Route path=":id" element={<PurchaseDetail />} />
             </Route>

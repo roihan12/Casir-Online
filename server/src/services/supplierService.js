@@ -467,7 +467,7 @@ const getSupplierDashboardStats = async (cabangId = null) => {
       // Calculate percentage changes
       const calculateChange = (current, previous) => {
         if (previous === 0) return current > 0 ? 100 : 0;
-        return ((current - previous) / previous) * 100;
+        return ((current - previous) / previous) * 100; 
       };
 
       return {
@@ -497,7 +497,7 @@ const getSupplierDashboardStats = async (cabangId = null) => {
           count: suppliersWithTransactions,
           percentage:
             totalSuppliers > 0
-              ? (suppliersWithTransactions / totalSuppliers) * 100
+              ? Math.round((suppliersWithTransactions / totalSuppliers) * 100)
               : 0,
           change: calculateChange(
             suppliersWithTransactions,

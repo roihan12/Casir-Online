@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Truck,
@@ -32,6 +32,7 @@ import {
   useChangeSupplierStatus,
 } from "../hooks/useSupplierQueries";
 import { useCabang } from "../../cabang/hooks/useCabang";
+import useDebounce from "@common/hooks/useDebounce";
 
 const SupplierManagementPage = () => {
   const navigate = useNavigate();
@@ -39,7 +40,9 @@ const SupplierManagementPage = () => {
   const { cabangList } = useCabang();
 
   // State for filters and pagination
+  // State for filters and pagination
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [statusFilter, setStatusFilter] = useState("");
   const [cabangFilter, setCabangFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -51,14 +54,24 @@ const SupplierManagementPage = () => {
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [newStatus, setNewStatus] = useState("");
 
+  // Auto-select branch if only one is available
+  useEffect(() => {
+    if (cabangList && cabangList.length === 1) {
+      setCabangFilter(cabangList[0].id);
+    }
+  }, [cabangList]);
+
   // Prepare filters for API request
-  const filters = {
-    page: currentPage,
-    limit: pageSize,
-    search: searchTerm,
-    status: statusFilter,
-    cabangId: cabangFilter,
-  };
+  const filters = useMemo(
+    () => ({
+      page: currentPage,
+      limit: pageSize,
+      search: debouncedSearchTerm,
+      status: statusFilter,
+      cabangId: cabangFilter,
+    }),
+    [currentPage, pageSize, debouncedSearchTerm, statusFilter, cabangFilter]
+  );
 
   // Fetch suppliers with TanStack Query
   const {
@@ -113,11 +126,8 @@ const SupplierManagementPage = () => {
 
   // Handle cabang change
   const handleCabangChange = (e) => {
-    if (e.target.value === "global") {
-      setCabangFilter(null);
-    } else {
-      setCabangFilter(e.target.value);
-    }
+    const value = e.target.value;
+    setCabangFilter(value === "global" ? "" : value);
     setCurrentPage(1); // Reset to first page on cabang change
   };
 
@@ -418,23 +428,25 @@ const SupplierManagementPage = () => {
         {/* Filters & Actions */}
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
           {/* Cabang Filter */}
-          <div className="relative">
-            <select
-              className="appearance-none bg-white border border-gray-300 rounded-lg py-2 pl-3 pr-10 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              value={cabangFilter}
-              onChange={handleCabangChange}
-            >
-              {cabangList &&
-                cabangList.map((cabang) => (
+          {/* Cabang Filter */}
+          {cabangList && cabangList.length > 1 && (
+            <div className="relative">
+              <select
+                className="appearance-none bg-white border border-gray-300 rounded-lg py-2 pl-3 pr-10 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={cabangFilter || ""}
+                onChange={handleCabangChange}
+              >
+                {cabangList.map((cabang) => (
                   <option key={cabang.id} value={cabang.id}>
                     {cabang.namaCabang}
                   </option>
                 ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-              {/* <ChevronDown size={16} /> */}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                <ChevronDown size={16} />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Status Filter */}
           <div className="relative">
