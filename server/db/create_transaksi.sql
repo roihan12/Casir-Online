@@ -1,6 +1,6 @@
--- DROP FUNCTION public.create_transaksi(varchar, varchar, timestamp, varchar, varchar, varchar, varchar, jsonb, float8, text, jsonb, varchar, varchar, varchar, varchar, int4, numeric);
+-- DROP FUNCTION public.create_transaksi(varchar, varchar, timestamp, varchar, varchar, varchar, varchar, jsonb, float8, text, jsonb, varchar, varchar, varchar, varchar, timestamp, int4, numeric);
 
-CREATE OR REPLACE FUNCTION public.create_transaksi(p_cabang_id character varying, p_jenis_transaksi character varying, p_tanggal timestamp without time zone, p_pelanggan_id character varying, p_supplier_id character varying, p_shift_id character varying, p_promo_id character varying, p_details jsonb, p_biaya_tambahan double precision, p_keterangan text, p_customer_info jsonb, p_user_id character varying, p_ip_address character varying, p_user_name character varying, p_metode_pembayaran character varying DEFAULT NULL::character varying, p_tenor integer DEFAULT NULL::integer, p_uang_muka numeric DEFAULT 0)
+CREATE OR REPLACE FUNCTION public.create_transaksi(p_cabang_id character varying, p_jenis_transaksi character varying, p_tanggal timestamp without time zone, p_pelanggan_id character varying, p_supplier_id character varying, p_shift_id character varying, p_promo_id character varying, p_details jsonb, p_biaya_tambahan double precision, p_keterangan text, p_customer_info jsonb, p_user_id character varying, p_ip_address character varying, p_user_name character varying, p_metode_pembayaran character varying DEFAULT NULL::character varying, p_jatuh_tempo timestamp without time zone DEFAULT NULL::timestamp without time zone, p_tenor integer DEFAULT NULL::integer, p_uang_muka numeric DEFAULT 0)
  RETURNS uuid
  LANGUAGE plpgsql
 AS $function$
@@ -253,7 +253,7 @@ BEGIN
                 IF NOT FOUND THEN
                     RAISE EXCEPTION 'Data supplier produk tidak ditemukan';
                 END IF;
-                
+                 
                 IF ABS(v_harga_satuan - v_harga_db) > (v_harga_db * 0.1) THEN
                     RAISE NOTICE 'Harga berbeda. Terdaftar: %, Digunakan: %', v_harga_db, v_harga_satuan;
                 END IF;
@@ -462,7 +462,7 @@ BEGIN
             cabang_id, supplier_id, created_by_user_id, created_by, created_at, updated_at
         ) VALUES (
             gen_random_uuid(), v_transaksi_id, v_nomor_transaksi, p_tanggal,
-            p_tanggal + interval '30 day', v_total, 0, v_total,
+            COALESCE(p_jatuh_tempo::DATE, p_tanggal::DATE + interval '30 day'), v_total, 0, v_total,
             'supplier', 'aktif', 'Hutang pembelian #' || v_nomor_transaksi,
             p_cabang_id, p_supplier_id, p_user_id, p_user_name, now(), now()
         );
@@ -1033,7 +1033,7 @@ $function$
 
 
 
--- DROP FUNCTION public.create_transaksi(varchar, varchar, timestamp, varchar, varchar, varchar, varchar, jsonb, float8, text, jsonb, varchar, varchar, varchar, varchar, int4, numeric);
+-- DROP FUNCTION public.create_transaksi(varchar, varchar, timestamp, varchar, varchar, varchar, varchar, jsonb, float8, text, jsonb, varchar, varchar, varchar, varchar, timestamp, int4, numeric);
 
 CREATE OR REPLACE FUNCTION public.create_transaksi_with_promo(p_cabang_id character varying, p_jenis_transaksi character varying, p_tanggal timestamp without time zone, p_pelanggan_id character varying, p_supplier_id character varying, p_shift_id character varying,  p_details jsonb, p_biaya_tambahan double precision, p_keterangan text, p_customer_info jsonb, p_user_id character varying, p_ip_address character varying, p_user_name character varying, p_promo_codes VARCHAR[] DEFAULT null, p_metode_pembayaran character varying DEFAULT NULL::character varying, p_tenor integer DEFAULT NULL::integer, p_uang_muka numeric DEFAULT 0)
  RETURNS jsonb
@@ -1561,7 +1561,7 @@ IF v_promo_result IS NOT NULL THEN
             cabang_id, supplier_id, created_by_user_id, created_by, created_at, updated_at
         ) VALUES (
             gen_random_uuid(), v_transaksi_id, v_nomor_transaksi, p_tanggal,
-            p_tanggal + interval '30 day', v_total, 0, v_total,
+            COALESCE(p_jatuh_tempo::DATE, p_tanggal::DATE + interval '30 day'), v_total, 0, v_total,
             'supplier', 'aktif', 'Hutang pembelian #' || v_nomor_transaksi,
             p_cabang_id, p_supplier_id, p_user_id, p_user_name, now(), now()
         );

@@ -67,7 +67,53 @@ const purchaseSchema = z.object({
 
 const PurchaseCreate = () => {
   const { id: supplierId } = useParams();
-// ... imports and setup remains same ...
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { selectedCabang, setSelectedCabang, cabangList: branches } = useCabang();
+  
+  // Local state
+  const [localSelectedBranch, setLocalSelectedBranch] = useState(selectedCabang);
+  const [selectingSupplier, setSelectingSupplier] = useState(!supplierId);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchProductQuery, setSearchProductQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [showProductGrid, setShowProductGrid] = useState(true);
+
+  // Sync with global branch context
+  useEffect(() => {
+    if (selectedCabang) {
+      setLocalSelectedBranch(selectedCabang);
+    }
+  }, [selectedCabang]);
+
+  // Queries
+  const { 
+    data: supplierData, 
+    isLoading: isLoadingSupplierById 
+  } = useSupplierById(supplierId);
+  
+  const supplier = supplierData?.data;
+
+  // Use the useSupplierProducts hook to get products and loading states
+  const {
+    supplierProducts: products,
+    isLoadingSupplierProducts,
+    isLoadingSupplier, 
+  } = useSupplierProducts({
+    supplierId,
+    branchId: localSelectedBranch?.id,
+    enabled: !!supplierId,
+  });
+
+  const createTransaksiMutation = useCreateTransaksi();
+
+  const { 
+    data: supplierList, 
+    isLoading: isLoadingSuppliers 
+  } = useSupplierList({ 
+    cabangId: localSelectedBranch?.id !== "global" ? localSelectedBranch?.id : undefined
+  });
+
   // Form setup
   const {
     register,
@@ -103,7 +149,108 @@ const PurchaseCreate = () => {
     }
   }, [metodePembayaran, tanggal, setValue, watch]);
 
-// ... existing code ...
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "items",
+  });
+
+  // Watch items for calculations
+  const watchItems = watch("items");
+
+  // Calculate total whenever items change
+  useEffect(() => {
+    if (!watchItems) return;
+    const total = watchItems.reduce((acc, item) => {
+      // Ensure values are numbers
+      const subtotal = Number(item.subtotal) || 0;
+      return acc + subtotal;
+    }, 0);
+    setValue("totalBayar", total);
+  }, [watchItems, setValue]);
+
+  // Derived state
+  const filteredSuppliers = useMemo(() => {
+     if (!supplierList?.data) return [];
+     return supplierList.data.filter(s => 
+       s.namaSupplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
+       (s.kodeSupplier && s.kodeSupplier.toLowerCase().includes(searchTerm.toLowerCase()))
+     );
+  }, [supplierList?.data, searchTerm]);
+
+  const productCategories = useMemo(() => {
+    if (!products) return [];
+    const categories = [];
+    const seen = new Set();
+    products.forEach(p => {
+      const cat = p.produkMaster?.kategori;
+      if (cat && !seen.has(cat.id)) {
+        seen.add(cat.id);
+        categories.push(cat);
+      }
+    });
+    return categories;
+  }, [products]);
+
+  const filteredProducts = useMemo(() => {
+    if (!products) return [];
+    return products.filter(p => {
+      const matchesSearch = !searchProductQuery || (
+        (p.produkMaster?.namaProduk || "").toLowerCase().includes(searchProductQuery.toLowerCase()) ||
+        (p.produkMaster?.sku || "").toLowerCase().includes(searchProductQuery.toLowerCase())
+      );
+      const matchesCategory = categoryFilter ? p.produkMaster?.kategori?.id === categoryFilter : true;
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, searchProductQuery, categoryFilter]);
+
+  // Handlers
+  const handleCreateNewSupplier = () => {
+    navigate("/suppliers/new");
+  };
+
+  const handleSelectSupplier = (id) => {
+    navigate(`/purchases/create/${id}`); 
+    setSelectingSupplier(false);
+  };
+
+  const handleChangeBranch = (branchId) => {
+    const branch = branches.find(b => b.id === branchId);
+    if (branch) {
+      setLocalSelectedBranch(branch);
+    }
+  };
+
+  const handleAddProduct = (product) => {
+    // Check if exists
+    const currentItems = watch("items") || [];
+    const exists = currentItems.some(item => item.produkId === product.produkMasterId);
+    
+    if (exists) {
+      toast.error("Produk sudah ada dalam daftar");
+      return;
+    }
+    
+    // Parse values
+    const hargaBeli = parseFloat(product.hargaBeli);
+    
+    append({
+        produkId: product.produkMasterId,
+        produkSupplier: {
+          id: product.id,
+          hargaBeli: hargaBeli,
+          kodeProdukSupplier: product.kodeProdukSupplier,
+          namaProduk: product.produkMaster?.namaProduk || "Produk",
+        },
+        quantity: 1,
+        hargaSatuan: hargaBeli,
+        subtotal: hargaBeli,
+        diskon: 0,
+        keterangan: "",
+        batchNumber: "",
+        expiredDate: "",
+    });
+    toast.success("Produk ditambahkan ke daftar");
+  };
 
   // Handle form submission
   const onSubmit = async (data) => {
@@ -165,17 +312,35 @@ const PurchaseCreate = () => {
         shift_id: null,
         promo_id: null,
         details: data.items.map((item) => {
-          // Find product ID from produk array in the selected product
+          // Find product data from products array
           const productItem = products.find(
             (product) => product.produkMasterId === item.produkId
           );
 
-          // Get the product ID from the first item in the produk array
-          const actualProductId =
-            productItem?.produkMaster?.produk?.[0]?.id || item.produkId;
+          if (!productItem) {
+            throw new Error(
+              `Produk dengan ID ${item.produkId} tidak ditemukan dalam daftar produk supplier`
+            );
+          }
+
+          // Get the actual produk_id with proper validation
+          const produkArray = productItem?.produkMaster?.produk;
+          let actualProductId;
+
+          if (Array.isArray(produkArray) && produkArray.length > 0) {
+            actualProductId = produkArray[0].id;
+          } else if (productItem?.produkMaster?.id) {
+            // Fallback to produkMaster.id if produk array doesn't exist
+            actualProductId = productItem.produkMaster.id;
+          } else {
+            throw new Error(
+              `ID produk tidak valid untuk produk: ${productItem?.produkMaster?.namaProduk || item.produkId}`
+            );
+          }
 
           return {
             produk_id: actualProductId,
+            produk_supplier_id: item.produkSupplier?.id || null,
             batch_number: item.batchNumber || "", 
             expired_date: item.expiredDate || null, 
             jumlah:
@@ -187,7 +352,7 @@ const PurchaseCreate = () => {
                 ? parseFloat(item.hargaSatuan)
                 : item.hargaSatuan,
             diskon_persen: 0, // Default to 0 as the form uses direct amount
-            pajak_persen: 0, // Default to 0 as it's not in the form
+            // pajak_persen omitted - backend will use default from tax_config table
           };
         }),
         metode_pembayaran: data.metodePembayaran, // Ensure this is sent

@@ -26,4 +26,4 @@ dist-ssr
 .cursor/*
 ./web
 .trae/
-.claude/
+.claude/*

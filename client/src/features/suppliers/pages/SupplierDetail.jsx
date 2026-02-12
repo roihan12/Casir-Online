@@ -378,7 +378,7 @@ const SupplierDetail = () => {
                       Nilai Transaksi
                     </span>
                     <span className="block mt-1 text-xl font-semibold text-indigo-600">
-                      {formatCurrency(supplier.stats?.totalTransaksi || 0)}
+                      {formatCurrency(supplier.stats?.nilaiTransaksi || 0)}
                     </span>
                   </div>
 
@@ -640,7 +640,7 @@ const SupplierDetail = () => {
                 <button
                   onClick={() => {
                     navigate(
-                      `/suppliers/${id}/purchase/create${
+                      `/purchases/create/${id}${
                         selectedBranchId ? `?cabangId=${selectedBranchId}` : ""
                       }`
                     );

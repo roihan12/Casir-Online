@@ -19,6 +19,7 @@ const createTransaksiValidation = Joi.object({
     .items(
       Joi.object({
         produk_id: Joi.string().required(),
+        produk_supplier_id: Joi.string().allow(null, ""),
         batch_number: Joi.string().allow(null, ""),
         expired_date: Joi.date().allow(null),
         jumlah: Joi.number().integer().min(1).required(),
@@ -40,12 +41,16 @@ const createTransaksiValidation = Joi.object({
       "QRIS",
       "E_WALLET",
       "KREDIT_PELANGGAN",
-      "TEMPO"
+      "TEMPO",
+      "HUTANG"
     )
     .required(),
   manual_discount_persen: Joi.number().precision(2).min(0).max(100).allow(null),
   manual_discount_nominal: Joi.number().precision(2).min(0).allow(null),
   manual_discount_alasan: Joi.string().allow(null, ""),
+  jatuh_tempo: Joi.date().allow(null),
+  tenor: Joi.number().integer().min(1).allow(null),
+  uang_muka: Joi.number().precision(2).min(0).allow(null),
 });
 
 // Validasi untuk tambah pembayaran

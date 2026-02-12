@@ -44,23 +44,24 @@ const createTransaksi = async (data, auditInfo) => {
     // Panggil stored procedure PostgreSQL
     const result = await prisma.$queryRaw`
       SELECT create_transaksi(
-        ${data.cabang_id}::VARCHAR, 
-        ${data.jenis_transaksi}::VARCHAR, 
+        ${data.cabang_id}::VARCHAR,
+        ${data.jenis_transaksi}::VARCHAR,
         ${data.tanggal}::TIMESTAMP,
-        ${data.pelanggan_id || null}::VARCHAR, 
-        ${data.supplier_id || null}::VARCHAR, 
+        ${data.pelanggan_id || null}::VARCHAR,
+        ${data.supplier_id || null}::VARCHAR,
         ${data.shift_id || null}::VARCHAR,
-        ${data.promo_id || null}::VARCHAR, 
+        ${data.promo_id || null}::VARCHAR,
         ${JSON.stringify(data.details)}::JSONB,
-        ${data.biaya_tambahan || 0}::DECIMAL, 
+        ${data.biaya_tambahan || 0}::DECIMAL,
         ${data.keterangan || null}::TEXT,
         ${
           data.customer_info ? JSON.stringify(data.customer_info) : null
         }::JSONB,
-        ${auditInfo.userId}::VARCHAR, 
+        ${auditInfo.userId}::VARCHAR,
         ${auditInfo.ipAddress}::VARCHAR,
         ${auditInfo.userName}::VARCHAR,
-        ${data.metode_pembayaran}::VARCHAR
+        ${data.metode_pembayaran}::VARCHAR,
+        ${data.jatuh_tempo || null}::TIMESTAMP
       )
     `;
 

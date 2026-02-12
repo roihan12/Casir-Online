@@ -337,7 +337,6 @@ function App() {
               <Route path="debt" element={<SupplierDebt />} />
               <Route path=":id" element={<SupplierDetail />} />
               <Route path=":id/edit" element={<SupplierForm />} />
-              <Route path=":id/purchase/create" element={<PurchaseCreate />} />
             </Route>
 
             {/* Purchase Routes */}
@@ -349,7 +348,7 @@ function App() {
                 </ProtectedRoute>
               }
             >
-              <Route path="create" element={<PurchaseCreate />} />
+              <Route path="create/:id" element={<PurchaseCreate />} />
               <Route path=":id" element={<PurchaseDetail />} />
             </Route>
 
