@@ -55,4 +55,11 @@ router.get(
   produkSupplierController.getBranchesWithSupplierAccess
 );
 
+// Get price history for all products from a supplier
+router.get(
+  "/supplier/:supplierId/price-history",
+  hasPermission(["supplier:read"]),
+  produkSupplierController.getSupplierPriceHistory
+);
+
 module.exports = router;

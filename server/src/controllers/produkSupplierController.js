@@ -244,6 +244,46 @@ const getBranchesWithSupplierAccess = async (req, res, next) => {
   }
 };
 
+/**
+ * Get price history for all products from a supplier
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+const getSupplierPriceHistory = async (req, res, next) => {
+  try {
+    const { supplierId } = req.params;
+    const {
+      page = 1,
+      limit = 10,
+      cabangId = null,
+    } = req.query;
+
+    if (!supplierId) {
+      throw new ResponseError(400, "ID supplier diperlukan");
+    }
+
+    const result = await produkSupplierService.getSupplierPriceHistory(
+      supplierId,
+      {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        cabangId,
+      }
+    );
+
+    res.status(200).json({
+      status: true,
+      message: "Riwayat harga produk supplier berhasil diambil",
+      data: result.data,
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 module.exports = {
   createProdukSupplier,
   updateProdukSupplier,
@@ -252,4 +292,5 @@ module.exports = {
   getProductsBySupplier,
   getBranchesWithSupplierAccess,
   getAvailableProductsForSupplier,
+  getSupplierPriceHistory,
 };

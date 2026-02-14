@@ -20,8 +20,8 @@ const supplierService = {
    * @returns {Promise<Object>} - Supplier data
    */
   getSupplierById: async (id) => {
-    const response = await api.get(`${SUPPLIER_URL}/${id}/detail`);
-    return response.data;
+    const response = await api.get(`${SUPPLIER_URL}/${id}`);
+    return response.data.data;
   },
 
   /**
@@ -81,8 +81,8 @@ const supplierService = {
     const response = await api.get(`/transaksi`, {
       params: {
         ...filters,
-        supplier_id: supplierId,
-        jenis_transaksi: "PEMBELIAN",
+        supplierId: supplierId,
+        jenisTransaksi: "PEMBELIAN",
       },
     });
     return response.data;
@@ -113,6 +113,14 @@ const supplierService = {
   getSupplierDashboardStats: async (cabangId = "") => {
     const response = await api.get("/supplier/dashboard", {
       params: cabangId ? { cabangId } : {},
+    });
+    return response.data;
+  },
+
+  // Get supplier price history for all products
+  getSupplierPriceHistory: async (supplierId, params = {}) => {
+    const response = await api.get(`/produk-supplier/supplier/${supplierId}/price-history`, {
+      params,
     });
     return response.data;
   },

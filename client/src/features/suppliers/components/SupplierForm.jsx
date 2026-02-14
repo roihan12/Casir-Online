@@ -49,7 +49,7 @@ const SupplierForm = () => {
 
       try {
         setIsLoading(true);
-        const data = await getSupplierById(id);
+        const data = await supplierService.getSupplierById(id);
         setFormData({
           namaSupplier: data.namaSupplier || "",
           alamat: data.alamat || "",
@@ -108,7 +108,7 @@ const SupplierForm = () => {
 
     try {
       if (isEditMode) {
-        await updateSupplier(id, formData);
+        await supplierService.updateSupplier(id, formData);
         toast.success("Supplier berhasil diperbarui");
       } else {
         await supplierService.createSupplier(formData);

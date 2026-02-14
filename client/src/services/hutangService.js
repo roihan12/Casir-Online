@@ -68,6 +68,46 @@ const hutangService = {
     const response = await api.get(`/hutang/summary/${type}/${id}`);
     return response.data;
   },
+
+  // Added methods to match usage in useHutang.js
+  
+  getSupplierHutang: async (supplierId, params = {}) => {
+    return hutangService.getHutangList({ ...params, supplierId });
+  },
+
+  getSupplierHutangSummary: async (supplierId, params = {}) => {
+    // Note: Backend currently ignores params for summary
+    return hutangService.getHutangSummary('supplier', supplierId);
+  },
+
+  getPayments: async (hutangId) => {
+    return hutangService.getPembayaranHistory(hutangId);
+  },
+
+  createPayment: async (data) => {
+    return hutangService.createPembayaran(data);
+  },
+
+  // Placeholders/Aliases for methods likely intended but maybe not implemented in backend yet
+  // or handled by different services (e.g. Transaction)
+  createHutang: async (data) => {
+    // Check if this should be a transaction creation
+    // For now assuming it maps to payment or throws error if not implemented
+    console.warn("createHutang not explicitly implemented in service");
+    return hutangService.createPembayaran(data); 
+  },
+
+  updateHutang: async (id, data) => {
+      // Placeholder
+      console.warn("updateHutang not implemented");
+      return {};
+  },
+
+  deleteHutang: async (id) => {
+      // Placeholder
+      console.warn("deleteHutang not implemented");
+      return {};
+  }
 };
 
 export default hutangService;

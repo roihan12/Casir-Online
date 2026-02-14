@@ -28,6 +28,7 @@ const SupplierDebt = () => {
   const queryParams = new URLSearchParams(location.search);
   const supplierId = queryParams.get("supplierId");
   const supplierName = queryParams.get("supplierName");
+  const cabangIdFromUrl = queryParams.get("cabangId");
 
   const { selectedCabang } = useCabang();
   const [searchTerm, setSearchTerm] = useState("");
@@ -49,6 +50,7 @@ const SupplierDebt = () => {
     isLoadingSupplierHutangSummary,
   } = useHutang({
     supplierId,
+    cabangId: cabangIdFromUrl || selectedCabang?.id, // Prioritize URL param, fallback to global
     filterParams: {
       page,
       limit,
@@ -443,7 +445,7 @@ const SupplierDebt = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button
                             onClick={() =>
-                              navigate(`/superadmin/hutang/${hutang.id}`)
+                              navigate(`/hutang/${hutang.id}`)
                             }
                             className="text-indigo-600 hover:text-indigo-900 mr-3"
                           >

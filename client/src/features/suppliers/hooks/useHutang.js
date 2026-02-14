@@ -9,7 +9,10 @@ import { useCabang } from "@features/cabang/hooks/useCabang";
 export const useHutang = (options = {}) => {
   const queryClient = useQueryClient();
   const { selectedCabang } = useCabang();
-  const { supplierId, hutangId, filterParams = {} } = options;
+  const { supplierId, hutangId, filterParams = {}, cabangId } = options;
+
+  // Determine effective branch ID (prop > filter > global)
+  const effectiveCabangId = cabangId || filterParams.cabangId || selectedCabang?.id;
 
   // Get hutang list with filters
   const {
@@ -18,13 +21,13 @@ export const useHutang = (options = {}) => {
     error: hutangListError,
     refetch: refetchHutangList,
   } = useQuery({
-    queryKey: ["hutang", { ...filterParams, cabangId: selectedCabang?.id }],
+    queryKey: ["hutang", { ...filterParams, cabangId: effectiveCabangId }],
     queryFn: () =>
       hutangService.getHutangList({
         ...filterParams,
-        cabangId: selectedCabang?.id,
+        cabangId: effectiveCabangId,
       }),
-    enabled: !!selectedCabang?.id,
+    enabled: true, // Always enabled, API should handle no-branch case if needed, or rely on other params
   });
 
   // Get single hutang by ID
@@ -46,12 +49,12 @@ export const useHutang = (options = {}) => {
     error: supplierHutangSummaryError,
     refetch: refetchSupplierHutangSummary,
   } = useQuery({
-    queryKey: ["hutang", "supplier-summary", supplierId, selectedCabang?.id],
+    queryKey: ["hutang", "supplier-summary", supplierId, effectiveCabangId],
     queryFn: () =>
       hutangService.getSupplierHutangSummary(supplierId, {
-        cabangId: selectedCabang?.id,
+        cabangId: effectiveCabangId,
       }),
-    enabled: !!supplierId && !!selectedCabang?.id,
+    enabled: !!supplierId,
   });
 
   // Get supplier hutang list
@@ -65,15 +68,15 @@ export const useHutang = (options = {}) => {
       "hutang",
       "supplier",
       supplierId,
-      selectedCabang?.id,
+      effectiveCabangId,
       filterParams,
     ],
     queryFn: () =>
       hutangService.getSupplierHutang(supplierId, {
         ...filterParams,
-        cabangId: selectedCabang?.id,
+        cabangId: effectiveCabangId,
       }),
-    enabled: !!supplierId && !!selectedCabang?.id,
+    enabled: !!supplierId,
   });
 
   // Get hutang payments

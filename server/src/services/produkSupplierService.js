@@ -692,6 +692,98 @@ const getProductsForSupplier = async (
   );
 };
 
+/**
+ * Get price history for all products from a supplier
+ * @param {string} supplierId - The supplier ID
+ * @param {Object} options - Options for filtering and pagination
+ * @returns {Promise<Object>} - Price history data with pagination
+ */
+const getSupplierPriceHistory = async (
+  supplierId,
+  { page = 1, limit = 10, cabangId = null }
+) => {
+  try {
+    const skip = (page - 1) * limit;
+
+    // Build where clause for price history
+    const whereClause = {
+      supplierId, // ProdukPriceHistory has supplierId field
+      ...(cabangId && { cabangId }),
+    };
+
+    // Get price history from ProdukPriceHistory table
+    const [priceHistory, total] = await Promise.all([
+      prisma.produkPriceHistory.findMany({
+        where: whereClause,
+        skip,
+        take: limit,
+        orderBy: { tanggalPerubahan: "desc" },
+        include: {
+          produk: {
+            select: {
+              id: true,
+              produkMaster: {
+                select: {
+                  id: true,
+                  namaProduk: true,
+                  sku: true,
+                },
+              },
+            },
+          },
+          cabang: {
+            select: {
+              id: true,
+              namaCabang: true,
+            },
+          },
+        },
+      }),
+      prisma.produkPriceHistory.count({ where: whereClause }),
+    ]);
+
+    // Format the response
+    const formattedData = priceHistory.map((history) => ({
+      id: history.id,
+      supplierId: history.supplierId,
+      produkId: history.produkId,
+      produkMasterId: history.produk.produkMaster.id,
+      produkNama: history.produk.produkMaster.namaProduk,
+      produkKode: history.produk.produkMaster.sku,
+      cabangId: history.cabangId,
+      cabangNama: history.cabang?.namaCabang,
+      tipeHarga: history.tipeHarga,
+      hargaLama: history.hargaLama,
+      hargaBaru: history.hargaBaru,
+      perubahan: history.hargaBaru - history.hargaLama,
+      persentasePerubahan:
+        history.hargaLama > 0
+          ? ((history.hargaBaru - history.hargaLama) / history.hargaLama) * 100
+          : 0,
+      tanggalPerubahan: history.tanggalPerubahan,
+      alasanPerubahan: history.alasanPerubahan,
+    }));
+
+    return {
+      data: formattedData,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        hasNextPage: page * limit < total,
+        hasPrevPage: page > 1,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching supplier price history:", error);
+    throw new ResponseError(
+      500,
+      "Gagal mengambil riwayat harga supplier: " + error.message
+    );
+  }
+};
+
 module.exports = {
   createProdukSupplier,
   updateProdukSupplier,
@@ -700,4 +792,5 @@ module.exports = {
   getProductsBySupplier,
   getBranchesWithSupplierAccess,
   getProductsForSupplier,
+  getSupplierPriceHistory,
 };

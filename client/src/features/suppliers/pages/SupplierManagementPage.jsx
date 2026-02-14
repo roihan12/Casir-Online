@@ -577,4 +577,4 @@ const SupplierManagementPage = () => {
   );
 };
 
-export default withCabangData(SupplierManagementPage);
+export default SupplierManagementPage;
