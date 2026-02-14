@@ -91,9 +91,10 @@ const hasPermission = (requiredPermissions, options = {}) => {
         });
       }
 
+
       // Branch Scoping Check (Optional)
       // If a branchId is provided in params/body/query, ensure user belongs to it
-      if (options.checkBranch) {
+      if (options.checkBranch && user.roles[0].namaRole !== "super_admin") {
         const targetCabangId = req.params.cabangId || req.body.cabangId || req.query.cabangId;
         if (targetCabangId) {
           const roles = user.roles || [];

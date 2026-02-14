@@ -21,6 +21,13 @@ router.put(
   taxController.updateTaxConfig
 );
 
+// Bulk update tax configuration
+router.put(
+  "/config/bulk",
+  hasPermission(["settings:manage"]),
+  taxController.updateTaxConfigBulk
+);
+
 // Calculate tax for an amount
 router.post(
   "/calculate",

@@ -738,6 +738,7 @@ class DummyDataGenerator {
       "notification",
       "produk_request",
       "dashboard",
+      "audit",
     ];
     const actions = ["create", "read", "update", "delete"];
     const permissions = [];

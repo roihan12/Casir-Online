@@ -33,7 +33,7 @@ const updateTaxConfig = async (req, res, next) => {
     }
 
     // Validate request body
-    const taxConfig = validate(req.body, taxConfigSchema);
+    const taxConfig = validate(taxConfigSchema, req.body);
 
     // Add audit info
     const auditInfo = {
@@ -85,8 +85,47 @@ const calculateTax = async (req, res, next) => {
   }
 };
 
+
+// Update tax configuration for multiple branches
+const updateTaxConfigBulk = async (req, res, next) => {
+  try {
+    const { targetCabangIds, config } = req.body;
+
+    if (!targetCabangIds || !Array.isArray(targetCabangIds) || targetCabangIds.length === 0) {
+      throw new ResponseError(400, "targetCabangIds is required and must be a non-empty array");
+    }
+
+    if (!config) {
+      throw new ResponseError(400, "config is required");
+    }
+
+    // Validate config
+    const taxConfig = validate(config, taxConfigSchema);
+
+    // Add audit info
+    const auditInfo = {
+      userId: req.user.id,
+      ipAddress: req.ip,
+    };
+
+    const results = await taxService.updateTaxConfigBulk(
+      targetCabangIds,
+      taxConfig,
+      auditInfo
+    );
+
+    res.status(200).json({
+      status: "success",
+      data: results,
+      message: `Tax configuration updated for ${results.length} branches`,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 module.exports = {
   getTaxConfig,
   updateTaxConfig,
+  updateTaxConfigBulk,
   calculateTax,
 };

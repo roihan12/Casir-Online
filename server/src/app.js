@@ -59,6 +59,7 @@ const shiftReportRoutes = require("./routes/shiftReportRoutes");
 const transactionReportRoutes = require("./routes/transactionReportRoutes");
 const customerReportRoutes = require("./routes/customerReportRoutes");
 const promoReportRoutes = require("./routes/promoReportRoutes");
+const auditRoutes = require("./routes/auditRoutes");
 
 
 const {
@@ -175,6 +176,7 @@ app.use("/api/reports/customer", customerReportRoutes);
 app.use("/api/reports/promo", promoReportRoutes);
 app.use("/api/whatsapp", whatsappRoutes);
 app.use("/api/broadcast", broadcastRoutes);
+app.use("/api/audit-logs", auditRoutes);
 
 // 404 handler
 app.use((req, res) => {

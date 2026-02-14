@@ -112,8 +112,91 @@ const calculateTax = async (amount, cabangId) => {
   return taxAmount;
 };
 
+
+// Update tax configuration for multiple branches
+const updateTaxConfigBulk = async (targetCabangIds, taxConfig, auditInfo) => {
+  if (!targetCabangIds || targetCabangIds.length === 0) {
+    throw new ResponseError(400, "Target branches are required");
+  }
+
+  // Validate tax config
+  const {
+    is_tax_enabled,
+    tax_percentage,
+    tax_name,
+    tax_number,
+    is_tax_included,
+  } = taxConfig;
+
+  if (tax_percentage < 0 || tax_percentage > 100) {
+    throw new ResponseError(400, "Tax percentage must be between 0 and 100");
+  }
+
+  // Prepare updated config
+  const updatedConfig = {
+    is_tax_enabled,
+    tax_percentage,
+    tax_name,
+    tax_number,
+    is_tax_included,
+  };
+
+  const results = [];
+
+  // Use transaction to ensure all updates succeed or fail together
+  await prisma.$transaction(async (prisma) => {
+    for (const cabangId of targetCabangIds) {
+      // Check if branch exists
+      const cabang = await prisma.cabang.findUnique({
+        where: { id: cabangId },
+      });
+
+      if (!cabang) {
+        // Skip invalid branches or throw error depending on requirement
+        // For now we skip but log it
+        console.warn(`Branch with ID ${cabangId} not found during bulk update`);
+        continue;
+      }
+
+      // Get existing config for audit
+      const existingConfig =
+        (await prisma.taxConfig.findUnique({
+          where: { cabang_id: cabangId },
+        })) || DEFAULT_TAX_CONFIG;
+
+      // Update or create config
+      const savedConfig = await prisma.taxConfig.upsert({
+        where: { cabang_id: cabangId },
+        update: updatedConfig,
+        create: {
+          cabang_id: cabangId,
+          ...updatedConfig,
+        },
+      });
+
+      // Log audit
+      await prisma.auditLog.create({
+        data: {
+          user_id: auditInfo.userId,
+          ip_address: auditInfo.ipAddress,
+          action: "BULK_UPDATE_TAX_CONFIG",
+          table_name: "tax_config",
+          record_id: cabangId,
+          old_values: JSON.stringify(existingConfig),
+          new_values: JSON.stringify(updatedConfig),
+        },
+      });
+
+      results.push(savedConfig);
+    }
+  });
+
+  return results;
+};
+
 module.exports = {
   getTaxConfig,
   updateTaxConfig,
   calculateTax,
+  updateTaxConfigBulk,
 };
