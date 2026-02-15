@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   User,
   Mail,
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Can } from "@features/common/Can";
 import { useNavigate } from "react-router-dom";
+import { FaceRegistration } from "@features/attendance";
 
 const UserProfileTab = ({
   user,
@@ -26,8 +27,18 @@ const UserProfileTab = ({
   onDelete,
 }) => {
   const navigate = useNavigate();
+  const [localUser, setLocalUser] = useState(user);
 
   console.log(user);
+
+  const handleFaceRegistered = (result) => {
+    // Update local user state when face is registered
+    setLocalUser(prev => ({
+      ...prev,
+      faceDataJson: result.embedding,
+      faceImageUrl: result.faceImageUrl
+    }));
+  };
 
   return (
     <div className="p-6">
@@ -213,6 +224,78 @@ const UserProfileTab = ({
             )}
           </div>
         )}
+
+        {/* Face Recognition Info */}
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">
+            Data Wajah (Face Recognition)
+          </h3>
+          <div className={`p-4 rounded-xl border ${localUser?.faceDataJson ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-100'}`}>
+            {localUser?.faceDataJson ? (
+              <div>
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="bg-green-100 p-2 rounded-full">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-green-900">Wajah Terdaftar</p>
+                    <p className="text-sm text-green-700">
+                      User dapat menggunakan face recognition untuk absensi
+                    </p>
+                  </div>
+                </div>
+
+                {localUser.faceImageUrl && (
+                  <div className="flex items-center gap-3 mb-3">
+                    <img
+                      src={localUser.faceImageUrl}
+                      alt="Registered face"
+                      className="w-16 h-16 object-cover rounded-lg border-2 border-green-300"
+                    />
+                    <div className="text-xs text-green-700">
+                      <p>Face data tersimpan di database</p>
+                      <p className="text-green-600 mt-1">
+                        Embedding dimension: {Array.isArray(localUser.faceDataJson) ? localUser.faceDataJson.length : '512'}d
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <FaceRegistration
+                  userId={localUser.id}
+                  userName={localUser.namaLengkap}
+                  hasExistingFace={true}
+                  onSuccess={handleFaceRegistered}
+                  buttonText="Update Data Wajah"
+                  buttonClassName="w-full mt-2"
+                />
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="bg-gray-200 p-2 rounded-full">
+                    <AlertTriangle className="h-5 w-5 text-gray-500" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">Belum Terdaftar</p>
+                    <p className="text-sm text-gray-600">
+                      User belum memiliki data wajah untuk absensi
+                    </p>
+                  </div>
+                </div>
+
+                <FaceRegistration
+                  userId={localUser.id}
+                  userName={localUser.namaLengkap}
+                  hasExistingFace={false}
+                  onSuccess={handleFaceRegistered}
+                  buttonText="Daftarkan Wajah"
+                  buttonClassName="w-full mt-2"
+                />
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

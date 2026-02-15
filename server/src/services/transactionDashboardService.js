@@ -99,6 +99,7 @@ class TransactionDashboardService {
         lte: new Date(`${tanggal_akhir}T23:59:59.999Z`),
       };
     }
+    
 
     return prisma.transaksi.findMany({
       where: whereClause,

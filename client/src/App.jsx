@@ -61,6 +61,9 @@ import HutangManagementPage from "./features/hutang/pages/HutangManagementPage";
 import HutangDetailPage from "./features/hutang/pages/HutangDetailPage";
 import LoyaltyConfigPage from "./features/settings/pages/LoyaltyConfigPage";
 
+// Attendance Feature
+import { MyAttendancePage, AttendanceAdminPage, LocationManagementPage } from "./features/attendance";
+
 // Other Components
 import NotFoundPage from "./features/common/pages/NotFoundPage";
 import SearchResults from "./features/common/pages/SearchResults";
@@ -470,6 +473,40 @@ function App() {
             >
               <Route index element={<HutangManagementPage />} />
               <Route path=":id" element={<HutangDetailPage />} />
+            </Route>
+
+            {/* Attendance Management */}
+            <Route
+              path="/attendance"
+              element={
+                <ProtectedRoute>
+                  <DynamicLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<MyAttendancePage />} />
+            </Route>
+
+            <Route
+              path="/attendance/admin"
+              element={
+                <ProtectedRoute requiredPermission="absensi:read">
+                  <DynamicLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<AttendanceAdminPage />} />
+            </Route>
+
+            <Route
+              path="/attendance/locations"
+              element={
+                <ProtectedRoute requiredPermission="attendance:manage">
+                  <DynamicLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<LocationManagementPage />} />
             </Route>
 
             {/* Reports */}

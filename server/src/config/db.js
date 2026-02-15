@@ -2,6 +2,44 @@ const { PrismaClient } = require("@prisma/client");
 const { logger } = require("../utils/logger");
 require("dotenv").config();
 
+// Axios client for Face Recognition Service
+const axios = require("axios");
+
+const faceServiceClient = axios.create({
+  baseURL: process.env.FACE_SERVICE_URL || "http://localhost:8001",
+  timeout: 30000, // 30 seconds timeout
+  headers: {
+    "X-API-Key": process.env.FACE_SERVICE_API_KEY || "face-service-api-key",
+    "Content-Type": "multipart/form-data",
+  },
+});
+
+// Response interceptor for error handling
+faceServiceClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    logger.error("Face Service Error", {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
+
+    if (error.response?.status === 401) {
+      throw new Error("Invalid face service API key");
+    }
+
+    if (error.response?.status === 404) {
+      throw new Error("Face service endpoint not found");
+    }
+
+    if (error.code === "ECONNREFUSED") {
+      throw new Error("Face recognition service is not available");
+    }
+
+    throw error;
+  }
+);
+
 const prisma = new PrismaClient({
   log: [
     {
@@ -128,4 +166,8 @@ const handleShutdown = async () => {
 process.on("SIGINT", handleShutdown);
 process.on("SIGTERM", handleShutdown);
 
+// Export for backward compatibility - existing code uses: const prisma = require("../config/db")
 module.exports = prisma;
+// Also export named properties for when needed
+module.exports.prisma = prisma;
+module.exports.faceServiceClient = faceServiceClient;

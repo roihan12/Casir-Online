@@ -60,6 +60,8 @@ const transactionReportRoutes = require("./routes/transactionReportRoutes");
 const customerReportRoutes = require("./routes/customerReportRoutes");
 const promoReportRoutes = require("./routes/promoReportRoutes");
 const auditRoutes = require("./routes/auditRoutes");
+const absensiRoutes = require("./routes/absensiRoutes");
+const lokasiAbsensiRoutes = require("./routes/lokasiAbsensiRoutes");
 
 
 const {
@@ -111,8 +113,9 @@ app.use('/api/whatsapp/webhook',
 );
 
 // Regular JSON parser for other routes
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Increase limit for face recognition photos (base64 can be large)
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 app.use(morgan("combined"));
 
@@ -177,6 +180,8 @@ app.use("/api/reports/promo", promoReportRoutes);
 app.use("/api/whatsapp", whatsappRoutes);
 app.use("/api/broadcast", broadcastRoutes);
 app.use("/api/audit-logs", auditRoutes);
+app.use("/api/attendance", absensiRoutes);
+app.use("/api/attendance-locations", lokasiAbsensiRoutes);
 
 // 404 handler
 app.use((req, res) => {
