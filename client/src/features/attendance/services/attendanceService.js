@@ -12,9 +12,9 @@ import api from '../../../services/api';
 export const clockIn = async (data) => {
   try {
     const response = await api.post('/attendance/clock-in', data);
-    return response.data;
+    return response.data.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Clock in failed');
+    throw new Error(error.response?.data?.errors || error.response?.data?.message || 'Clock in failed');
   }
 };
 
@@ -30,9 +30,9 @@ export const clockIn = async (data) => {
 export const clockOut = async (data) => {
   try {
     const response = await api.post('/attendance/clock-out', data);
-    return response.data;
+    return response.data.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Clock out failed');
+    throw new Error(error.response?.data?.errors || error.response?.data?.message || 'Clock out failed');
   }
 };
 
@@ -44,9 +44,9 @@ export const clockOut = async (data) => {
 export const checkLiveness = async (photo) => {
   try {
     const response = await api.post('/attendance/liveness', { photo });
-    return response.data;
+    return response.data.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Liveness check failed');
+    throw new Error(error.response?.data?.errors || error.response?.data?.message || 'Liveness check failed');
   }
 };
 
@@ -59,9 +59,9 @@ export const checkLiveness = async (photo) => {
 export const registerFace = async (userId, photo) => {
   try {
     const response = await api.post(`/attendance/register-face/${userId}`, { photo });
-    return response.data;
+    return response.data.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Face registration failed');
+    throw new Error(error.response?.data?.errors || error.response?.data?.message || 'Face registration failed');
   }
 };
 
@@ -72,9 +72,9 @@ export const registerFace = async (userId, photo) => {
 export const getTodayAttendance = async () => {
   try {
     const response = await api.get('/attendance/today');
-    return response.data;
+    return response.data.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to get today\'s attendance');
+    throw new Error(error.response?.data?.errors || error.response?.data?.message || 'Failed to get today\'s attendance');
   }
 };
 
@@ -92,7 +92,7 @@ export const getTodayAttendance = async () => {
 export const getAttendanceHistory = async (params = {}) => {
   try {
     const response = await api.get('/attendance/history', { params });
-    return response.data;
+    return response.data.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Failed to get attendance history');
   }
@@ -108,7 +108,7 @@ export const getAttendanceHistory = async (params = {}) => {
 export const getAttendanceStatistics = async (params = {}) => {
   try {
     const response = await api.get('/attendance/statistics', { params });
-    return response.data;
+    return response.data.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Failed to get attendance statistics');
   }
@@ -125,7 +125,7 @@ export const getAttendanceStatistics = async (params = {}) => {
 export const verifyLocation = async (data) => {
   try {
     const response = await api.post('/attendance/verify-location', data);
-    return response.data;
+    return response.data.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Location verification failed');
   }
@@ -142,7 +142,7 @@ export const verifyLocation = async (data) => {
 export const getAttendanceLocations = async (params = {}) => {
   try {
     const response = await api.get('/attendance-locations', { params });
-    return response.data;
+    return response.data.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Failed to get attendance locations');
   }
@@ -155,7 +155,7 @@ export const getAttendanceLocations = async (params = {}) => {
 export const getMyLocations = async () => {
   try {
     const response = await api.get('/attendance-locations/my-locations');
-    return response.data;
+    return response.data.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Failed to get user locations');
   }
@@ -169,7 +169,7 @@ export const getMyLocations = async () => {
 export const getLocationById = async (locationId) => {
   try {
     const response = await api.get(`/attendance-locations/${locationId}`);
-    return response.data;
+    return response.data.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Failed to get location');
   }

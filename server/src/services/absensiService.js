@@ -91,7 +91,7 @@ const clockIn = async (data) => {
 
     if (!faceVerifyResult.is_match) {
       throw new ResponseError(
-        401,
+        400,
         `Face verification failed. Similarity: ${(faceVerifyResult.similarity * 100).toFixed(1)}%`
       );
     }
@@ -246,7 +246,7 @@ const clockOut = async (data) => {
     // 2. Get user face data
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { faceDataJson: true, faceImageUrl: true, nama: true }
+      select: { faceDataJson: true, faceImageUrl: true, namaLengkap: true }
     });
 
     if (!user) {
@@ -309,7 +309,7 @@ const clockOut = async (data) => {
 
     if (!faceVerifyResult.is_match) {
       throw new ResponseError(
-        401,
+        400,
         `Face verification failed. Similarity: ${(faceVerifyResult.similarity * 100).toFixed(1)}%`
       );
     }
@@ -329,7 +329,7 @@ const clockOut = async (data) => {
         
         if (!livenessResult.is_live) {
           throw new ResponseError(
-            401,
+            400,
             `Liveness check failed. ${livenessResult.message || "Please ensure you are using a real face."}`
           );
         }
@@ -338,7 +338,7 @@ const clockOut = async (data) => {
 
         if (!livenessResult.is_live) {
           throw new ResponseError(
-            401,
+            400,
             "Liveness check failed. Please ensure you are using a real face, not a photo."
           );
         }

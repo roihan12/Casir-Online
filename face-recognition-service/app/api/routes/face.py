@@ -4,9 +4,12 @@ from typing import Optional, List
 from pydantic import BaseModel, Field
 from loguru import logger
 
+
 from app.core.face_recognition import face_service
 from app.core.anti_spoofing import liveness_service
 from app.config.settings import settings
+import numpy as np
+import cv2
 
 
 # API Key authentication
@@ -302,8 +305,10 @@ async def check_liveness_video(
                 detail="Maximum 30 frames allowed"
             )
 
-        # Read all images
+        # Read all images and extract landmarks
         frames = []
+        landmarks_list = []
+
         for img in images:
             if not img.content_type.startswith("image/"):
                 raise HTTPException(
@@ -319,9 +324,26 @@ async def check_liveness_video(
                 )
 
             frames.append(frame_data)
+            
+            # Extract landmarks for this frame
+            try:
+                # We need to convert bytes to numpy array for face service
+                nparr = np.frombuffer(frame_data, np.uint8)
+                image_np = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                
+                # Detect face to get landmarks
+                faces = face_service.detect_faces(image_np)
+                if faces:
+                    # Use the first face found
+                    landmarks_list.append(faces[0]["landmarks"])
+                else:
+                    landmarks_list.append([]) # No face detected in this frame
+            except Exception as e:
+                logger.warning(f"Failed to extract landmarks for frame: {e}")
+                landmarks_list.append([])
 
-        # Perform liveness detection
-        result = liveness_service.detect_liveness_from_frames(frames)
+        # Perform liveness detection with landmarks
+        result = liveness_service.detect_liveness_from_frames(frames, landmarks_list)
 
         message = (
             f"Liveness verified - blink detected: {result['blink_detected']}"

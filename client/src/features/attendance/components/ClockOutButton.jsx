@@ -64,11 +64,14 @@ const ClockOutButton = ({ attendanceRecord, onSuccess, onError, className = '' }
       // Handle both single photo (string) and multi-frame (object)
       let photoPayload, framesPayload;
       
-      if (typeof photo === 'string') {
-        photoPayload = photo;
+      if (typeof photo === 'object' && photo.frames) {
+         photoPayload = photo.mainPhoto || photo.frames[0];
+         framesPayload = photo.frames;
+      } else if (typeof photo === 'string') {
+         photoPayload = photo;
       } else {
-        photoPayload = photo.mainPhoto || photo.frames[0];
-        framesPayload = photo.frames;
+         console.error("Unexpected capture result format", photo);
+         throw new Error("Failed to process photo capture");
       }
 
       // Call clock out API

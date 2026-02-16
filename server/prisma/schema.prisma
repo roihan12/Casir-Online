@@ -8,155 +8,168 @@ datasource db {
 }
 
 model Cabang {
-  id                  String               @id @map("cabang_id")
-  namaCabang          String               @map("nama_cabang") @db.VarChar(100)
-  alamat              String?
-  telepon             String?              @db.VarChar(20)
-  latitude            Decimal?             @db.Decimal(10, 8)
-  longitude           Decimal?             @db.Decimal(11, 8)
-  radiusGeofence      Int?                 @map("radius_geofence")
-  status              CabangStatus         @default(aktif)
-  deletedAt           DateTime?            @map("deleted_at")
-  createdAt           DateTime             @default(now()) @map("created_at")
-  updatedAt           DateTime             @updatedAt @map("updated_at")
-  absensiPegawai      AbsensiPegawai[]
-  BotConfig           BotConfig[]
-  discount_config     discount_config[]
-  hutang              Hutang[]
-  InventoryMovement   InventoryMovement[]
-  Invoice             Invoice[]
-  jadwalKerja         JadwalKerja[]
-  lokasiAbsensi       LokasiAbsensi[]
-  loyaltyConfig       LoyaltyConfig[]
-  marketingCampaigns  MarketingCampaign[]
-  NotificationConfig  NotificationConfig[]
-  operationalHours    OperationalHours[]
-  Pelanggan           Pelanggan[]
-  produk              Produk[]
-  ProdukPriceHistory  ProdukPriceHistory[]
-  ProdukRequest       ProdukRequest[]
-  ProdukSupplier      ProdukSupplier[]
-  promoCabang         PromoCabang[]
-  promoDiskon         PromoDiskon[]
-  ReceiptConfig       ReceiptConfig[]
-  shifts              Shift[]
-  StockNotification   StockNotification[]
-  stockTransferAsal   StockTransfer[]      @relation("CabangAsal")
-  stockTransferTujuan StockTransfer[]      @relation("CabangTujuan")
-  Supplier            Supplier[]
-  TaxConfig           TaxConfig?
-  Transaksi           Transaksi[]
-  userCabang          UserCabang[]
-  userRoles           UserRole[]
-  userLokasiAbsensi   UserLokasiAbsensi[]  @relation("CabangToUserLokasiAbsensi")
+  id                   String                 @id @map("cabang_id")
+  namaCabang           String                 @map("nama_cabang") @db.VarChar(100)
+  alamat               String?
+  telepon              String?                @db.VarChar(20)
+  latitude             Decimal?               @db.Decimal(10, 8)
+  longitude            Decimal?               @db.Decimal(11, 8)
+  radiusGeofence       Int?                   @map("radius_geofence")
+  status               CabangStatus           @default(aktif)
+  deletedAt            DateTime?              @map("deleted_at")
+  createdAt            DateTime               @default(now()) @map("created_at")
+  updatedAt            DateTime               @updatedAt @map("updated_at")
+  absensiPegawai       AbsensiPegawai[]
+  BotConfig            BotConfig[]
+  discount_config      discount_config[]
+  hutang               Hutang[]
+  InventoryMovement    InventoryMovement[]
+  Invoice              Invoice[]
+  izin_cuti            izin_cuti[]
+  jadwalKerja          JadwalKerja[]
+  lokasiAbsensi        LokasiAbsensi[]
+  loyaltyConfig        LoyaltyConfig[]
+  marketingCampaigns   MarketingCampaign[]
+  NotificationConfig   NotificationConfig[]
+  operationalHours     OperationalHours[]
+  Pelanggan            Pelanggan[]
+  produk               Produk[]
+  ProdukPriceHistory   ProdukPriceHistory[]
+  ProdukRequest        ProdukRequest[]
+  ProdukSupplier       ProdukSupplier[]
+  promoCabang          PromoCabang[]
+  promoDiskon          PromoDiskon[]
+  ReceiptConfig        ReceiptConfig[]
+  rekap_absensi_harian rekap_absensi_harian[]
+  shifts               Shift[]
+  slip_gaji            slip_gaji[]
+  StockNotification    StockNotification[]
+  stockTransferAsal    StockTransfer[]        @relation("CabangAsal")
+  stockTransferTujuan  StockTransfer[]        @relation("CabangTujuan")
+  Supplier             Supplier[]
+  TaxConfig            TaxConfig?
+  Transaksi            Transaksi[]
+  userCabang           UserCabang[]
+  userRoles            UserRole[]
+  userLokasiAbsensi    UserLokasiAbsensi[]    @relation("CabangToUserLokasiAbsensi")
 
   @@map("cabang")
 }
 
 model User {
-  id                        String                    @id @default(uuid()) @map("user_id")
-  username                  String                    @unique @db.VarChar(50)
-  password                  String                    @db.VarChar(255)
-  namaLengkap               String                    @map("nama_lengkap") @db.VarChar(100)
-  email                     String                    @db.VarChar(100)
-  telepon                   String?                   @db.VarChar(20)
-  avatarUrl                 String?                   @map("avatar_url") @db.VarChar(255)
-  status                    UserStatus                @default(aktif)
-  deletedAt                 DateTime?                 @map("deleted_at")
-  createdAt                 DateTime                  @default(now()) @map("created_at")
-  updatedAt                 DateTime                  @updatedAt @map("updated_at")
-  lastLogin                 DateTime?                 @map("last_login")
-  createdBy                 String?                   @map("created_by")
-  createdByUserId           String?                   @map("created_by_user_id")
-  deletedBy                 String?                   @map("deleted_by")
-  deletedByUserId           String?                   @map("deleted_by_user_id")
-  updatedBy                 String?                   @map("updated_by")
-  updatedByUserId           String?                   @map("updated_by_user_id")
-  faceDataJson              String?                   @map("face_data_json")
-  faceImageUrl              String?                   @map("face_image_url") @db.VarChar(255)
-  faceRecognitionEnabled    Boolean                   @default(false) @map("face_recognition_enabled")
-  lastFaceUpdate            DateTime?                 @map("last_face_update")
-  total_discount_given      Decimal?                  @default(0) @db.Decimal(15, 2)
-  absensi                   AbsensiPegawai[]
-  AuditLog                  AuditLog[]
-  discount_log              discount_log[]
-  hutangCreated             Hutang[]                  @relation("HutangCreatedByUserId")
-  hutangDeleted             Hutang[]                  @relation("HutangDeletedByUserId")
-  hutangUpdated             Hutang[]                  @relation("HutangUpdatedByUserId")
-  inventoryMovement         InventoryMovement[]
-  jadwalKerja               JadwalKerja[]
-  kategoriCreated           Kategori[]                @relation("KategoriCreatedByUserId")
-  kategoriDeleted           Kategori[]                @relation("KategoriDeletedByUserId")
-  kategoriUpdated           Kategori[]                @relation("KategoriUpdatedByUserId")
-  kreditRekomendasiCreated  KreditRekomendasi[]       @relation("KreditRekomendasiCreatedByUserId")
-  kreditRekomendasiDeleted  KreditRekomendasi[]       @relation("KreditRekomendasiDeletedByUserId")
-  approvedKreditRekomendasi KreditRekomendasi[]       @relation("ApprovedKreditRekomendasi")
-  kreditRekomendasiUpdated  KreditRekomendasi[]       @relation("KreditRekomendasiUpdatedByUserId")
-  kreditSettingCreated      KreditSetting[]           @relation("KreditSettingCreatedByUserId")
-  kreditSettingDeleted      KreditSetting[]           @relation("KreditSettingDeletedByUserId")
-  approvedCredits           KreditSetting[]           @relation("ApprovedCredit")
-  kreditSettingUpdated      KreditSetting[]           @relation("KreditSettingUpdatedByUserId")
-  kreditTransaksiCreated    KreditTransaksi[]         @relation("KreditTransaksiCreatedByUserId")
-  kreditTransaksiDeleted    KreditTransaksi[]         @relation("KreditTransaksiDeletedByUserId")
-  kreditTransaksiUpdated    KreditTransaksi[]         @relation("KreditTransaksiUpdatedByUserId")
-  marketingCampaignCreated  MarketingCampaign[]       @relation("MarketingCampaignCreatedByUserId")
-  marketingCampaignDeleted  MarketingCampaign[]       @relation("MarketingCampaignDeletedByUserId")
-  marketingCampaignUpdated  MarketingCampaign[]       @relation("MarketingCampaignUpdatedByUserId")
-  marketingContentCreated   MarketingContent[]        @relation("MarketingContentCreatedByUserId")
-  marketingContentDeleted   MarketingContent[]        @relation("MarketingContentDeletedByUserId")
-  marketingContentUpdated   MarketingContent[]        @relation("MarketingContentUpdatedByUserId")
-  pelangganCreated          Pelanggan[]               @relation("PelangganCreatedByUserId")
-  pelangganDeleted          Pelanggan[]               @relation("PelangganDeletedByUserId")
-  pelangganUpdated          Pelanggan[]               @relation("PelangganUpdatedByUserId")
-  pembayaranCreated         Pembayaran[]              @relation("PembayaranCreatedByUserId")
-  pembayaranDeleted         Pembayaran[]              @relation("PembayaranDeletedByUserId")
-  pembayaranUpdated         Pembayaran[]              @relation("PembayaranUpdatedByUserId")
-  pembayaranHutangCreated   PembayaranHutang[]        @relation("PembayaranHutangCreatedByUserId")
-  pembayaranHutangDeleted   PembayaranHutang[]        @relation("PembayaranHutangDeletedByUserId")
-  pembayaranHutangUpdated   PembayaranHutang[]        @relation("PembayaranHutangUpdatedByUserId")
-  pembayaranHutang          PembayaranHutang[]
-  pembayaranKreditCreated   PembayaranKredit[]        @relation("PembayaranKreditCreatedByUserId")
-  pembayaranKreditDeleted   PembayaranKredit[]        @relation("PembayaranKreditDeletedByUserId")
-  pembayaranKreditUpdated   PembayaranKredit[]        @relation("PembayaranKreditUpdatedByUserId")
-  produkCreated             Produk[]                  @relation("ProdukCreatedByUserId")
-  produkDeleted             Produk[]                  @relation("ProdukDeletedByUserId")
-  produkUpdated             Produk[]                  @relation("ProdukUpdatedByUserId")
-  produkMasterCreated       ProdukMaster[]            @relation("ProdukMasterCreatedByUserId")
-  produkMasterDeleted       ProdukMaster[]            @relation("ProdukMasterDeletedByUserId")
-  produkMasterUpdated       ProdukMaster[]            @relation("ProdukMasterUpdatedByUserId")
-  produkPriceHistoryCreated ProdukPriceHistory[]      @relation("ProdukPriceHistoryCreatedByUserId")
-  produkPriceHistoryDeleted ProdukPriceHistory[]      @relation("ProdukPriceHistoryDeletedByUserId")
-  produkPriceHistoryUpdated ProdukPriceHistory[]      @relation("ProdukPriceHistoryUpdatedByUserId")
-  requestsApproved          ProdukRequest[]           @relation("requestApproved")
-  produkRequestCreated      ProdukRequest[]           @relation("ProdukRequestCreatedByUserId")
-  produkRequestDeleted      ProdukRequest[]           @relation("ProdukRequestDeletedByUserId")
-  produkRequestUpdated      ProdukRequest[]           @relation("ProdukRequestUpdatedByUserId")
-  ProdukRequestAttachment   ProdukRequestAttachment[]
-  produkSupplierCreated     ProdukSupplier[]          @relation("ProdukSupplierCreatedByUserId")
-  produkSupplierDeleted     ProdukSupplier[]          @relation("ProdukSupplierDeletedByUserId")
-  produkSupplierUpdated     ProdukSupplier[]          @relation("ProdukSupplierUpdatedByUserId")
-  PromoDiskonCreated        PromoDiskon[]             @relation("PromoDiskonCreatedByUserId")
-  PromoDiskonDeleted        PromoDiskon[]             @relation("PromoDiskonDeletedByUserId")
-  PromoDiskonUpdated        PromoDiskon[]             @relation("PromoDiskonUpdatedByUserId")
-  shiftCreated              Shift[]                   @relation("ShiftCreatedByUserId")
-  shiftDeleted              Shift[]                   @relation("ShiftDeletedByUserId")
-  shiftUpdated              Shift[]                   @relation("ShiftUpdatedByUserId")
-  shifts                    Shift[]
-  stockTransfersApproved    StockTransfer[]           @relation("ApproverUser")
-  stockTransferCreated      StockTransfer[]           @relation("StockTransferCreatedByUserId")
-  stockTransferDeleted      StockTransfer[]           @relation("StockTransferDeletedByUserId")
-  stockTransferUpdated      StockTransfer[]           @relation("StockTransferUpdatedByUserId")
-  StockTransfer             StockTransfer[]
-  supplierCreated           Supplier[]                @relation("SupplierCreatedByUserId")
-  supplierDeleted           Supplier[]                @relation("SupplierDeletedByUserId")
-  supplierUpdated           Supplier[]                @relation("SupplierUpdatedByUserId")
-  transaksiCreated          Transaksi[]               @relation("TransaksiCreatedByUserId")
-  transaksiDeleted          Transaksi[]               @relation("TransaksiDeletedByUserId")
-  transaksiUpdated          Transaksi[]               @relation("TransaksiUpdatedByUserId")
-  userCabang                UserCabang[]
-  UserLokasiAbsensi         UserLokasiAbsensi[]
-  userRoles                 UserRole[]
-  sessions                  UserSession[]
+  id                                                String                    @id @default(uuid()) @map("user_id")
+  username                                          String                    @unique @db.VarChar(50)
+  password                                          String                    @db.VarChar(255)
+  namaLengkap                                       String                    @map("nama_lengkap") @db.VarChar(100)
+  email                                             String                    @db.VarChar(100)
+  telepon                                           String?                   @db.VarChar(20)
+  avatarUrl                                         String?                   @map("avatar_url") @db.VarChar(255)
+  status                                            UserStatus                @default(aktif)
+  deletedAt                                         DateTime?                 @map("deleted_at")
+  createdAt                                         DateTime                  @default(now()) @map("created_at")
+  updatedAt                                         DateTime                  @updatedAt @map("updated_at")
+  lastLogin                                         DateTime?                 @map("last_login")
+  createdBy                                         String?                   @map("created_by")
+  createdByUserId                                   String?                   @map("created_by_user_id")
+  deletedBy                                         String?                   @map("deleted_by")
+  deletedByUserId                                   String?                   @map("deleted_by_user_id")
+  updatedBy                                         String?                   @map("updated_by")
+  updatedByUserId                                   String?                   @map("updated_by_user_id")
+  faceDataJson                                      String?                   @map("face_data_json")
+  faceImageUrl                                      String?                   @map("face_image_url") @db.VarChar(255)
+  faceRecognitionEnabled                            Boolean                   @default(false) @map("face_recognition_enabled")
+  lastFaceUpdate                                    DateTime?                 @map("last_face_update")
+  total_discount_given                              Decimal?                  @default(0) @db.Decimal(15, 2)
+  absensi                                           AbsensiPegawai[]
+  AuditLog                                          AuditLog[]
+  discount_log                                      discount_log[]
+  gaji_pegawai                                      gaji_pegawai?
+  hutangCreated                                     Hutang[]                  @relation("HutangCreatedByUserId")
+  hutangDeleted                                     Hutang[]                  @relation("HutangDeletedByUserId")
+  hutangUpdated                                     Hutang[]                  @relation("HutangUpdatedByUserId")
+  inventoryMovement                                 InventoryMovement[]
+  izin_cuti_izin_cuti_approved_byTouser             izin_cuti[]               @relation("izin_cuti_approved_byTouser")
+  izin_cuti_izin_cuti_user_idTouser                 izin_cuti[]               @relation("izin_cuti_user_idTouser")
+  jadwalKerja                                       JadwalKerja[]
+  kategoriCreated                                   Kategori[]                @relation("KategoriCreatedByUserId")
+  kategoriDeleted                                   Kategori[]                @relation("KategoriDeletedByUserId")
+  kategoriUpdated                                   Kategori[]                @relation("KategoriUpdatedByUserId")
+  koreksi_absensi_koreksi_absensi_approved_byTouser koreksi_absensi[]         @relation("koreksi_absensi_approved_byTouser")
+  koreksi_absensi_koreksi_absensi_user_idTouser     koreksi_absensi[]         @relation("koreksi_absensi_user_idTouser")
+  kreditRekomendasiCreated                          KreditRekomendasi[]       @relation("KreditRekomendasiCreatedByUserId")
+  kreditRekomendasiDeleted                          KreditRekomendasi[]       @relation("KreditRekomendasiDeletedByUserId")
+  approvedKreditRekomendasi                         KreditRekomendasi[]       @relation("ApprovedKreditRekomendasi")
+  kreditRekomendasiUpdated                          KreditRekomendasi[]       @relation("KreditRekomendasiUpdatedByUserId")
+  kreditSettingCreated                              KreditSetting[]           @relation("KreditSettingCreatedByUserId")
+  kreditSettingDeleted                              KreditSetting[]           @relation("KreditSettingDeletedByUserId")
+  approvedCredits                                   KreditSetting[]           @relation("ApprovedCredit")
+  kreditSettingUpdated                              KreditSetting[]           @relation("KreditSettingUpdatedByUserId")
+  kreditTransaksiCreated                            KreditTransaksi[]         @relation("KreditTransaksiCreatedByUserId")
+  kreditTransaksiDeleted                            KreditTransaksi[]         @relation("KreditTransaksiDeletedByUserId")
+  kreditTransaksiUpdated                            KreditTransaksi[]         @relation("KreditTransaksiUpdatedByUserId")
+  kuota_cuti                                        kuota_cuti[]
+  marketingCampaignCreated                          MarketingCampaign[]       @relation("MarketingCampaignCreatedByUserId")
+  marketingCampaignDeleted                          MarketingCampaign[]       @relation("MarketingCampaignDeletedByUserId")
+  marketingCampaignUpdated                          MarketingCampaign[]       @relation("MarketingCampaignUpdatedByUserId")
+  marketingContentCreated                           MarketingContent[]        @relation("MarketingContentCreatedByUserId")
+  marketingContentDeleted                           MarketingContent[]        @relation("MarketingContentDeletedByUserId")
+  marketingContentUpdated                           MarketingContent[]        @relation("MarketingContentUpdatedByUserId")
+  notifikasi                                        notifikasi[]
+  pelangganCreated                                  Pelanggan[]               @relation("PelangganCreatedByUserId")
+  pelangganDeleted                                  Pelanggan[]               @relation("PelangganDeletedByUserId")
+  pelangganUpdated                                  Pelanggan[]               @relation("PelangganUpdatedByUserId")
+  pembayaranCreated                                 Pembayaran[]              @relation("PembayaranCreatedByUserId")
+  pembayaranDeleted                                 Pembayaran[]              @relation("PembayaranDeletedByUserId")
+  pembayaranUpdated                                 Pembayaran[]              @relation("PembayaranUpdatedByUserId")
+  pembayaranHutangCreated                           PembayaranHutang[]        @relation("PembayaranHutangCreatedByUserId")
+  pembayaranHutangDeleted                           PembayaranHutang[]        @relation("PembayaranHutangDeletedByUserId")
+  pembayaranHutangUpdated                           PembayaranHutang[]        @relation("PembayaranHutangUpdatedByUserId")
+  pembayaranHutang                                  PembayaranHutang[]
+  pembayaranKreditCreated                           PembayaranKredit[]        @relation("PembayaranKreditCreatedByUserId")
+  pembayaranKreditDeleted                           PembayaranKredit[]        @relation("PembayaranKreditDeletedByUserId")
+  pembayaranKreditUpdated                           PembayaranKredit[]        @relation("PembayaranKreditUpdatedByUserId")
+  produkCreated                                     Produk[]                  @relation("ProdukCreatedByUserId")
+  produkDeleted                                     Produk[]                  @relation("ProdukDeletedByUserId")
+  produkUpdated                                     Produk[]                  @relation("ProdukUpdatedByUserId")
+  produkMasterCreated                               ProdukMaster[]            @relation("ProdukMasterCreatedByUserId")
+  produkMasterDeleted                               ProdukMaster[]            @relation("ProdukMasterDeletedByUserId")
+  produkMasterUpdated                               ProdukMaster[]            @relation("ProdukMasterUpdatedByUserId")
+  produkPriceHistoryCreated                         ProdukPriceHistory[]      @relation("ProdukPriceHistoryCreatedByUserId")
+  produkPriceHistoryDeleted                         ProdukPriceHistory[]      @relation("ProdukPriceHistoryDeletedByUserId")
+  produkPriceHistoryUpdated                         ProdukPriceHistory[]      @relation("ProdukPriceHistoryUpdatedByUserId")
+  requestsApproved                                  ProdukRequest[]           @relation("requestApproved")
+  produkRequestCreated                              ProdukRequest[]           @relation("ProdukRequestCreatedByUserId")
+  produkRequestDeleted                              ProdukRequest[]           @relation("ProdukRequestDeletedByUserId")
+  produkRequestUpdated                              ProdukRequest[]           @relation("ProdukRequestUpdatedByUserId")
+  ProdukRequestAttachment                           ProdukRequestAttachment[]
+  produkSupplierCreated                             ProdukSupplier[]          @relation("ProdukSupplierCreatedByUserId")
+  produkSupplierDeleted                             ProdukSupplier[]          @relation("ProdukSupplierDeletedByUserId")
+  produkSupplierUpdated                             ProdukSupplier[]          @relation("ProdukSupplierUpdatedByUserId")
+  PromoDiskonCreated                                PromoDiskon[]             @relation("PromoDiskonCreatedByUserId")
+  PromoDiskonDeleted                                PromoDiskon[]             @relation("PromoDiskonDeletedByUserId")
+  PromoDiskonUpdated                                PromoDiskon[]             @relation("PromoDiskonUpdatedByUserId")
+  riwayat_gaji_pegawai                              riwayat_gaji_pegawai[]
+  shiftCreated                                      Shift[]                   @relation("ShiftCreatedByUserId")
+  shiftDeleted                                      Shift[]                   @relation("ShiftDeletedByUserId")
+  shiftUpdated                                      Shift[]                   @relation("ShiftUpdatedByUserId")
+  shifts                                            Shift[]
+  slip_gaji                                         slip_gaji[]
+  stockTransfersApproved                            StockTransfer[]           @relation("ApproverUser")
+  stockTransferCreated                              StockTransfer[]           @relation("StockTransferCreatedByUserId")
+  stockTransferDeleted                              StockTransfer[]           @relation("StockTransferDeletedByUserId")
+  stockTransferUpdated                              StockTransfer[]           @relation("StockTransferUpdatedByUserId")
+  StockTransfer                                     StockTransfer[]
+  supplierCreated                                   Supplier[]                @relation("SupplierCreatedByUserId")
+  supplierDeleted                                   Supplier[]                @relation("SupplierDeletedByUserId")
+  supplierUpdated                                   Supplier[]                @relation("SupplierUpdatedByUserId")
+  transaksiCreated                                  Transaksi[]               @relation("TransaksiCreatedByUserId")
+  transaksiDeleted                                  Transaksi[]               @relation("TransaksiDeletedByUserId")
+  transaksiUpdated                                  Transaksi[]               @relation("TransaksiUpdatedByUserId")
+  tunjangan_pegawai                                 tunjangan_pegawai[]
+  userCabang                                        UserCabang[]
+  UserLokasiAbsensi                                 UserLokasiAbsensi[]
+  userRoles                                         UserRole[]
+  sessions                                          UserSession[]
 
   @@map("user")
 }
@@ -313,7 +326,7 @@ model PromoDiskon {
   tipeScope            TipeScopePromo?   @default(GLOBAL) @map("tipe_scope")
   is_stackable         Boolean?          @default(false)
   prioritas            Int?              @default(0)
-  tipeDiskon           TipeDiskon?       @map("tipe_diskon")
+  tipeDiskon           tipe_diskon?      @map("tipe_diskon")
   promoBundle          PromoBundle[]
   promoCabangs         PromoCabang[]
   cabang               Cabang?           @relation(fields: [cabangId], references: [id])
@@ -434,33 +447,37 @@ model VoucherUsage {
 }
 
 model Shift {
-  id                 String           @id @default(uuid()) @map("shift_id")
-  userId             String           @map("user_id")
-  cabangId           String           @map("cabang_id")
-  waktuMulai         DateTime         @map("waktu_mulai")
-  waktuSelesai       DateTime?        @map("waktu_selesai")
-  kasAwal            Decimal          @map("kas_awal") @db.Decimal(15, 2)
-  kasAkhir           Decimal?         @map("kas_akhir") @db.Decimal(15, 2)
-  totalTransaksi     Int?             @map("total_transaksi")
-  totalPendapatan    Decimal?         @map("total_pendapatan") @db.Decimal(15, 2)
-  keterangan         String?
-  status             ShiftStatus
-  createdAt          DateTime         @default(now()) @map("created_at")
-  updatedAt          DateTime         @updatedAt @map("updated_at")
-  created_by         String?          @map("created_by") @db.VarChar(36)
-  created_by_user_Id String?          @map("created_by_user_id") @db.VarChar(36)
-  deletedAt          DateTime?        @map("deleted_at")
-  deleted_by         String?          @map("deleted_by") @db.VarChar(36)
-  deleted_by_user_Id String?          @map("deleted_by_user_id") @db.VarChar(36)
-  updated_by         String?          @map("updated_by") @db.VarChar(36)
-  updated_by_user_Id String?          @map("updated_by_user_id") @db.VarChar(36)
-  absensiPegawai     AbsensiPegawai[]
-  cabang             Cabang           @relation(fields: [cabangId], references: [id])
-  createdByUserId    User?            @relation("ShiftCreatedByUserId", fields: [created_by_user_Id], references: [id])
-  deletedByUserId    User?            @relation("ShiftDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
-  updatedByUserId    User?            @relation("ShiftUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
-  user               User             @relation(fields: [userId], references: [id])
-  transaksi          Transaksi[]
+  id                  String           @id @default(uuid()) @map("shift_id")
+  userId              String           @map("user_id")
+  cabangId            String           @map("cabang_id")
+  waktuMulai          DateTime         @map("waktu_mulai")
+  waktuSelesai        DateTime?        @map("waktu_selesai")
+  kasAwal             Decimal          @map("kas_awal") @db.Decimal(15, 2)
+  kasAkhir            Decimal?         @map("kas_akhir") @db.Decimal(15, 2)
+  totalTransaksi      Int?             @map("total_transaksi")
+  totalPendapatan     Decimal?         @map("total_pendapatan") @db.Decimal(15, 2)
+  keterangan          String?
+  status              ShiftStatus
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+  created_by          String?          @map("created_by") @db.VarChar(36)
+  created_by_user_Id  String?          @map("created_by_user_id") @db.VarChar(36)
+  deletedAt           DateTime?        @map("deleted_at")
+  deleted_by          String?          @map("deleted_by") @db.VarChar(36)
+  deleted_by_user_Id  String?          @map("deleted_by_user_id") @db.VarChar(36)
+  updated_by          String?          @map("updated_by") @db.VarChar(36)
+  updated_by_user_Id  String?          @map("updated_by_user_id") @db.VarChar(36)
+  nama_shift          String?          @db.VarChar(36)
+  is_overnight        Boolean          @default(false)
+  toleransi_terlambat Int              @default(15)
+  absensiPegawai      AbsensiPegawai[]
+  jadwal_kerja        JadwalKerja[]
+  cabang              Cabang           @relation(fields: [cabangId], references: [id])
+  createdByUserId     User?            @relation("ShiftCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  deletedByUserId     User?            @relation("ShiftDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+  updatedByUserId     User?            @relation("ShiftUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  user                User             @relation(fields: [userId], references: [id])
+  transaksi           Transaksi[]
 
   @@map("shift")
 }
@@ -648,13 +665,6 @@ model ProdukSupplier {
   updatedByUser      User?          @relation("ProdukSupplierUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
 
   @@map("produk_supplier")
-
-  // Performance indexes for common query patterns
-  @@index([produkMasterId, supplierId], name: "idx_produk_supplier_unique")
-  @@index([supplierId, status], name: "idx_supplier_status")
-  @@index([produkMasterId, status], name: "idx_produk_status")
-  @@index([cabangId, status], name: "idx_cabang_status")
-  @@index([supplierId, produkMasterId, isPrimary], name: "idx_supplier_produk_primary")
 }
 
 model ProdukPriceHistory {
@@ -921,6 +931,8 @@ model AuditLog {
   created_by String?  @map("created_by") @db.VarChar(36)
   user       User?    @relation(fields: [user_id], references: [id])
 
+  @@index([table_name, record_id], map: "idx_audit_tabel_record")
+  @@index([user_id, created_at(sort: Desc)], map: "idx_audit_user_created")
   @@map("audit_log")
 }
 
@@ -1495,23 +1507,23 @@ model BotMessage {
 /// WhatsApp Message model for storing all WhatsApp communications
 /// Supports webhook integration with go-whatsapp-web-multidevice
 model WhatsappMessage {
-  id              Int       @id @default(autoincrement())
-  messageId       String    @unique @map("message_id") @db.VarChar(255)
-  chatId          String    @map("chat_id") @db.VarChar(255)
-  deviceId        String    @map("device_id") @db.VarChar(255)
-  fromPhone       String    @map("from_phone") @db.VarChar(20)
-  fromName        String?   @map("from_name") @db.VarChar(100)
-  messageType     String    @map("message_type") @db.VarChar(50) // text, image, video, audio, document, sticker, location, contact
-  body            String?   @db.Text
-  mediaUrl        String?   @map("media_url") @db.VarChar(500)
-  timestamp       DateTime  @map("timestamp")
-  status          String    @default("sent") @db.VarChar(20) // sent, delivered, read
-  readAt          DateTime? @map("read_at")
-  editedAt        DateTime? @map("edited_at")
-  deletedAt       DateTime? @map("deleted_at")
-  customerId      String?   @map("customer_id") @db.VarChar(36)
-  branchId        String?   @map("branch_id") @db.VarChar(36)
-  createdAt       DateTime  @default(now()) @map("created_at")
+  id          Int       @id @default(autoincrement())
+  messageId   String    @unique @map("message_id") @db.VarChar(255)
+  chatId      String    @map("chat_id") @db.VarChar(255)
+  deviceId    String    @map("device_id") @db.VarChar(255)
+  fromPhone   String    @map("from_phone") @db.VarChar(20)
+  fromName    String?   @map("from_name") @db.VarChar(100)
+  messageType String    @map("message_type") @db.VarChar(50)
+  body        String?
+  mediaUrl    String?   @map("media_url") @db.VarChar(500)
+  timestamp   DateTime  @map("timestamp") @db.Timestamp(6)
+  status      String?   @default("sent") @db.VarChar(20)
+  readAt      DateTime? @map("read_at") @db.Timestamp(6)
+  editedAt    DateTime? @map("edited_at") @db.Timestamp(6)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamp(6)
+  customerId  String?   @map("customer_id") @db.VarChar(36)
+  branchId    String?   @map("branch_id") @db.VarChar(36)
+  createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
 
   @@index([chatId], map: "idx_whatsapp_message_chat")
   @@index([deviceId], map: "idx_whatsapp_message_device")
@@ -1586,58 +1598,69 @@ model OpsiPembayaranKredit {
 }
 
 model AbsensiPegawai {
-  id                    String          @id @default(uuid()) @map("absensi_id")
-  userId                String          @map("user_id")
-  cabangId              String          @map("cabang_id")
-  lokasiAbsensiId       String?         @map("lokasi_absensi_id")
-  tanggalAbsensi        DateTime        @map("tanggal_absensi") @db.Date
-  waktuMasuk            DateTime        @map("waktu_masuk")
-  waktuKeluar           DateTime?       @map("waktu_keluar")
-  statusKehadiran       StatusKehadiran @default(hadir)
+  id                    String            @id @default(uuid()) @map("absensi_id")
+  userId                String            @map("user_id")
+  cabangId              String            @map("cabang_id")
+  lokasiAbsensiId       String?           @map("lokasi_absensi_id")
+  tanggalAbsensi        DateTime          @map("tanggal_absensi") @db.Date
+  waktuMasuk            DateTime          @map("waktu_masuk")
+  waktuKeluar           DateTime?         @map("waktu_keluar")
+  status_kehadiran      StatusKehadiran   @default(hadir)
   keterangan            String?
-  lokasiMasuk           String?         @map("lokasi_masuk")
-  lokasiKeluar          String?         @map("lokasi_keluar")
-  latitudeMasuk         Decimal?        @map("latitude_masuk") @db.Decimal(10, 8)
-  longitudeMasuk        Decimal?        @map("longitude_masuk") @db.Decimal(11, 8)
-  latitudeKeluar        Decimal?        @map("latitude_keluar") @db.Decimal(10, 8)
-  longitudeKeluar       Decimal?        @map("longitude_keluar") @db.Decimal(11, 8)
-  fotoMasuk             String?         @map("foto_masuk")
-  fotoKeluar            String?         @map("foto_keluar")
-  faceRecognitionMasuk  Boolean         @default(false) @map("face_recognition_masuk")
-  faceRecognitionKeluar Boolean         @default(false) @map("face_recognition_keluar")
-  faceMatchScoreMasuk   Decimal?        @map("face_match_score_masuk") @db.Decimal(5, 2)
-  faceMatchScoreKeluar  Decimal?        @map("face_match_score_keluar") @db.Decimal(5, 2)
-  shiftId               String?         @map("shift_id")
-  jamKerja              Decimal?        @map("jam_kerja") @db.Decimal(5, 2)
-  isLembur              Boolean         @default(false) @map("is_lembur")
-  jamLembur             Decimal?        @map("jam_lembur") @db.Decimal(5, 2)
-  createdAt             DateTime        @default(now()) @map("created_at")
-  updatedAt             DateTime        @updatedAt @map("updated_at")
-  cabang                Cabang          @relation(fields: [cabangId], references: [id])
-  lokasiAbsensi         LokasiAbsensi?  @relation(fields: [lokasiAbsensiId], references: [id])
-  shift                 Shift?          @relation(fields: [shiftId], references: [id])
-  user                  User            @relation(fields: [userId], references: [id])
+  lokasiMasuk           String?           @map("lokasi_masuk")
+  lokasiKeluar          String?           @map("lokasi_keluar")
+  latitudeMasuk         Decimal?          @map("latitude_masuk") @db.Decimal(10, 8)
+  longitudeMasuk        Decimal?          @map("longitude_masuk") @db.Decimal(11, 8)
+  latitudeKeluar        Decimal?          @map("latitude_keluar") @db.Decimal(10, 8)
+  longitudeKeluar       Decimal?          @map("longitude_keluar") @db.Decimal(11, 8)
+  fotoMasuk             String?           @map("foto_masuk")
+  fotoKeluar            String?           @map("foto_keluar")
+  faceRecognitionMasuk  Boolean           @default(false) @map("face_recognition_masuk")
+  faceRecognitionKeluar Boolean           @default(false) @map("face_recognition_keluar")
+  faceMatchScoreMasuk   Decimal?          @map("face_match_score_masuk") @db.Decimal(5, 2)
+  faceMatchScoreKeluar  Decimal?          @map("face_match_score_keluar") @db.Decimal(5, 2)
+  shiftId               String?           @map("shift_id")
+  jamKerja              Decimal?          @map("jam_kerja") @db.Decimal(5, 2)
+  isLembur              Boolean           @default(false) @map("is_lembur")
+  jamLembur             Decimal?          @map("jam_lembur") @db.Decimal(5, 2)
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  cabang                Cabang            @relation(fields: [cabangId], references: [id])
+  lokasiAbsensi         LokasiAbsensi?    @relation(fields: [lokasiAbsensiId], references: [id])
+  shift                 Shift?            @relation(fields: [shiftId], references: [id])
+  user                  User              @relation(fields: [userId], references: [id])
+  koreksi_absensi       koreksi_absensi[]
 
+  @@index([cabangId, tanggalAbsensi(sort: Desc)], map: "idx_absensi_cabang_tanggal")
+  @@index([latitudeMasuk, longitudeMasuk], map: "idx_absensi_koordinat")
+  @@index([status_kehadiran], map: "idx_absensi_status")
+  @@index([tanggalAbsensi(sort: Desc)], map: "idx_absensi_tanggal")
+  @@index([userId, tanggalAbsensi(sort: Desc)], map: "idx_absensi_user_tanggal")
   @@map("absensi_pegawai")
 }
 
 model JadwalKerja {
-  id             String   @id @default(uuid()) @map("jadwal_id")
-  userId         String   @map("user_id")
-  cabangId       String   @map("cabang_id")
-  tanggalMulai   DateTime @map("tanggal_mulai") @db.Date
-  tanggalSelesai DateTime @map("tanggal_selesai") @db.Date
-  jamMasuk       String   @map("jam_masuk")
-  jamKeluar      String   @map("jam_keluar")
-  hariKerja      String[] @map("hari_kerja")
+  id             String     @id @default(uuid()) @map("jadwal_id")
+  userId         String     @map("user_id")
+  cabangId       String     @map("cabang_id")
+  tanggalMulai   DateTime   @map("tanggal_mulai") @db.Date
+  tanggalSelesai DateTime   @map("tanggal_selesai") @db.Date
+  jamMasuk       String     @map("jam_masuk")
+  jamKeluar      String     @map("jam_keluar")
+  hariKerja      String[]   @map("hari_kerja")
   keterangan     String?
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-  created_by     String?  @map("created_by") @db.VarChar(36)
-  updated_by     String?  @map("updated_by") @db.VarChar(36)
-  cabang         Cabang   @relation(fields: [cabangId], references: [id])
-  user           User     @relation(fields: [userId], references: [id])
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+  created_by     String?    @map("created_by") @db.VarChar(36)
+  updated_by     String?    @map("updated_by") @db.VarChar(36)
+  tipe_jadwal    TipeJadwal @default(reguler)
+  shift_id       String?    @db.VarChar(100)
+  cabang         Cabang     @relation(fields: [cabangId], references: [id])
+  shift          Shift?     @relation(fields: [shift_id], references: [id], onUpdate: NoAction, map: "jadwal_kerja_harian_shift_id_fkey")
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "jadwal_kerja_harian_user_id_fkey")
 
+  @@index([cabangId, tanggalMulai], map: "idx_jadwal_cabang_tanggal")
+  @@index([userId, tanggalMulai], map: "idx_jadwal_user_tanggal")
   @@map("jadwal_kerja")
 }
 
@@ -1852,6 +1875,231 @@ model v_loyalty_config {
   minimum_transaction Decimal? @db.Decimal(15, 2)
 
   @@ignore
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model gaji_pegawai {
+  gaji_id      String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id      String   @unique(map: "gaji_pegawai_user_unique") @db.VarChar(200)
+  gaji_pokok   Decimal  @db.Decimal(15, 2)
+  tarif_lembur Decimal  @default(0) @db.Decimal(15, 2)
+  tarif_harian Decimal? @db.Decimal(15, 2)
+  tipe_gaji    String   @default("bulanan") @db.VarChar(10)
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @default(now()) @db.Timestamptz(6)
+  created_by   String?  @db.VarChar(36)
+  updated_by   String?  @db.VarChar(36)
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model hari_libur {
+  libur_id     String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tanggal      DateTime @unique(map: "hari_libur_tanggal_unique") @db.Date
+  nama         String   @db.VarChar(100)
+  is_recurring Boolean  @default(false)
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model izin_cuti {
+  izin_id                          String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id                          String          @db.VarChar(200)
+  cabang_id                        String          @db.VarChar(100)
+  tipe_izin                        TipeIzin
+  tanggal_mulai                    DateTime        @db.Date
+  tanggal_selesai                  DateTime        @db.Date
+  jumlah_hari                      Int
+  alasan                           String
+  lampiran_file                    String?         @db.VarChar(500)
+  status                           StatusPengajuan @default(pending)
+  catatan_approver                 String?
+  approved_by                      String          @db.VarChar
+  approved_at                      DateTime?       @db.Timestamptz(6)
+  created_at                       DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at                       DateTime        @default(now()) @db.Timestamptz(6)
+  user_izin_cuti_approved_byTouser User            @relation("izin_cuti_approved_byTouser", fields: [approved_by], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  cabang                           Cabang          @relation(fields: [cabang_id], references: [id], onUpdate: NoAction)
+  user_izin_cuti_user_idTouser     User            @relation("izin_cuti_user_idTouser", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([cabang_id, status], map: "idx_izin_cabang_status")
+  @@index([tanggal_mulai, tanggal_selesai], map: "idx_izin_tanggal")
+  @@index([user_id, status], map: "idx_izin_user_status")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model komponen_gaji {
+  komponen_id       String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nama              String              @db.VarChar(100)
+  tipe              TipeKomponen
+  nilai             Decimal             @default(0) @db.Decimal(15, 2)
+  is_prorate        Boolean             @default(false)
+  is_active         Boolean             @default(true)
+  keterangan        String?
+  created_at        DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime            @default(now()) @db.Timestamptz(6)
+  created_by        String?             @db.VarChar(36)
+  updated_by        String?             @db.VarChar(36)
+  slip_gaji_detail  slip_gaji_detail[]
+  tunjangan_pegawai tunjangan_pegawai[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model koreksi_absensi {
+  koreksi_id                             String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  absensi_id                             String           @db.VarChar
+  user_id                                String           @db.VarChar(200)
+  alasan                                 String
+  waktu_masuk_baru                       DateTime?        @db.Timestamptz(6)
+  waktu_keluar_baru                      DateTime?        @db.Timestamptz(6)
+  status_baru                            StatusKehadiran?
+  status                                 StatusPengajuan  @default(pending)
+  approved_by                            String?          @db.VarChar(200)
+  approved_at                            DateTime?        @db.Timestamptz(6)
+  catatan_approver                       String?
+  created_at                             DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at                             DateTime         @default(now()) @db.Timestamptz(6)
+  absensi_pegawai                        AbsensiPegawai   @relation(fields: [absensi_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user_koreksi_absensi_approved_byTouser User?            @relation("koreksi_absensi_approved_byTouser", fields: [approved_by], references: [id], onUpdate: NoAction)
+  user_koreksi_absensi_user_idTouser     User             @relation("koreksi_absensi_user_idTouser", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([absensi_id], map: "idx_koreksi_absensi_id")
+  @@index([user_id, status], map: "idx_koreksi_user_status")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model kuota_cuti {
+  kuota_id      String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id       String   @db.VarChar(200)
+  tahun         Int
+  kuota_tahunan Int      @default(12)
+  kuota_diambil Int      @default(0)
+  kuota_pending Int      @default(0)
+  kuota_sisa    Int      @default(dbgenerated("(kuota_tahunan - kuota_diambil)"))
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime @default(now()) @db.Timestamptz(6)
+  user          User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, tahun], map: "kuota_cuti_user_tahun_unique")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model notifikasi {
+  notif_id   String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id    String         @db.VarChar(100)
+  tipe       TipeNotifikasi
+  judul      String         @db.VarChar(200)
+  pesan      String
+  data       Json?
+  is_read    Boolean        @default(false)
+  read_at    DateTime?      @db.Timestamptz(6)
+  created_at DateTime       @default(now()) @db.Timestamptz(6)
+  user       User           @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id, is_read, created_at(sort: Desc)], map: "idx_notif_user_read")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model rekap_absensi_harian {
+  rekap_id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  cabang_id       String   @db.VarChar(100)
+  tanggal         DateTime @db.Date
+  total_karyawan  Int      @default(0)
+  total_hadir     Int      @default(0)
+  total_terlambat Int      @default(0)
+  total_alpha     Int      @default(0)
+  total_izin      Int      @default(0)
+  total_cuti      Int      @default(0)
+  total_lembur    Int      @default(0)
+  total_wfh       Int      @default(0)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+  cabang          Cabang   @relation(fields: [cabang_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([cabang_id, tanggal], map: "rekap_absensi_harian_cabang_tanggal_unique")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model riwayat_gaji_pegawai {
+  riwayat_id     String    @id(map: "riwayat_gaji_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id        String    @db.VarChar(150)
+  gaji_pokok     Decimal   @db.Decimal(15, 2)
+  tarif_lembur   Decimal   @default(0) @db.Decimal(15, 2)
+  berlaku_dari   DateTime  @db.Date
+  berlaku_sampai DateTime? @db.Date
+  alasan         String?   @db.VarChar(200)
+  created_by     String    @db.VarChar(36)
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  user           User      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "riwayat_gaji_user_id_fkey")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model slip_gaji {
+  slip_id               String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id               String             @db.VarChar(100)
+  cabang_id             String             @db.VarChar(100)
+  periode               String             @db.VarChar(7)
+  tanggal_bayar         DateTime?          @db.Date
+  total_hari_kerja      Int                @default(0)
+  total_hadir           Int                @default(0)
+  total_izin            Int                @default(0)
+  total_sakit           Int                @default(0)
+  total_cuti            Int                @default(0)
+  total_alpha           Int                @default(0)
+  total_terlambat       Int                @default(0)
+  total_menit_terlambat Int                @default(0)
+  total_jam_kerja       Decimal            @default(0) @db.Decimal(7, 2)
+  total_jam_lembur      Decimal            @default(0) @db.Decimal(7, 2)
+  gaji_pokok            Decimal            @default(0) @db.Decimal(15, 2)
+  total_tunjangan       Decimal            @default(0) @db.Decimal(15, 2)
+  total_potongan        Decimal            @default(0) @db.Decimal(15, 2)
+  upah_lembur           Decimal            @default(0) @db.Decimal(15, 2)
+  potongan_alpha        Decimal            @default(0) @db.Decimal(15, 2)
+  potongan_terlambat    Decimal            @default(0) @db.Decimal(15, 2)
+  gaji_bersih           Decimal            @default(0) @db.Decimal(15, 2)
+  status                String             @default("draft") @db.VarChar(10)
+  catatan               String?
+  created_at            DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime           @default(now()) @db.Timestamptz(6)
+  created_by            String?            @db.VarChar(36)
+  cabang                Cabang             @relation(fields: [cabang_id], references: [id], onUpdate: NoAction)
+  user                  User               @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+  slip_gaji_detail      slip_gaji_detail[]
+
+  @@unique([user_id, periode], map: "slip_gaji_user_periode_unique")
+  @@index([cabang_id, periode(sort: Desc)], map: "idx_slip_cabang_periode")
+  @@index([user_id, periode(sort: Desc)], map: "idx_slip_user_periode")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model slip_gaji_detail {
+  detail_id     String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  slip_gaji_id  String        @db.Uuid
+  komponen_id   String        @db.Uuid
+  nama          String        @db.VarChar(100)
+  tipe          TipeKomponen
+  nilai         Decimal       @db.Decimal(15, 2)
+  keterangan    String?
+  komponen_gaji komponen_gaji @relation(fields: [komponen_id], references: [komponen_id], onUpdate: NoAction)
+  slip_gaji     slip_gaji     @relation(fields: [slip_gaji_id], references: [slip_id], onDelete: Cascade, onUpdate: NoAction, map: "slip_gaji_detail_slip_id_fkey")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model tunjangan_pegawai {
+  tunjangan_id   String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id        String        @db.VarChar(150)
+  komponen_id    String        @db.Uuid
+  nilai_override Decimal?      @db.Decimal(15, 2)
+  berlaku_dari   DateTime      @db.Date
+  berlaku_sampai DateTime?     @db.Date
+  is_active      Boolean       @default(true)
+  created_at     DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime      @default(now()) @db.Timestamptz(6)
+  komponen_gaji  komponen_gaji @relation(fields: [komponen_id], references: [komponen_id], onUpdate: NoAction)
+  user           User          @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, komponen_id], map: "tunjangan_pegawai_user_komponen_unique")
 }
 
 enum PermissionAction {
@@ -2184,6 +2432,13 @@ enum StatusKehadiran {
   cuti
   tanpa_keterangan
   lembur
+  hadir_terlambat
+  hadir_pulang_cepat
+  alpha
+  libur
+  off
+  wfh
+  dinas_luar
 }
 
 enum PromoDiskonStatus {
@@ -2216,4 +2471,52 @@ enum TipeDiskon {
   nominal
   bogo
   bundle
+}
+
+enum StatusPengajuan {
+  pending
+  disetujui
+  ditolak
+  dibatalkan
+}
+
+enum TipeIzin {
+  izin_sakit
+  izin_keperluan
+  cuti_tahunan
+  cuti_melahirkan
+  cuti_bersama
+  cuti_khusus
+}
+
+enum TipeJadwal {
+  shift
+  reguler
+  libur
+  wfh
+}
+
+enum TipeKomponen {
+  tunjangan
+  potongan
+}
+
+enum TipeNotifikasi {
+  izin_diajukan
+  izin_disetujui
+  izin_ditolak
+  koreksi_diajukan
+  koreksi_disetujui
+  pengingat_absensi
+  slip_gaji_terbit
+  jadwal_berubah
+}
+
+enum tipe_diskon {
+  PERSENTASE
+  NOMINAL
+  BUY_X_GET_Y
+  HARGA_SPESIAL
+  CASHBACK
+  VOUCHER
 }

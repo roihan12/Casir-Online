@@ -141,11 +141,18 @@ const ClockInButton = ({ onSuccess, onError, className = '' }) => {
 
       // Handle both single photo (string) and multi-frame (object)
       let photo, frames;
-      if (typeof captureResult === 'string') {
-        photo = captureResult;
+      
+      // Check if captureResult is object with frames (from liveness flow)
+      if (typeof captureResult === 'object' && captureResult.frames) {
+         photo = captureResult.mainPhoto || captureResult.frames[0];
+         frames = captureResult.frames;
+      } else if (typeof captureResult === 'string') {
+         // Backwards compatibility or single photo fallback
+         photo = captureResult;
       } else {
-        photo = captureResult.mainPhoto || captureResult.frames[0];
-        frames = captureResult.frames;
+         // Unexpected format
+         console.error("Unexpected capture result format", captureResult);
+         throw new Error("Failed to process photo capture");
       }
 
       // Call clock in API
@@ -163,9 +170,18 @@ const ClockInButton = ({ onSuccess, onError, className = '' }) => {
       }
 
     } catch (err) {
+      console.log("Clock in failed", err);
       const errorMessage = err.message || 'Clock in failed';
+
       setError(errorMessage);
       if (onError) onError(errorMessage);
+
+      // If already clocked in, refresh data after a delay to sync UI without hiding the error immediately
+      if (errorMessage.toLowerCase().includes("already clocked in")) {
+        setTimeout(() => {
+          if (onSuccess) onSuccess(null); // Keep onSuccess call to refresh data
+        }, 3000);
+      }
     } finally {
       setIsProcessing(false);
       setStatusMessage('');
