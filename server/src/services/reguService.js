@@ -30,7 +30,7 @@ const createRegu = async (data, userId) => {
       data: {
         nama_regu: namaRegu,
         cabang_id: cabangId,
-        // keterangan: keterangan || null,
+       keterangan: keterangan || null,
         created_by: userId,
       },
       include: {
@@ -58,10 +58,10 @@ const getRegu = async (filters) => {
   try {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const where = { deletedAt: null };
-    if (cabangId) where.cabangId = cabangId;
+    const where = { deleted_at: null };
+    if (cabangId) where.cabang_id = cabangId;
     if (search) {
-      where.namaRegu = { contains: search, mode: "insensitive" };
+      where.nama_regu = { contains: search, mode: "insensitive" };
     }
 
     const [total, reguList] = await Promise.all([
@@ -70,9 +70,9 @@ const getRegu = async (filters) => {
         where,
         include: {
           cabang: { select: { id: true, namaCabang: true } },
-          _count: { select: { members: true } },
+          _count: { select: { regu_member: true } },
         },
-        orderBy: { namaRegu: "asc" },
+        orderBy: { nama_regu: "asc" },
         skip,
         take: parseInt(limit),
       }),
@@ -99,10 +99,10 @@ const getRegu = async (filters) => {
 const getReguById = async (reguId) => {
   try {
     const regu = await prisma.regu.findFirst({
-      where: { id: reguId, deletedAt: null },
+      where: { id: reguId, deleted_at: null },
       include: {
         cabang: { select: { id: true, namaCabang: true } },
-        members: {
+      regu_member: {
           include: {
             user: {
               select: {
@@ -112,7 +112,7 @@ const getReguById = async (reguId) => {
               },
             },
           },
-          orderBy: { joinedAt: "asc" },
+          orderBy: { joined_at: "asc" },
         },
       },
     });
@@ -133,17 +133,17 @@ const updateRegu = async (reguId, data, auditInfo) => {
 
   try {
     const existing = await prisma.regu.findFirst({
-      where: { id: reguId, deletedAt: null },
+      where: { id: reguId, deleted_at: null },
     });
     if (!existing) throw new ResponseError(404, "Regu not found");
 
     // Cek nama duplikat dalam cabang yang sama (kecuali dirinya sendiri)
-    if (namaRegu && namaRegu !== existing.namaRegu) {
+    if (namaRegu && namaRegu !== existing.nama_regu) {
       const duplicate = await prisma.regu.findFirst({
         where: {
-          namaRegu,
-          cabangId: existing.cabangId,
-          deletedAt: null,
+          nama_regu: namaRegu,
+          cabang_id: existing.cabang_id,
+          deleted_at: null,
           id: { not: reguId },
         },
       });
@@ -155,13 +155,13 @@ const updateRegu = async (reguId, data, auditInfo) => {
     const updated = await prisma.regu.update({
       where: { id: reguId },
       data: {
-        ...(namaRegu !== undefined && { namaRegu }),
+        ...(namaRegu !== undefined && { nama_regu: namaRegu }),
         ...(keterangan !== undefined && { keterangan }),
         updated_by: auditInfo.userId,
       },
       include: {
         cabang: { select: { id: true, namaCabang: true } },
-        _count: { select: { members: true } },
+        _count: { select: { regu_member: true } },
       },
     });
 
@@ -180,22 +180,22 @@ const updateRegu = async (reguId, data, auditInfo) => {
 const deleteRegu = async (reguId, auditInfo) => {
   try {
     const regu = await prisma.regu.findFirst({
-      where: { id: reguId, deletedAt: null },
-      include: { _count: { select: { members: true } } },
+      where: { id: reguId, deleted_at: null },
+      include: { _count: { select: { regu_member: true } } },
     });
     if (!regu) throw new ResponseError(404, "Regu not found");
 
-    if (regu._count.members > 0) {
+    if (regu._count.regu_member > 0) {
       throw new ResponseError(
         400,
-        `Regu masih memiliki ${regu._count.members} anggota. Hapus anggota terlebih dahulu.`
+        `Regu masih memiliki ${regu._count.regu_member} anggota. Hapus anggota terlebih dahulu.`
       );
     }
 
     await prisma.regu.update({
       where: { id: reguId },
       data: {
-        deletedAt: new Date(),
+        deleted_at: new Date(),
         updated_by: auditInfo.userId,
       },
     });
@@ -225,7 +225,7 @@ const addReguMember = async (reguId, data, auditInfo) => {
   try {
     // Verifikasi regu
     const regu = await prisma.regu.findFirst({
-      where: { id: reguId, deletedAt: null },
+      where: { id: reguId, deleted_at: null },
     });
     if (!regu) throw new ResponseError(404, "Regu not found");
 
@@ -241,12 +241,12 @@ const addReguMember = async (reguId, data, auditInfo) => {
     }
 
     // Cek user yang sudah jadi anggota regu ini
-    const existingMembers = await prisma.reguMember.findMany({
-      where: { reguId, userId: { in: userIds } },
-      select: { userId: true },
+    const existingMembers = await prisma.regu_member.findMany({
+      where: { regu_id: reguId, user_id: { in: userIds } },
+      select: { user_id: true },
     });
     if (existingMembers.length > 0) {
-      const existingIds = existingMembers.map((m) => m.userId);
+      const existingIds = existingMembers.map((m) => m.user_id);
       const existingNames = users
         .filter((u) => existingIds.includes(u.id))
         .map((u) => u.namaLengkap);
@@ -257,24 +257,24 @@ const addReguMember = async (reguId, data, auditInfo) => {
     }
 
     // Cek apakah user sudah ada di regu lain dalam cabang yang sama
-    const conflictMembers = await prisma.reguMember.findMany({
+    const conflictMembers = await prisma.regu_member.findMany({
       where: {
-        userId: { in: userIds },
+        user_id: { in: userIds },
         regu: {
-          cabangId: regu.cabangId,
-          deletedAt: null,
+          cabang_id: regu.cabang_id,
+          deleted_at: null,
           id: { not: reguId },
         },
       },
       include: {
         user: { select: { namaLengkap: true } },
-        regu: { select: { namaRegu: true } },
+        regu: { select: { nama_regu: true } },
       },
     });
 
     if (conflictMembers.length > 0) {
       const conflicts = conflictMembers
-        .map((m) => `${m.user.namaLengkap} (sudah di Regu ${m.regu.namaRegu})`)
+        .map((m) => `${m.user.namaLengkap} (sudah di Regu ${m.regu.nama_regu})`)
         .join(", ");
       throw new ResponseError(
         409,
@@ -284,23 +284,23 @@ const addReguMember = async (reguId, data, auditInfo) => {
 
     // Bulk insert
     const membersToCreate = userIds.map((userId) => ({
-      reguId,
-      userId,
-      createdBy: auditInfo.userId,
+      regu_id: reguId,
+      user_id: userId,
+      created_by: auditInfo.userId,
     }));
 
-    await prisma.reguMember.createMany({
+    await prisma.regu_member.createMany({
       data: membersToCreate,
       skipDuplicates: true,
     });
 
     // Ambil data member yang baru ditambahkan untuk response
-    const newMembers = await prisma.reguMember.findMany({
-      where: { reguId, userId: { in: userIds } },
+    const newMembers = await prisma.regu_member.findMany({
+      where: { regu_id: reguId, user_id: { in: userIds } },
       include: {
         user: { select: { id: true, namaLengkap: true, email: true } },
       },
-      orderBy: { joinedAt: "asc" },
+      orderBy: { joined_at: "asc" },
     });
 
     logger.info("Regu members added", {
@@ -311,7 +311,7 @@ const addReguMember = async (reguId, data, auditInfo) => {
 
     return {
       reguId,
-      namaRegu: regu.namaRegu,
+      namaRegu: regu.nama_regu,
       addedCount: newMembers.length,
       members: newMembers,
     };
@@ -329,20 +329,20 @@ const getReguMembers = async (reguId, filters) => {
 
   try {
     const regu = await prisma.regu.findFirst({
-      where: { id: reguId, deletedAt: null },
+      where: { id: reguId, deleted_at: null },
     });
     if (!regu) throw new ResponseError(404, "Regu not found");
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const [total, members] = await Promise.all([
-      prisma.reguMember.count({ where: { reguId } }),
-      prisma.reguMember.findMany({
-        where: { reguId },
+      prisma.regu_member.count({ where: { regu_id: reguId } }),
+      prisma.regu_member.findMany({
+        where: { regu_id: reguId },
         include: {
           user: { select: { id: true, namaLengkap: true, email: true } },
         },
-        orderBy: { joinedAt: "asc" },
+        orderBy: { joined_at: "asc" },
         skip,
         take: parseInt(limit),
       }),
@@ -350,7 +350,7 @@ const getReguMembers = async (reguId, filters) => {
 
     return {
       reguId,
-      namaRegu: regu.namaRegu,
+      namaRegu: regu.nama_regu,
       data: members,
       pagination: {
         page: parseInt(page),
@@ -373,13 +373,13 @@ const removeReguMember = async (reguId, data, auditInfo) => {
 
   try {
     const regu = await prisma.regu.findFirst({
-      where: { id: reguId, deletedAt: null },
+      where: { id: reguId, deleted_at: null },
     });
     if (!regu) throw new ResponseError(404, "Regu not found");
 
     // Verifikasi user memang anggota regu ini
-    const existingMembers = await prisma.reguMember.findMany({
-      where: { reguId, userId: { in: userIds } },
+    const existingMembers = await prisma.regu_member.findMany({
+      where: { regu_id: reguId, user_id: { in: userIds } },
       include: { user: { select: { namaLengkap: true } } },
     });
 
@@ -388,11 +388,11 @@ const removeReguMember = async (reguId, data, auditInfo) => {
     }
 
     // Kalau ada yang tidak ditemukan, info tapi tidak error
-    const foundIds = existingMembers.map((m) => m.userId);
+    const foundIds = existingMembers.map((m) => m.user_id);
     const notFoundIds = userIds.filter((id) => !foundIds.includes(id));
 
-    await prisma.reguMember.deleteMany({
-      where: { reguId, userId: { in: foundIds } },
+    await prisma.regu_member.deleteMany({
+      where: { regu_id: reguId, user_id: { in: foundIds } },
     });
 
     logger.info("Regu members removed", {
@@ -424,8 +424,8 @@ const moveReguMember = async (data, auditInfo) => {
   try {
     // Verifikasi kedua regu
     const [fromRegu, toRegu] = await Promise.all([
-      prisma.regu.findFirst({ where: { id: fromReguId, deletedAt: null } }),
-      prisma.regu.findFirst({ where: { id: toReguId, deletedAt: null } }),
+      prisma.regu.findFirst({ where: { id: fromReguId, deleted_at: null } }),
+      prisma.regu.findFirst({ where: { id: toReguId, deleted_at: null } }),
     ]);
 
     if (!fromRegu) throw new ResponseError(404, "Regu asal tidak ditemukan");
@@ -436,28 +436,28 @@ const moveReguMember = async (data, auditInfo) => {
     }
 
     // Verifikasi user ada di regu asal
-    const existingMembers = await prisma.reguMember.findMany({
-      where: { reguId: fromReguId, userId: { in: userIds } },
-      select: { userId: true },
+    const existingMembers = await prisma.regu_member.findMany({
+      where: { regu_id: fromReguId, user_id: { in: userIds } },
+      select: { user_id: true },
     });
 
     if (existingMembers.length === 0) {
       throw new ResponseError(404, "User tidak ditemukan di regu asal");
     }
 
-    const foundIds = existingMembers.map((m) => m.userId);
+    const foundIds = existingMembers.map((m) => m.user_id);
 
     // Transaksi: hapus dari regu asal, tambah ke regu tujuan
     await prisma.$transaction(async (tx) => {
-      await tx.reguMember.deleteMany({
-        where: { reguId: fromReguId, userId: { in: foundIds } },
+      await tx.regu_member.deleteMany({
+        where: { regu_id: fromReguId, user_id: { in: foundIds } },
       });
 
-      await tx.reguMember.createMany({
+      await tx.regu_member.createMany({
         data: foundIds.map((userId) => ({
-          reguId: toReguId,
-          userId,
-          createdBy: auditInfo.userId,
+          regu_id: toReguId,
+          user_id: userId,
+          created_by: auditInfo.userId,
         })),
         skipDuplicates: true,
       });
@@ -472,7 +472,7 @@ const moveReguMember = async (data, auditInfo) => {
 
     return {
       success: true,
-      message: `${foundIds.length} anggota berhasil dipindah ke ${toRegu.namaRegu}`,
+      message: `${foundIds.length} anggota berhasil dipindah ke ${toRegu.nama_regu}`,
       movedCount: foundIds.length,
     };
   } catch (error) {

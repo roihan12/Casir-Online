@@ -67,11 +67,16 @@ const getReguById = async (req, res, next) => {
  */
 const updateRegu = async (req, res, next) => {
   try {
+
+    const auditInfo = {
+      userId: req.user.id,
+      username: req.user.username,
+    };
     const validatedBody = validate(updateReguSchema, req.body);
     const result = await reguService.updateRegu(
       req.params.reguId,
       validatedBody,
-      req.auditInfo
+      auditInfo
     );
     res.json({
       success: true,
@@ -88,7 +93,11 @@ const updateRegu = async (req, res, next) => {
  */
 const deleteRegu = async (req, res, next) => {
   try {
-    const result = await reguService.deleteRegu(req.params.reguId, req.auditInfo);
+    const auditInfo = {
+      userId: req.user.id,
+      username: req.user.username,
+    };
+    const result = await reguService.deleteRegu(req.params.reguId, auditInfo);
     res.json(result);
   } catch (error) {
     next(error);
@@ -120,11 +129,15 @@ const getReguMembers = async (req, res, next) => {
  */
 const addReguMember = async (req, res, next) => {
   try {
+    const auditInfo = {
+      userId: req.user.id,
+      username: req.user.username,
+    };
     const validatedBody = validate(addReguMemberSchema, req.body);
     const result = await reguService.addReguMember(
       req.params.reguId,
       validatedBody,
-      req.auditInfo
+      auditInfo
     );
     res.status(201).json({
       success: true,
@@ -141,11 +154,15 @@ const addReguMember = async (req, res, next) => {
  */
 const removeReguMember = async (req, res, next) => {
   try {
+    const auditInfo = {
+      userId: req.user.id,
+      username: req.user.username,
+    };
     const validatedBody = validate(removeReguMemberSchema, req.body);
     const result = await reguService.removeReguMember(
       req.params.reguId,
       validatedBody,
-      req.auditInfo
+      auditInfo
     );
     res.json(result);
   } catch (error) {
@@ -158,8 +175,12 @@ const removeReguMember = async (req, res, next) => {
  */
 const moveReguMember = async (req, res, next) => {
   try {
+    const auditInfo = {
+      userId: req.user.id,
+      username: req.user.username,
+    };
     const validatedBody = validate(moveReguMemberSchema, req.body);
-    const result = await reguService.moveReguMember(validatedBody, req.auditInfo);
+    const result = await reguService.moveReguMember(validatedBody, auditInfo);
     res.json(result);
   } catch (error) {
     next(error);

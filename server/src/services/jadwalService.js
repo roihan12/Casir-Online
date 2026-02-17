@@ -98,20 +98,22 @@ const createJadwal = async (data, auditInfo) => {
 
     // Create the schedule
     const schedule = await prisma.jadwalKerja.create({
-      data: {
-        user: { connect: { id: userId } },
-        cabang: { connect: { id: cabangId } },
-        tanggalMulai: tanggalStart,
-        tanggalSelesai: tanggalStart, // Single day schedule
-        jamMasuk,
-        jamKeluar,
-        hariKerja: [getDayName(tanggalStart.getDay())],
-        keterangan,
-        tipe_jadwal: tipeJadwal,
-        master_shift_id: shiftId,
-        created_by: auditInfo.userId,
-      }
-    });
+  data: {
+    user:   { connect: { id: userId } },
+    cabang: { connect: { id: cabangId } },
+    tanggalMulai: tanggalStart,
+    tanggalSelesai: tanggalStart,
+    jamMasuk,
+    jamKeluar,
+    hariKerja: [getDayName(tanggalStart.getDay())],
+    keterangan,
+    tipe_jadwal: tipeJadwal,
+    created_by: auditInfo.userId,
+    ...(shiftId && {
+      master_shift: { connect: { id: shiftId } },
+    }),
+  },
+});
 
 
 
@@ -336,7 +338,7 @@ const generateJadwalReguRolling = async (data, auditInfo) => {
     // ── Kumpulkan semua shiftId unik dari semua regu ─────────────────
     const allShiftIds = [...new Set(reguList.flatMap((r) => r.rotasiShift))];
     const allShifts = await prisma.master_shift.findMany({
-      where: { id: { in: allShiftIds }, isActive: true, deletedAt: null },
+      where: { id: { in: allShiftIds }, isActive: true, deleted_at: null },
     });
 
     if (allShifts.length !== allShiftIds.length) {
@@ -351,7 +353,7 @@ const generateJadwalReguRolling = async (data, auditInfo) => {
     const reguData = await prisma.regu.findMany({
       where: { id: { in: reguIds } },
       include: {
-        members: {
+        regu_member: {
           include: { user: { select: { id: true, namaLengkap: true } } },
         },
       },
@@ -365,8 +367,8 @@ const generateJadwalReguRolling = async (data, auditInfo) => {
 
     // Validasi per regu
     for (const regu of reguData) {
-      if (regu.members.length === 0) {
-        throw new ResponseError(400, `Regu "${regu.namaRegu}" tidak memiliki anggota`);
+      if (regu.regu_member.length === 0) {
+        throw new ResponseError(400, `Regu "${regu.nama_regu}" tidak memiliki anggota`);
       }
     }
 
@@ -410,7 +412,7 @@ const generateJadwalReguRolling = async (data, auditInfo) => {
     if (totalDays > 366) throw new ResponseError(400, "Rentang tanggal max 1 tahun");
 
     // ── Load existing schedules ──────────────────────────────────────
-    const allUserIds = reguData.flatMap((r) => r.members.map((m) => m.user.id));
+    const allUserIds = reguData.flatMap((r) => r.regu_member.map((m) => m.user.id));
     const existingDates = new Set();
 
     if (skipExisting) {
@@ -442,7 +444,7 @@ const generateJadwalReguRolling = async (data, auditInfo) => {
       } = reguInput;
 
       const regu = reguDataMap[reguId];
-      const userIds = regu.members.map((m) => m.user.id);
+      const userIds = regu.regu_member.map((m) => m.user.id);
       const polaLength = pola.length;
 
       // ── Hitung offset & state awal dari tanggalMulaiKerjaRegu ──────
@@ -474,7 +476,7 @@ const generateJadwalReguRolling = async (data, auditInfo) => {
 
       const reguSummary = {
         reguId,
-        namaRegu: regu.namaRegu,
+        namaRegu: regu.nama_regu,
         jumlahAnggota: userIds.length,
         jadwalDibuat: 0,
         jadwalDilewati: 0,
@@ -523,8 +525,8 @@ const generateJadwalReguRolling = async (data, auditInfo) => {
             cabangId,
             tanggalMulai: new Date(currentDate),
             tanggalSelesai: new Date(currentDate),
-            jamMasuk: isWorkDay ? currentShift.jamMasuk : null,
-            jamKeluar: isWorkDay ? currentShift.jamKeluar : null,
+            jamMasuk: isWorkDay ? currentShift.jamMasuk : "00:00",
+            jamKeluar: isWorkDay ? currentShift.jamKeluar : "00:00",
             hariKerja: [getDayName(currentDate.getDay())],
             tipe_jadwal: isWorkDay ? "shift" : "libur",
             master_shift_id: isWorkDay ? currentShiftId : null,
@@ -643,7 +645,7 @@ const simulatePolaState = ({
  * @returns {Promise<Object>} Paginated schedules
  */
 const getJadwal = async (filters) => {
-  const { userId, cabangId, tanggalMulai, tanggalSelesai, tipeJadwal, shiftId, page = 1, limit = 20 } = filters;
+  const { userId, cabangId, tanggalMulai, tanggalSelesai, tipeJadwal, shiftId, reguId, page = 1, limit = 20 } = filters;
 
   try {
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -664,6 +666,17 @@ const getJadwal = async (filters) => {
       if (tanggalSelesai) {
         where.tanggalMulai.lte = new Date(tanggalSelesai);
       }
+    }
+
+
+    if (reguId) {
+      where.user = {
+        regu_member: {
+          some: {
+            regu_id: reguId,
+          },
+        },
+      };
     }
 
     // Get total count

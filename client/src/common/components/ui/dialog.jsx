@@ -1,10 +1,17 @@
-import React, { forwardRef, useState, useEffect, useRef } from "react";
+import React, { forwardRef, useState, useEffect, useRef, createContext, useContext } from "react";
 import { X } from "lucide-react";
 import { cn } from "@common/utils/cn";
 
+const DialogContext = createContext({
+  open: false,
+  onOpenChange: () => {},
+});
+
 const Dialog = ({ children, open, onOpenChange }) => {
   return (
-    <>{open && children}</>
+    <DialogContext.Provider value={{ open, onOpenChange }}>
+      {open && children}
+    </DialogContext.Provider>
   );
 };
 
@@ -37,18 +44,24 @@ DialogOverlay.displayName = "DialogOverlay";
 
 const DialogContent = forwardRef(({ className, children, onClose, ...props }, ref) => {
   const contentRef = useRef(null);
+  const { onOpenChange } = useContext(DialogContext);
+  
+  const handleClose = () => {
+    if (onClose) onClose();
+    if (onOpenChange) onOpenChange(false);
+  };
   
   // Handle click outside to close
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (contentRef.current && !contentRef.current.contains(event.target)) {
-        if (onClose) onClose();
+        handleClose();
       }
     };
     
     const handleEscapeKey = (event) => {
-      if (event.key === "Escape" && onClose) {
-        onClose();
+      if (event.key === "Escape") {
+        handleClose();
       }
     };
     
@@ -63,13 +76,13 @@ const DialogContent = forwardRef(({ className, children, onClose, ...props }, re
       document.removeEventListener("keydown", handleEscapeKey);
       document.body.style.overflow = "";
     };
-  }, [onClose]);
+  }, [onClose, onOpenChange]);
   
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <DialogOverlay onClick={onClose} />
+      <DialogOverlay onClick={handleClose} />
       <div
-        ref={contentRef}
+        ref={ref || contentRef}
         className={cn(
           "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-gray-200 bg-white p-6 shadow-lg transition-all duration-200 sm:rounded-lg",
           className
@@ -78,8 +91,9 @@ const DialogContent = forwardRef(({ className, children, onClose, ...props }, re
       >
         {children}
         <button
-          className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-950 focus:ring-offset-2 disabled:pointer-events-none"
-          onClick={onClose}
+          type="button"
+          className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-950 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-gray-100 data-[state=open]:text-gray-500"
+          onClick={handleClose}
         >
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>

@@ -115,6 +115,7 @@ import BroadcastPage from "./features/whatsapp/pages/BroadcastPage";
 import OrderPage from "./features/whatsapp/pages/OrderPage";
 import AnalysisPage from "./features/whatsapp/pages/AnalysisPage";
 import AIAgentPage from "./features/whatsapp/pages/AIAgentPage";
+import JadwalPage from "./features/work-schedule/pages/JadwalPage";
 
 import { ToastProvider } from "./app/providers/ToastContext";
 import POSPage from "./features/pos/pages/POSPage";
@@ -600,6 +601,18 @@ function App() {
 
             {/* 404 Not Found */}
             <Route path="*" element={<NotFoundPage />} />
+            
+            {/* Work Schedule */}
+            <Route
+              path="/work-schedule"
+              element={
+                <ProtectedRoute requiredPermission="work-schedule:read">
+                  <DynamicLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<JadwalPage />} />
+            </Route>
           </Routes>
         </ToastProvider>
       </POSProvider>

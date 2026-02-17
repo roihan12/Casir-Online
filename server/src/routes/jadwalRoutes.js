@@ -24,7 +24,7 @@ router.post(
 
 // POST - Generate schedules in bulk
 router.post(
-  "/generate/regu/rolling",
+  "/generate-regu",
   hasPermission(["jadwal:create"]),
   jadwalController.generateJadwalReguRolling
 );

@@ -96,6 +96,7 @@ const getJadwal = async (req, res, next) => {
       tanggalSelesai: req.query.tanggalSelesai,
       tipeJadwal: req.query.tipeJadwal,
       shiftId: req.query.shiftId,
+      reguId: req.query.reguId,
       page: parseInt(req.query.page) || 1,
       limit: parseInt(req.query.limit) || 20,
     });

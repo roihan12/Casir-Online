@@ -92,6 +92,7 @@ const getJadwalValidation = Joi.object({
   tanggalSelesai: Joi.date().optional(),
   tipeJadwal: Joi.string().valid("shift", "reguler", "libur", "wfh").optional(),
   shiftId: Joi.string().optional(),
+  reguId: Joi.string().optional(),
   page: Joi.number().min(1).default(1),
   limit: Joi.number().min(1).max(100).default(20),
 });
