@@ -30,6 +30,7 @@ model Cabang {
   lokasiAbsensi        LokasiAbsensi[]
   loyaltyConfig        LoyaltyConfig[]
   marketingCampaigns   MarketingCampaign[]
+  master_shift         master_shift[]
   NotificationConfig   NotificationConfig[]
   operationalHours     OperationalHours[]
   Pelanggan            Pelanggan[]
@@ -40,6 +41,7 @@ model Cabang {
   promoCabang          PromoCabang[]
   promoDiskon          PromoDiskon[]
   ReceiptConfig        ReceiptConfig[]
+  regu                 regu[]
   rekap_absensi_harian rekap_absensi_harian[]
   shifts               Shift[]
   slip_gaji            slip_gaji[]
@@ -148,6 +150,7 @@ model User {
   PromoDiskonCreated                                PromoDiskon[]             @relation("PromoDiskonCreatedByUserId")
   PromoDiskonDeleted                                PromoDiskon[]             @relation("PromoDiskonDeletedByUserId")
   PromoDiskonUpdated                                PromoDiskon[]             @relation("PromoDiskonUpdatedByUserId")
+  regu_member                                       regu_member[]
   riwayat_gaji_pegawai                              riwayat_gaji_pegawai[]
   shiftCreated                                      Shift[]                   @relation("ShiftCreatedByUserId")
   shiftDeleted                                      Shift[]                   @relation("ShiftDeletedByUserId")
@@ -471,7 +474,6 @@ model Shift {
   is_overnight        Boolean          @default(false)
   toleransi_terlambat Int              @default(15)
   absensiPegawai      AbsensiPegawai[]
-  jadwal_kerja        JadwalKerja[]
   cabang              Cabang           @relation(fields: [cabangId], references: [id])
   createdByUserId     User?            @relation("ShiftCreatedByUserId", fields: [created_by_user_Id], references: [id])
   deletedByUserId     User?            @relation("ShiftDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
@@ -1640,24 +1642,24 @@ model AbsensiPegawai {
 }
 
 model JadwalKerja {
-  id             String     @id @default(uuid()) @map("jadwal_id")
-  userId         String     @map("user_id")
-  cabangId       String     @map("cabang_id")
-  tanggalMulai   DateTime   @map("tanggal_mulai") @db.Date
-  tanggalSelesai DateTime   @map("tanggal_selesai") @db.Date
-  jamMasuk       String     @map("jam_masuk")
-  jamKeluar      String     @map("jam_keluar")
-  hariKerja      String[]   @map("hari_kerja")
-  keterangan     String?
-  createdAt      DateTime   @default(now()) @map("created_at")
-  updatedAt      DateTime   @updatedAt @map("updated_at")
-  created_by     String?    @map("created_by") @db.VarChar(36)
-  updated_by     String?    @map("updated_by") @db.VarChar(36)
-  tipe_jadwal    TipeJadwal @default(reguler)
-  shift_id       String?    @db.VarChar(100)
-  cabang         Cabang     @relation(fields: [cabangId], references: [id])
-  shift          Shift?     @relation(fields: [shift_id], references: [id], onUpdate: NoAction, map: "jadwal_kerja_harian_shift_id_fkey")
-  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "jadwal_kerja_harian_user_id_fkey")
+  id              String        @id @default(uuid()) @map("jadwal_id")
+  userId          String        @map("user_id")
+  cabangId        String        @map("cabang_id")
+  tanggalMulai    DateTime      @map("tanggal_mulai") @db.Date
+  tanggalSelesai  DateTime      @map("tanggal_selesai") @db.Date
+  jamMasuk        String        @map("jam_masuk")
+  jamKeluar       String        @map("jam_keluar")
+  hariKerja       String[]      @map("hari_kerja")
+  keterangan      String?
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  created_by      String?       @map("created_by") @db.VarChar(36)
+  updated_by      String?       @map("updated_by") @db.VarChar(36)
+  tipe_jadwal     TipeJadwal    @default(reguler)
+  master_shift_id String?       @db.Uuid
+  cabang          Cabang        @relation(fields: [cabangId], references: [id])
+  master_shift    master_shift? @relation(fields: [master_shift_id], references: [id], onUpdate: NoAction, map: "jadwal_kerja_harian_shift_id_fkey")
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "jadwal_kerja_harian_user_id_fkey")
 
   @@index([cabangId, tanggalMulai], map: "idx_jadwal_cabang_tanggal")
   @@index([userId, tanggalMulai], map: "idx_jadwal_user_tanggal")
@@ -2100,6 +2102,51 @@ model tunjangan_pegawai {
   user           User          @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([user_id, komponen_id], map: "tunjangan_pegawai_user_komponen_unique")
+}
+
+model master_shift {
+  id                 String        @id @default(dbgenerated("uuid_generate_v4()")) @map("master_shift_id") @db.Uuid
+  namaShift          String        @map("nama_shift") @db.VarChar(50)
+  jamMasuk           String        @map("jam_masuk") @db.VarChar(5)
+  jamKeluar          String        @map("jam_keluar") @db.VarChar(5)
+  isOvernight        Boolean       @default(false) @map("is_overnight")
+  toleransiTerlambat Int           @default(15) @map("toleransi_terlambat")
+  cabangId           String?       @map("cabang_id") @db.VarChar(100)
+  isActive           Boolean       @default(true) @map("is_active")
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy          String?       @map("created_by") @db.VarChar(36)
+  updatedBy          String?       @map("updated_by") @db.VarChar(36)
+  deleted_at         DateTime?     @db.Timestamp(6)
+  jadwal_kerja       JadwalKerja[]
+  cabang             Cabang?       @relation(fields: [cabangId], references: [id], onUpdate: NoAction, map: "shift_cabang_id_fkey")
+
+  @@map("master_shift")
+}
+
+model regu {
+  id          String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nama_regu   String        @db.VarChar(255)
+  cabang_id   String        @db.VarChar(100)
+  created_by  String?       @db.VarChar(100)
+  created_at  DateTime?     @default(now()) @db.Timestamp(6)
+  updated_at  DateTime?     @default(now()) @db.Timestamp(6)
+  deleted_at  DateTime?     @db.Timestamp(6)
+  keterangan  String?       @db.VarChar(200)
+  cabang      Cabang        @relation(fields: [cabang_id], references: [id], map: "fk_regu_cabang")
+  regu_member regu_member[]
+}
+
+model regu_member {
+  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  regu_id    String    @db.Uuid
+  user_id    String    @db.VarChar(100)
+  joined_at  DateTime? @default(now()) @db.Timestamp(6)
+  created_by String?   @db.VarChar(100)
+  regu       regu      @relation(fields: [regu_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_regu_member_regu")
+  user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_regu_member_user")
+
+  @@unique([regu_id, user_id], map: "unique_regu_user")
 }
 
 enum PermissionAction {

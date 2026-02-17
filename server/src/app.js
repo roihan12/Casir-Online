@@ -62,6 +62,10 @@ const promoReportRoutes = require("./routes/promoReportRoutes");
 const auditRoutes = require("./routes/auditRoutes");
 const absensiRoutes = require("./routes/absensiRoutes");
 const lokasiAbsensiRoutes = require("./routes/lokasiAbsensiRoutes");
+const masterShiftRoutes = require("./routes/masterShiftRoutes");
+const jadwalRoutes = require("./routes/jadwalRoutes");
+const koreksiAbsensiRoutes = require("./routes/koreksiAbsensiRoutes");
+const reguRoutes = require("./routes/reguRoutes");
 
 
 const {
@@ -182,6 +186,10 @@ app.use("/api/broadcast", broadcastRoutes);
 app.use("/api/audit-logs", auditRoutes);
 app.use("/api/attendance", absensiRoutes);
 app.use("/api/attendance-locations", lokasiAbsensiRoutes);
+app.use("/api/master-shifts", masterShiftRoutes);
+app.use("/api/jadwal", jadwalRoutes);
+app.use("/api/koreksi-absensi", koreksiAbsensiRoutes);
+app.use("/api/regu", reguRoutes);
 
 // 404 handler
 app.use((req, res) => {

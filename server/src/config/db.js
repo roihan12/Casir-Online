@@ -166,6 +166,7 @@ const handleShutdown = async () => {
 process.on("SIGINT", handleShutdown);
 process.on("SIGTERM", handleShutdown);
 
+
 // Export for backward compatibility - existing code uses: const prisma = require("../config/db")
 module.exports = prisma;
 // Also export named properties for when needed

@@ -154,35 +154,51 @@ const clockIn = async (data) => {
     }
 
     // 7. Determine attendance status (late vs on time)
-    // Note: jamMasuk/jamKeluar removed from LokasiAbsensi model
-    // Using DEFAULT_LATE_THRESHOLD or get from Shift/JadwalKerja
+    // Query user's work schedule with related MasterShift for toleransi_terlambat
     const now = new Date();
 
-    // Check if user has a work schedule (JadwalKerja)
+    // Check if user has a work schedule (JadwalKerja) for today
     const workSchedule = await prisma.jadwalKerja.findFirst({
       where: {
         userId,
         cabangId,
         tanggalMulai: { lte: today },
         tanggalSelesai: { gte: today }
+      },
+      include: {
+        master_shift: {
+          select: {
+            id: true,
+            namaShift: true,
+            toleransiTerlambat: true,
+          }
+        }
       }
     });
 
     let isLate = false;
     let lateMinutes = 0;
+    let lateThreshold = DEFAULT_LATE_THRESHOLD; // Default threshold
 
+    // Determine the work start time and late threshold from schedule
     if (workSchedule && workSchedule.jamMasuk) {
       const [hours, minutes] = workSchedule.jamMasuk.split(':');
       const workStartTime = new Date(today);
       workStartTime.setHours(parseInt(hours), parseInt(minutes), 0);
 
+      // Use master shift's toleransiTerlambat if shift is assigned, otherwise use default
+      if (workSchedule.master_shift && workSchedule.master_shift.toleransiTerlambat !== undefined) {
+        lateThreshold = workSchedule.master_shift.toleransiTerlambat;
+      }
+
       isLate = now > workStartTime;
       lateMinutes = isLate ? Math.round((now - workStartTime) / (1000 * 60)) : 0;
     }
 
+    // Set status kehadiran based on late threshold
     let statusKehadiran = "hadir";
-    if (isLate && lateMinutes > DEFAULT_LATE_THRESHOLD) {
-      statusKehadiran = "terlambat";
+    if (isLate && lateMinutes > lateThreshold) {
+      statusKehadiran = "hadir_terlambat";
     }
 
     // 8. Create attendance record
@@ -202,7 +218,7 @@ const clockIn = async (data) => {
         fotoMasuk: "",
         faceRecognitionMasuk: true,  // Boolean, not JSON
         faceMatchScoreMasuk: parseFloat((faceVerifyResult.similarity * 100).toFixed(2)),  // Decimal as percentage
-        keterangan: isLate ? `Terlambat ${lateMinutes} menit` : null
+        keterangan: isLate ? `Terlambat ${lateMinutes} menit (toleransi: ${lateThreshold} menit)` : null
       }
     });
 
@@ -348,38 +364,121 @@ const clockOut = async (data) => {
     // 7. Upload photo
     const photoUrl = await uploadFileToSupabase(photoBuffer);
 
-    // 8. Calculate work duration and overtime
+    // 8. Calculate work duration and overtime based on schedule
     const now = new Date();
 
-    // Check work schedule for end time
+    // Check work schedule for shift details
     const workSchedule = await prisma.jadwalKerja.findFirst({
       where: {
         userId,
         cabangId,
         tanggalMulai: { lte: today },
         tanggalSelesai: { gte: today }
+      },
+      include: {
+        masterShift: {
+          select: {
+            id: true,
+            namaShift: true,
+            toleransiTerlambat: true,
+            isOvernight: true,
+          }
+        }
       }
     });
 
-    let workEndTime = now;
-    if (workSchedule && workSchedule.jamKeluar) {
-      const [hours, minutes] = workSchedule.jamKeluar.split(':');
-      workEndTime = new Date(today);
-      workEndTime.setHours(parseInt(hours), parseInt(minutes), 0);
-    }
-
     const workStart = new Date(attendance.waktuMasuk);
     const workDuration = now - workStart; // milliseconds
-
-    // Calculate overtime (work more than 8 hours)
-    const isOvertime = workDuration > (8 * 60 * 60 * 1000);
-    const overtimeHours = isOvertime
-      ? parseFloat(((workDuration - (8 * 60 * 60 * 1000)) / (1000 * 60 * 60)).toFixed(2))
-      : 0;
-
     const totalHours = parseFloat((workDuration / (1000 * 60 * 60)).toFixed(2));
 
+    // Calculate normal work hours from schedule
+    let normalWorkHours = 8; // Default 8 hours if no schedule
+    let workEndTime = null;
+    let isOvernightShift = false;
+    let earlyDepartureMinutes = 0;
+
+    if (workSchedule && workSchedule.jamMasuk && workSchedule.jamKeluar) {
+      const [jamMasukHours, jamMasukMinutes] = workSchedule.jamMasuk.split(':').map(Number);
+      const [jamKeluarHours, jamKeluarMinutes] = workSchedule.jamKeluar.split(':').map(Number);
+
+      const jamMasukTime = jamMasukHours * 60 + jamMasukMinutes;
+      const jamKeluarTime = jamKeluarHours * 60 + jamKeluarMinutes;
+
+      // Check if this is an overnight shift
+      if (jamKeluarTime <= jamMasukTime) {
+        isOvernightShift = true;
+        // For overnight shift, end time is on the next day
+        normalWorkHours = (jamKeluarTime + (24 * 60) - jamMasukTime) / 60; // in hours
+      } else {
+        normalWorkHours = (jamKeluarTime - jamMasukTime) / 60; // in hours
+      }
+
+      // Calculate scheduled end time for comparison
+      workEndTime = new Date(today);
+      workEndTime.setHours(jamKeluarHours, jamKeluarMinutes, 0);
+
+      // If overnight and clock out is before the end time (on the next day),
+      // we need to check if user left early
+      if (isOvernightShift) {
+        // For overnight shifts, the end time is technically on the next day
+        // If the user clocked out before the scheduled end time (next day),
+        // they left early
+        const nextDayEndTime = new Date(today);
+        nextDayEndTime.setDate(nextDayEndTime.getDate() + 1);
+        nextDayEndTime.setHours(jamKeluarHours, jamKeluarMinutes, 0);
+
+        if (now < nextDayEndTime) {
+          earlyDepartureMinutes = Math.round((nextDayEndTime - now) / (1000 * 60));
+        }
+      } else {
+        // For regular shifts, check if clocked out before scheduled end time
+        if (now < workEndTime && now > workStart) {
+          earlyDepartureMinutes = Math.round((workEndTime - now) / (1000 * 60));
+        }
+      }
+    }
+
+    // Calculate overtime based on actual work duration vs normal work hours
+    // Use a small buffer (5 minutes) to avoid calculating overtime for short overruns
+    const overtimeBufferMinutes = 5;
+    const normalWorkDurationMs = (normalWorkHours * 60 * 60 * 1000) - (overtimeBufferMinutes * 60 * 1000);
+    const isOvertime = workDuration > normalWorkDurationMs;
+    const overtimeHours = isOvertime
+      ? parseFloat(((workDuration - normalWorkDurationMs) / (1000 * 60 * 60)).toFixed(2))
+      : 0;
+
+    // Validate maximum work hours (16 hours to prevent input errors)
+    const maxWorkHours = 16;
+    if (totalHours > maxWorkHours) {
+      logger.warn("Excessive work hours detected", {
+        userId,
+        totalHours,
+        maxWorkHours,
+      });
+      // Don't throw error, just log it - admin can review and correct if needed
+    }
+
     // 9. Update attendance record
+    // Determine final status based on overtime and early departure
+    let finalStatus = attendance.statusKehadiran;
+    if (earlyDepartureMinutes > 5) { // 5 minute tolerance for early departure
+      finalStatus = "hadir_pulang_cepat";
+    } else if (isOvertime && overtimeHours > 0) {
+      // Keep the original status but note that overtime was worked
+      // Don't change to "lembur" as that should be a separate status
+    }
+
+    // Build keterangan with work details
+    let keterangan = attendance.keterangan || "";
+    if (earlyDepartureMinutes > 5) {
+      keterangan += keterangan ? " | " : "";
+      keterangan += `Pulang cepat ${earlyDepartureMinutes} menit`;
+    }
+    if (isOvertime && overtimeHours > 0) {
+      keterangan += keterangan ? " | " : "";
+      keterangan += `Lembur ${overtimeHours} jam`;
+    }
+
     const updatedAttendance = await prisma.absensiPegawai.update({
       where: { id: attendance.id },
       data: {
@@ -392,7 +491,8 @@ const clockOut = async (data) => {
         isLembur: isOvertime,
         jamLembur: overtimeHours,
         jamKerja: totalHours,
-        statusKehadiran: isOvertime ? "lembur" : attendance.statusKehadiran
+        statusKehadiran: finalStatus,
+        keterangan: keterangan || null
       }
     });
 
@@ -401,7 +501,9 @@ const clockOut = async (data) => {
       attendanceId: attendance.id,
       faceMatchScore: faceVerifyResult.similarity,
       workHours: totalHours,
-      overtime: overtimeHours
+      overtimeHours,
+      normalWorkHours,
+      earlyDepartureMinutes,
     });
 
     return updatedAttendance;
