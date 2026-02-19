@@ -118,6 +118,8 @@ const getMasterShifts = async (filters) => {
   try {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
+    console.log("cabangId", cabangId);
+
     // Build where clause for master shifts (template status)
     const where = {};
 

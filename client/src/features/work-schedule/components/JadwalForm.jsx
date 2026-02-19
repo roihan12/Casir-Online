@@ -10,10 +10,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "../../../common/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../common/components/ui/select";
 
-import { useCreateJadwal, useUpdateJadwal, useDeleteJadwal } from "../../../hooks/useJadwal";
-import { useMasterShiftList } from "../../../hooks/useMasterShift";
+import { useCreateJadwal, useUpdateJadwal, useDeleteJadwal } from "../hooks/useJadwal";
+import { useMasterShiftList } from "../hooks/useMasterShift";
 import { useUsers } from "../../users/hooks/useUsers";
-import { X } from "lucide-react";
 
 // Validation Schema
 const jadwalSchema = z.object({
@@ -63,11 +62,13 @@ const JadwalForm = ({ open, onOpenChange, selectedSlot, onClose, cabangId }) => 
   const tipeJadwal = form.watch("tipeJadwal");
 
   // Fetch Data
-  const { data: shiftData } = useMasterShiftList({ cabangId });
+  const { data: shiftData } = useMasterShiftList({ cabangId: cabangId == "global" ? "" : cabangId });
   
   // Fetch users using the hook
-  const { getUsersQuery } = useUsers({ cabangId, limit: 100 });
-  const { data: userData } = getUsersQuery;
+  const { getUsersQuery } = useUsers({ cabangId: cabangId == "global" ? "" : cabangId, limit: 100 });
+  const usersData          = getUsersQuery?.data?.data ?? [];
+
+
 
   const createMutation = useCreateJadwal();
   const updateMutation = useUpdateJadwal();
@@ -173,7 +174,7 @@ const JadwalForm = ({ open, onOpenChange, selectedSlot, onClose, cabangId }) => 
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {userData?.data?.map((user) => (
+                        {usersData?.map((user) => (
                           <SelectItem key={user.id} value={user.id}>
                             {user.namaLengkap}
                           </SelectItem>
@@ -264,6 +265,7 @@ const JadwalForm = ({ open, onOpenChange, selectedSlot, onClose, cabangId }) => 
                         control={form.control}
                         name="jamMasukOverride"
                         render={({ field }) => (
+                          console.log("field", field),
                             <FormItem>
                                 <FormLabel>Jam Masuk</FormLabel>
                                 <FormControl>

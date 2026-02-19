@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import reguService from "../services/reguService";
+import reguService from "../../../services/reguService";
 
 // Keys for React Query
 export const reguKeys = {

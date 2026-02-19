@@ -70,6 +70,15 @@ const getRegu = async (filters) => {
         where,
         include: {
           cabang: { select: { id: true, namaCabang: true } },
+           regu_member: {
+            select: {
+              user: {
+                select: {
+                  id: true,
+                }
+              }
+            }
+           },
           _count: { select: { regu_member: true } },
         },
         orderBy: { nama_regu: "asc" },

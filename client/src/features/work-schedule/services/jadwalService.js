@@ -1,4 +1,4 @@
-import api from "./api";
+import api from "@common/utils/api";
 
 const JADWAL_URL = "/jadwal";
 

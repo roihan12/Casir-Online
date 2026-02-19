@@ -1,4 +1,4 @@
-import api from "./api";
+import api from "@common/utils/api";
 
 const MASTER_SHIFT_URL = "/master-shifts";
 
