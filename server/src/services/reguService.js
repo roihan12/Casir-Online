@@ -75,6 +75,8 @@ const getRegu = async (filters) => {
               user: {
                 select: {
                   id: true,
+                  namaLengkap: true,
+                  email: true,
                 }
               }
             }

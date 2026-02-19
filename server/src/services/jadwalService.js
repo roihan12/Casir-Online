@@ -645,10 +645,10 @@ const simulatePolaState = ({
  * @returns {Promise<Object>} Paginated schedules
  */
 const getJadwal = async (filters) => {
-  const { userId, cabangId, tanggalMulai, tanggalSelesai, tipeJadwal, shiftId, reguId, page = 1, limit = 20 } = filters;
+  const { userId, cabangId, tanggalMulai, tanggalSelesai, tipeJadwal, shiftId, reguId } = filters;
 
   try {
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
 
     // Build where clause
     const where = {};
@@ -711,18 +711,10 @@ const getJadwal = async (filters) => {
       orderBy: {
         tanggalMulai: "desc",
       },
-      skip,
-      take: parseInt(limit),
     });
 
     return {
       data: schedules,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        totalPages: Math.ceil(total / parseInt(limit)),
-      },
     };
   } catch (error) {
     logger.error("Get schedules failed", { error: error.message, filters });

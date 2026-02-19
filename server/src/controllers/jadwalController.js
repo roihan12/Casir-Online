@@ -97,8 +97,6 @@ const getJadwal = async (req, res, next) => {
       tipeJadwal: req.query.tipeJadwal,
       shiftId: req.query.shiftId,
       reguId: req.query.reguId,
-      page: parseInt(req.query.page) || 1,
-      limit: parseInt(req.query.limit) || 20,
     });
 
     const result = await jadwalService.getJadwal(filters);
@@ -107,7 +105,6 @@ const getJadwal = async (req, res, next) => {
       success: true,
       message: "Schedules retrieved successfully",
       data: result.data,
-      pagination: result.pagination,
     });
   } catch (error) {
     next(error);

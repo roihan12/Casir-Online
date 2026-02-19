@@ -152,8 +152,7 @@ const JadwalForm = ({ open, onOpenChange, selectedSlot, onClose, cabangId }) => 
           </DialogDescription>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <Form onSubmit={form.handleSubmit(onSubmit)}>
             
             {/* User Selection (Read only if pre-selected via grid click) */}
             <FormField
@@ -265,7 +264,6 @@ const JadwalForm = ({ open, onOpenChange, selectedSlot, onClose, cabangId }) => 
                         control={form.control}
                         name="jamMasukOverride"
                         render={({ field }) => (
-                          console.log("field", field),
                             <FormItem>
                                 <FormLabel>Jam Masuk</FormLabel>
                                 <FormControl>
@@ -320,7 +318,6 @@ const JadwalForm = ({ open, onOpenChange, selectedSlot, onClose, cabangId }) => 
                 {createMutation.isLoading || updateMutation.isLoading ? "Menyimpan..." : "Simpan"}
               </Button>
             </DialogFooter>
-          </form>
         </Form>
       </DialogContent>
     </Dialog>

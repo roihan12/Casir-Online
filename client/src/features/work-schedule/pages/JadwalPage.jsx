@@ -7,6 +7,7 @@ import { id as localeId } from "date-fns/locale";
 import {
   ChevronLeft, ChevronRight, Plus,
   Calendar as CalendarIcon, ChevronDown, ChevronRight as ChevronRightIcon, Users,
+  Settings, Zap, RotateCcw, MoreHorizontal
 } from "lucide-react";
 
 import { useJadwalList } from "../hooks/useJadwal";
@@ -17,7 +18,20 @@ import { useUsers }      from "../../users/hooks/useUsers";
 import { Button } from "../../../common/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../common/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../common/components/ui/select";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "../../../common/components/ui/dropdown-menu";
+
 import JadwalForm from "../components/JadwalForm";
+import ReguManagementDialog from "../components/ReguManagementDialog";
+import BulkGenerateDialog from "../components/BulkGenerateDialog";
+import ReguRollingGenerateDialog from "../components/ReguRollingGenerateDialog";
+
 import { computeTodaySummary, groupUsersByRegu, resolveShift } from "../../../common/utils/jadwalUtils";
 import { DISPLAY_LIMIT, LEGEND_ITEMS, TODAY_CARD_CONFIG } from "../../../app/constants/jadwalConfig";
 
@@ -118,9 +132,9 @@ const UserRow = React.memo(({ user, days, scheduleMap, onCellClick }) => (
       <div className="flex flex-col overflow-hidden">
         <span
           className="truncate text-gray-900 text-sm font-medium"
-          title={user.nama_lengkap || user.email}
+          title={user.namaLengkap || user.email}
         >
-          {user.nama_lengkap || user.email}
+          {user.namaLengkap || user.email}
         </span>
         <span className="text-[11px] text-muted-foreground truncate">{user.email}</span>
       </div>
@@ -146,8 +160,8 @@ const UserRow = React.memo(({ user, days, scheduleMap, onCellClick }) => (
 
 const StatBadge = ({ label, count, colorClass }) =>
   count > 0 ? (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${colorClass}`}>
-      {label} <span className="font-bold tabular-nums">{count}</span>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${colorClass} shadow-sm border border-black/5`}>
+      {label} <span className="tabular-nums">{count}</span>
     </span>
   ) : null;
 
@@ -157,29 +171,35 @@ const ReguGroupHeader = ({ regu, userCount, todayStats, colSpan, isOpen, onToggl
     onClick={onToggle}
   >
     {/* Sticky kolom nama regu */}
-    <td className="px-4 py-2 sticky left-0 bg-gray-50/90 group-hover:bg-gray-100/80 transition-colors z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)]">
-      <div className="flex items-center gap-2">
-        {isOpen
-          ? <ChevronDown className="h-3.5 w-3.5 text-gray-400 flex-shrink-0 transition-transform" />
-          : <ChevronRightIcon className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-        }
-        <span className="font-semibold text-gray-700 text-sm">{regu.nama_regu}</span>
-        <span className="inline-flex items-center gap-1 text-[11px] text-gray-400">
-          <Users className="h-3 w-3" />{userCount}
-        </span>
+    <td className="px-4 py-3 sticky left-0 bg-slate-50 group-hover:bg-blue-50/50 transition-colors z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)]">
+      <div className="flex items-center gap-3">
+        <div className={`p-1 rounded-md transition-all ${isOpen ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>
+          {isOpen
+            ? <ChevronDown className="h-3.5 w-3.5" />
+            : <ChevronRightIcon className="h-3.5 w-3.5" />
+          }
+        </div>
+        <div className="flex flex-col">
+          <span className="font-bold text-slate-700 text-sm tracking-tight">{regu.namaRegu || regu.nama_regu}</span>
+          <span className="inline-flex items-center gap-1 text-[10px] text-gray-400 font-medium">
+            <Users className="h-2.5 w-2.5" />{userCount} Karyawan
+          </span>
+        </div>
       </div>
     </td>
 
     {/* Mini-stats hari ini — span sisa kolom */}
-    <td colSpan={colSpan - 1} className="px-3 py-2">
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <span className="text-[10px] text-gray-400 mr-0.5">Hari ini:</span>
-        <StatBadge label="P"  count={todayStats.pagi}  colorClass="bg-emerald-100 text-emerald-700" />
-        <StatBadge label="S"  count={todayStats.siang} colorClass="bg-amber-100   text-amber-700"   />
-        <StatBadge label="M"  count={todayStats.malam} colorClass="bg-slate-200   text-slate-700"   />
-        <StatBadge label="LB" count={todayStats.libur} colorClass="bg-rose-100    text-rose-700"    />
-        {todayStats.pagi + todayStats.siang + todayStats.malam + todayStats.libur === 0 && (
-          <span className="text-[11px] text-gray-400 italic">belum ada jadwal</span>
+    <td colSpan={colSpan - 1} className="px-4 py-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest mr-1">Status Hari Ini:</span>
+        <StatBadge label="P"  count={todayStats.pagi}  colorClass="bg-emerald-500 text-white" />
+        <StatBadge label="S"  count={todayStats.siang} colorClass="bg-amber-500   text-white"   />
+        <StatBadge label="M"  count={todayStats.malam} colorClass="bg-slate-700   text-white"   />
+        <StatBadge label="LB" count={todayStats.libur} colorClass="bg-rose-500    text-white"    />
+        <StatBadge label="R"  count={todayStats.reguler} colorClass="bg-blue-500    text-white"    />
+        <StatBadge label="WFH" count={todayStats.wfh} colorClass="bg-indigo-500    text-white"    />
+        {todayStats.pagi + todayStats.siang + todayStats.malam + todayStats.libur + todayStats.reguler + todayStats.wfh === 0 && (
+          <span className="text-[10px] text-gray-400 italic font-medium">Belum ada jadwal hari ini</span>
         )}
       </div>
     </td>
@@ -286,6 +306,10 @@ const JadwalPage = () => {
   const [currentDate, setCurrentDate]           = useState(new Date());
   const [selectedRegu, setSelectedRegu]         = useState("all");
   const [isFormOpen, setIsFormOpen]             = useState(false);
+  const [isReguOpen, setIsReguOpen]             = useState(false);
+  const [isBulkOpen, setIsBulkOpen]             = useState(false);
+  const [isRollingOpen, setIsRollingOpen]       = useState(false);
+  
   const [selectedSlot, setSelectedSlot]         = useState(null);
   // Set berisi reguId yang sedang di-collapse (default: semua open)
   const [collapsedReguIds, setCollapsedReguIds] = useState(new Set());
@@ -315,7 +339,7 @@ const JadwalPage = () => {
   const cabangFilter      = isGlobal ? {} : { cabangId: effectiveCabangId };
 
   // ── Data fetching ─────────────────────────
-  const { data: reguData } = useReguList({ cabangId: cabangFilter });
+  const { data: reguData } = useReguList(cabangFilter);
 
   const { getUsersQuery } = useUsers({ ...cabangFilter, limit: 500 });
   const users          = getUsersQuery?.data?.data ?? [];
@@ -346,7 +370,6 @@ const JadwalPage = () => {
     [users, scheduleMap, todayStr]
   );
 
-  console.log("todaySummary 1", todaySummary);
 
   // ── Regu groups (users dikelompokkan per regu) ──
   const reguGroups = useMemo(
@@ -397,15 +420,17 @@ const JadwalPage = () => {
   const isLoading    = isLoadingJadwal || isLoadingUsers;
   const allCollapsed = reguGroups.length > 0 && collapsedReguIds.size === reguGroups.length;
 
+  console.log("reguGroups", reguGroups);
+
   // ─────────────────────────────────────────
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 bg-gray-50/30 min-h-screen">
 
       {/* ══ Page Header ══ */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Jadwal Kerja</h1>
-          <p className="text-muted-foreground">Kelola jadwal shift karyawan per bulan.</p>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-black tracking-tight text-slate-800">Jadwal Kerja</h1>
+          <p className="text-sm text-muted-foreground font-medium">Optimalkan efisiensi tim dengan manajemen shift yang cerdas.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <MonthNavigator
@@ -414,9 +439,43 @@ const JadwalPage = () => {
             onNext={handleNextMonth}
             onToday={handleToday}
           />
-          <Button onClick={handleOpenNewForm} className="w-full sm:w-auto">
-            <Plus className="mr-2 h-4 w-4" /> Buat Jadwal
-          </Button>
+
+          <div className="flex items-center gap-2">
+            <Button onClick={handleOpenNewForm} className="shadow-lg shadow-blue-200 bg-blue-600 hover:bg-blue-700">
+              <Plus className="mr-2 h-4 w-4" /> Buat Jadwal
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="shadow-sm">
+                   <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 p-2">
+                <DropdownMenuLabel className="text-[10px] font-bold uppercase text-muted-foreground px-2 py-1.5">Alat & Manajemen</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setIsReguOpen(true)} className="gap-2 cursor-pointer py-2">
+                  <Users className="h-4 w-4 text-blue-500" />
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-xs text-slate-700">Kelola Regu</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-[10px] font-bold uppercase text-muted-foreground px-2 py-1.5">Automasi</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setIsBulkOpen(true)} className="gap-2 cursor-pointer py-2">
+                  <Zap className="h-4 w-4 text-amber-500" />
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-xs text-slate-700">Generate Bulk</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsRollingOpen(true)} className="gap-2 cursor-pointer py-2">
+                  <RotateCcw className="h-4 w-4 text-indigo-500" />
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-xs text-slate-700">Generate Regu Rolling</span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
@@ -428,33 +487,35 @@ const JadwalPage = () => {
       />
 
       {/* ══ Calendar Card ══ */}
-      <Card className="overflow-hidden border-none shadow-md">
+      <Card className="overflow-hidden border-none shadow-xl shadow-slate-200/50 bg-white">
         <CardHeader className="bg-white pb-4 border-b">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             {/* Judul + tombol expand/collapse all */}
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <CalendarIcon className="h-5 w-5 text-blue-600" />
-                <CardTitle className="text-lg">Overview Jadwal</CardTitle>
+                <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                  <CalendarIcon className="h-4 w-4 text-blue-600" />
+                </div>
+                <CardTitle className="text-base font-bold text-slate-700">Matriks Jadwal Bulanan</CardTitle>
               </div>
               {reguGroups.length > 1 && !isLoading && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 px-2 text-xs text-muted-foreground hover:text-gray-700"
+                  className="h-7 px-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-all"
                   onClick={allCollapsed ? handleExpandAll : handleCollapseAll}
                 >
-                  {allCollapsed ? "Buka Semua" : "Tutup Semua"}
+                  {allCollapsed ? "Tampilkan Semua" : "Sembunyikan Semua"}
                 </Button>
               )}
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col sm:flex-row gap-2">
               {cabangList?.length > 1 && (
                 <Select value={activeCabangId} onValueChange={handleCabangChange}>
-                  <SelectTrigger className="w-full sm:w-[200px] h-9">
-                    <SelectValue placeholder="Pilih Cabang" />
+                  <SelectTrigger className="w-full sm:w-[180px] h-9 border-slate-200 focus:ring-blue-500">
+                    <SelectValue placeholder="Cabang" />
                   </SelectTrigger>
                   <SelectContent>
                     {cabangList.map((cabang) => (
@@ -466,14 +527,14 @@ const JadwalPage = () => {
                 </Select>
               )}
               <Select value={selectedRegu} onValueChange={setSelectedRegu}>
-                <SelectTrigger className="w-full sm:w-[200px] h-9">
+                <SelectTrigger className="w-full sm:w-[180px] h-9 border-slate-200 focus:ring-blue-500">
                   <SelectValue placeholder="Filter Regu" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Regu</SelectItem>
                   {reguData?.data?.map((regu) => (
                     <SelectItem key={regu.id} value={regu.id}>
-                      {regu.nama_regu}
+                      {regu.namaRegu || regu.nama_regu}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -484,27 +545,27 @@ const JadwalPage = () => {
 
         <CardContent className="p-0">
           <div className="relative">
-            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
               <table className="w-full text-sm text-left border-collapse">
 
                 {/* ── Thead ── */}
-                <thead className="text-xs text-gray-500 uppercase bg-gray-50/50 border-b">
+                <thead className="text-[10px] text-slate-500 uppercase tracking-widest bg-slate-50/50 border-b">
                   <tr>
-                    <th className="px-4 py-4 sticky left-0 bg-gray-50 z-20 font-semibold min-w-[200px] border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]">
-                      Karyawan
+                    <th className="px-6 py-4 sticky left-0 bg-slate-50/90 backdrop-blur-sm z-20 font-black min-w-[240px] border-r border-slate-200 shadow-[2px_0_10px_-4px_rgba(0,0,0,0.1)]">
+                       Karyawan
                     </th>
                     {daysInMonth.map((day) => (
                       <th
                         key={day.toString()}
-                        className={`px-2 py-3 text-center min-w-[50px] border-r transition-colors ${
-                          isToday(day) ? "bg-blue-50 text-blue-600 font-bold" : ""
+                        className={`px-2 py-3 text-center min-w-[54px] border-r border-slate-100 transition-all ${
+                          isToday(day) ? "bg-blue-600 text-white font-black scale-105 z-10 shadow-lg" : ""
                         }`}
                       >
                         <div className="flex flex-col items-center">
-                          <span className="text-[10px] font-medium opacity-70">
+                          <span className={`text-[9px] font-bold ${isToday(day) ? "text-blue-100" : "opacity-60"}`}>
                             {format(day, "EEE", { locale: localeId })}
                           </span>
-                          <span className="text-base leading-tight">{format(day, "d")}</span>
+                          <span className="text-base leading-tight mt-0.5">{format(day, "d")}</span>
                         </div>
                       </th>
                     ))}
@@ -512,7 +573,7 @@ const JadwalPage = () => {
                 </thead>
 
                 {/* ── Tbody: regu groups ── */}
-                <tbody>
+                <tbody className="divide-y divide-slate-100">
                   {isLoading || users.length === 0 ? (
                     <TablePlaceholder isLoading={isLoading} colSpan={daysInMonth.length + 1} />
                   ) : (
@@ -533,20 +594,42 @@ const JadwalPage = () => {
             </div>
 
             {/* Mobile scroll hint */}
-            <div className="absolute top-0 right-0 bottom-0 w-8 bg-gradient-to-l from-white/80 to-transparent pointer-events-none sm:hidden" />
+            <div className="absolute top-0 right-0 bottom-0 w-12 bg-gradient-to-l from-white to-transparent pointer-events-none sm:hidden" />
           </div>
 
           <CalendarLegend />
         </CardContent>
       </Card>
 
-      {/* ══ Form Dialog ══ */}
+      {/* ══ Form Dialogs ══ */}
       <JadwalForm
         open={isFormOpen}
         onOpenChange={setIsFormOpen}
         selectedSlot={selectedSlot}
         onClose={handleCloseForm}
         cabangId={effectiveCabangId}
+      />
+
+      <ReguManagementDialog
+        open={isReguOpen}
+        onOpenChange={setIsReguOpen}
+        cabangId={effectiveCabangId}
+      />
+
+      <BulkGenerateDialog
+        open={isBulkOpen}
+        onOpenChange={setIsBulkOpen}
+        cabangId={effectiveCabangId}
+        defaultStartDate={format(monthStart, "yyyy-MM-dd")}
+        defaultEndDate={format(monthEnd, "yyyy-MM-dd")}
+      />
+
+      <ReguRollingGenerateDialog
+        open={isRollingOpen}
+        onOpenChange={setIsRollingOpen}
+        cabangId={effectiveCabangId}
+        defaultStartDate={format(monthStart, "yyyy-MM-dd")}
+        defaultEndDate={format(monthEnd, "yyyy-MM-dd")}
       />
     </div>
   );
