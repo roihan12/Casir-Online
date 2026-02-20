@@ -13,7 +13,7 @@ const createJadwalValidation = Joi.object({
   shiftId: Joi.string().when("tipeJadwal", {
     is: "shift",
     then: Joi.required(),
-    otherwise: Joi.optional(),
+    otherwise: Joi.optional().allow(""),
   }),
   jamMasukOverride: Joi.string()
     .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)

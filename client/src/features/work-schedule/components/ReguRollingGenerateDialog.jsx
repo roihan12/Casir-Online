@@ -559,7 +559,7 @@ const ReguRollingGenerateDialog = ({
 
         <StepIndicator currentStep={step} />
 
-        <form onSubmit={form.handleSubmit(onSubmit)}>
+        <div>
           {step === 1 && (
             <StepSelectRegu
               reguData={reguData}
@@ -605,15 +605,16 @@ const ReguRollingGenerateDialog = ({
               </Button>
             ) : (
               <Button
-                type="submit"
+                type="button"
                 className="bg-blue-600 hover:bg-blue-700"
                 disabled={isSubmitting}
+                onClick={form.handleSubmit(onSubmit)}
               >
                 {isSubmitting ? "Membangun Sinkronisasi..." : "Mulai Generate"}
               </Button>
             )}
           </DialogFooter>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

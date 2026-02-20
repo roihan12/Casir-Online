@@ -60,9 +60,9 @@ const createJadwal = async (data, auditInfo) => {
 
     // Check for existing schedule on the same date for the same user
     const tanggalStart = new Date(tanggal);
-    tanggalStart.setHours(0, 0, 0, 0);
+    tanggalStart.setUTCHours(0, 0, 0, 0);
     const tanggalEnd = new Date(tanggalStart);
-    tanggalEnd.setDate(tanggalEnd.getDate() + 1);
+    tanggalEnd.setUTCDate(tanggalEnd.getUTCDate() + 1);
 
     const existingSchedule = await prisma.jadwalKerja.findFirst({
       where: {
@@ -147,7 +147,14 @@ const generateJadwalBulk = async (data, auditInfo) => {
     hariKerja,
     tipeJadwal,
     skipExisting,
+    jamMasukOverride,
+    jamKeluarOverride,
+    keterangan,
   } = data;
+
+  // Tipe yang tidak butuh shift
+  const TIPE_TANPA_SHIFT = ["libur", "cuti", "izin", "wfh"];
+  const needsShift = !TIPE_TANPA_SHIFT.includes(tipeJadwal);
 
   try {
     // Verify cabang exists
@@ -159,20 +166,41 @@ const generateJadwalBulk = async (data, auditInfo) => {
       throw new ResponseError(404, "Cabang not found");
     }
 
-    // Verify shift exists
-    const shiftData = await prisma.master_shift.findFirst({
-      where: {
-        id: shiftId,
-        isActive: true,
-      },
-    });
+    // Verify shift exists (hanya untuk tipe yang butuh shift)
+    let shiftData = null;
+    if (needsShift) {
+      if (!shiftId) {
+        throw new ResponseError(400, `shiftId wajib diisi untuk tipe jadwal '${tipeJadwal}'`);
+      }
 
-    if (!shiftData) {
-      throw new ResponseError(404, "Shift not found or inactive");
+      shiftData = await prisma.master_shift.findFirst({
+        where: {
+          id: shiftId,
+          isActive: true,
+        },
+      });
+
+      if (!shiftData) {
+        throw new ResponseError(404, "Shift not found or inactive");
+      }
     }
 
-    const jamMasuk = shiftData.jamMasuk;
-    const jamKeluar = shiftData.jamKeluar;
+    // Tentukan jamMasuk & jamKeluar berdasarkan tipeJadwal
+    let jamMasuk, jamKeluar;
+    if (tipeJadwal === "shift" && shiftData) {
+      jamMasuk = shiftData.jamMasuk;
+      jamKeluar = shiftData.jamKeluar;
+    } else if (tipeJadwal === "reguler") {
+      if (!jamMasukOverride || !jamKeluarOverride) {
+        throw new ResponseError(400, "jamMasukOverride dan jamKeluarOverride wajib diisi untuk tipe 'reguler'");
+      }
+      jamMasuk = jamMasukOverride;
+      jamKeluar = jamKeluarOverride;
+    } else {
+      // libur, cuti, izin, wfh
+      jamMasuk = "00:00:00";
+      jamKeluar = "00:00:00";
+    }
 
     // Get date range
     const startDate = new Date(tanggalMulai);
@@ -273,7 +301,8 @@ const generateJadwalBulk = async (data, auditInfo) => {
           jamKeluar,
           hariKerja: [getDayName(dayIndex)],
           tipe_jadwal: tipeJadwal,
-          master_shift_id: shiftId,
+          ...(needsShift && shiftId ? { master_shift_id: shiftId } : {}),
+          ...(keterangan ? { keterangan } : {}),
           created_by: auditInfo.userId,
         });
       }

@@ -515,7 +515,7 @@ const BulkGenerateDialog = ({
 
         <StepIndicator currentStep={step} />
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <div className="space-y-4">
           {step === 1 && <StepEmployees form={form} users={users} />}
           {step === 2 && <StepSchedule form={form} shiftData={shiftData} />}
           {step === 3 && (
@@ -540,15 +540,16 @@ const BulkGenerateDialog = ({
               </Button>
             ) : (
               <Button
-                type="submit"
+                type="button"
                 className="bg-blue-600 hover:bg-blue-700"
                 disabled={isSubmitting}
+                onClick={form.handleSubmit(onSubmit)}
               >
                 {isSubmitting ? "Memproses..." : "Mulai Generate"}
               </Button>
             )}
           </DialogFooter>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
