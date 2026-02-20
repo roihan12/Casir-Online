@@ -193,7 +193,7 @@ const ReguManagementDialog = ({ open, onOpenChange, cabangId }) => {
                         )}
                         <div className="mt-4 flex flex-wrap gap-1">
                           {regu.regu_member?.slice(0, 3).map((m) => (
-                            <Badge key={m.userId} variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-50 text-blue-700">
+                            <Badge key={m.user?.id} variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-50 text-blue-700">
                               {m.user?.namaLengkap || m.user?.email.split('@')[0]}
                             </Badge>
                           ))}

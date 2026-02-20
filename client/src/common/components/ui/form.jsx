@@ -1,5 +1,15 @@
 import * as React from "react"
+import { useWatch } from "react-hook-form";
 import { cn } from "@common/utils/cn";
+
+// ---------------------------------------------------------------------------
+// Context — allows FormMessage to auto-display field errors from FormField
+// ---------------------------------------------------------------------------
+const FormFieldContext = React.createContext(null);
+
+// ---------------------------------------------------------------------------
+// Layout primitives
+// ---------------------------------------------------------------------------
 
 const Form = React.forwardRef(({ className, ...props }, ref) => (
   <form
@@ -46,49 +56,74 @@ const FormDescription = React.forwardRef(({ className, ...props }, ref) => (
 ))
 FormDescription.displayName = "FormDescription"
 
-const FormMessage = React.forwardRef(({ className, children, ...props }, ref) => (
-  <p
-    ref={ref}
-    className={cn("text-sm font-medium text-red-500", className)}
-    {...props}
-  >
-    {children}
-  </p>
-))
+/**
+ * FormMessage — renders error text.
+ * 
+ * Priority:
+ *  1. Explicit `children` prop
+ *  2. `error` from the nearest FormFieldContext (auto-wired by FormField)
+ * 
+ * Renders nothing when there's no error to display.
+ */
+const FormMessage = React.forwardRef(({ className, children, ...props }, ref) => {
+  const ctx = React.useContext(FormFieldContext);
+  const message = children || ctx?.error?.message;
+
+  if (!message) return null;
+
+  return (
+    <p
+      ref={ref}
+      className={cn("text-sm font-medium text-red-500", className)}
+      {...props}
+    >
+      {message}
+    </p>
+  );
+})
 FormMessage.displayName = "FormMessage"
 
-const FormField = React.forwardRef(({ name, control, render, defaultValue, rules, ...props }, ref) => {
+// ---------------------------------------------------------------------------
+// FormField — bridges react-hook-form with our custom form primitives
+//
+// ✅ Uses useWatch for reactive value subscription
+// ✅ Uses setValue for onChange (handles both event objects and direct values)
+// ✅ Provides FormFieldContext so FormMessage auto-displays errors
+// ✅ No register/unregister — avoids race condition on step wizard unmount
+// ---------------------------------------------------------------------------
+const FormField = ({ name, control, render, defaultValue }) => {
+  // Subscribe to this specific field's value changes
+  const value = useWatch({ control, name, defaultValue });
+
+  const error = control?.formState?.errors?.[name];
+
   return (
-    <React.Fragment>
+    <FormFieldContext.Provider value={{ error }}>
       {render({
         field: {
           name,
-          value: defaultValue,
+          value: value ?? defaultValue,
           onChange: (e) => {
-            // Handle both direct value and event objects
-            const value = e && e.target ? e.target.value : e;
-            if (control && control.setValue) {
-              control.setValue(name, value, { shouldValidate: true });
-            }
-            return value;
+            const newValue = e?.target !== undefined ? e.target.value : e;
+            control?.setValue?.(name, newValue, {
+              shouldValidate: true,
+              shouldDirty: true,
+              shouldTouch: true,
+            });
           },
           onBlur: () => {
-            if (control && control.trigger) {
-              control.trigger(name);
-            }
+            control?.trigger?.(name);
           },
-          ref,
         },
         fieldState: {
-          invalid: control?.formState?.errors?.[name] ? true : false,
-          error: control?.formState?.errors?.[name],
+          invalid: !!error,
+          error,
         },
         formState: control?.formState,
       })}
-    </React.Fragment>
+    </FormFieldContext.Provider>
   );
-});
-
+};
 FormField.displayName = "FormField";
 
 export {

@@ -6,7 +6,7 @@ import { format } from "date-fns";
 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../common/components/ui/dialog";
 import { Button } from "../../../common/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../../../common/components/ui/form";
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "../../../common/components/ui/form";
 import { Input } from "../../../common/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../common/components/ui/select";
 
@@ -152,7 +152,7 @@ const JadwalForm = ({ open, onOpenChange, selectedSlot, onClose, cabangId }) => 
           </DialogDescription>
         </DialogHeader>
 
-        <Form onSubmit={form.handleSubmit(onSubmit)}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             
             {/* User Selection (Read only if pre-selected via grid click) */}
             <FormField
@@ -318,7 +318,7 @@ const JadwalForm = ({ open, onOpenChange, selectedSlot, onClose, cabangId }) => 
                 {createMutation.isLoading || updateMutation.isLoading ? "Menyimpan..." : "Simpan"}
               </Button>
             </DialogFooter>
-        </Form>
+        </form>
       </DialogContent>
     </Dialog>
   );

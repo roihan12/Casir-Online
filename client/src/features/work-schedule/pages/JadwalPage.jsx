@@ -9,6 +9,11 @@ import {
   Calendar as CalendarIcon, ChevronDown, ChevronRight as ChevronRightIcon, Users,
   Settings, Zap, RotateCcw, MoreHorizontal
 } from "lucide-react";
+import DatePicker, { registerLocale } from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+
+// Register locale for react-datepicker
+registerLocale('id', localeId);
 
 import { useJadwalList } from "../hooks/useJadwal";
 import { useReguList }   from "../hooks/useRegu";
@@ -275,24 +280,53 @@ const TablePlaceholder = ({ isLoading, colSpan }) => (
 // MonthNavigator
 // ─────────────────────────────────────────────────────────────────────────────
 
-const MonthNavigator = ({ currentDate, onPrev, onNext, onToday }) => (
-  <div className="flex flex-wrap items-center gap-3">
-    <Button variant="outline" onClick={onToday} className="hidden sm:inline-flex">
-      Hari Ini
-    </Button>
-    <div className="flex items-center border rounded-md bg-white shadow-sm overflow-hidden">
-      <Button variant="ghost" size="icon" onClick={onPrev} className="rounded-none h-9 w-9 border-r">
-        <ChevronLeft className="h-4 w-4" />
-      </Button>
-      <div className="px-3 sm:px-4 font-medium min-w-[130px] sm:min-w-[150px] text-center text-sm sm:text-base">
-        {format(currentDate, "MMMM yyyy", { locale: localeId })}
+const MonthNavigator = ({ currentDate, onPrev, onNext, onToday, onChange }) => {
+  // Custom input trigger that looks like the previous text display
+  const CustomInput = React.forwardRef(({ value, onClick }, ref) => (
+    <button
+      className="px-3 sm:px-4 font-medium min-w-[130px] sm:min-w-[150px] text-center text-sm sm:text-base hover:bg-gray-50 transition-colors h-9 flex items-center justify-center outline-none"
+      onClick={onClick}
+      ref={ref}
+    >
+      {value}
+    </button>
+  ));
+
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <div className="flex items-center gap-2">
+           <Button variant="outline" onClick={onToday} className="hidden sm:inline-flex">
+             Hari Ini
+           </Button>
       </div>
-      <Button variant="ghost" size="icon" onClick={onNext} className="rounded-none h-9 w-9 border-l">
-        <ChevronRight className="h-4 w-4" />
-      </Button>
+
+      {/* Remove overflow-hidden to allow datepicker popup to show */}
+      <div className="flex items-center border rounded-md bg-white shadow-sm h-9 relative z-50">
+        <Button variant="ghost" size="icon" onClick={onPrev} className="rounded-l-md rounded-r-none h-full w-9 border-r hover:bg-gray-50">
+          <ChevronLeft className="h-4 w-4 text-slate-600" />
+        </Button>
+        
+        <div className="h-full relative">
+          <DatePicker
+            selected={currentDate}
+            onChange={onChange}
+            dateFormat="MMMM yyyy"
+            showMonthYearPicker
+            locale="id"
+            customInput={<CustomInput />}
+            // Remove withPortal to keep it relative to the input
+            popperClassName="z-[60]"
+            calendarClassName="shadow-[0_4px_20px_-2px_rgba(0,0,0,0.1)] border-0 rounded-xl font-sans text-md !bg-white transform scale-110 origin-top-left p-2"
+          />
+        </div>
+
+        <Button variant="ghost" size="icon" onClick={onNext} className="rounded-r-md rounded-l-none h-full w-9 border-l hover:bg-gray-50">
+          <ChevronRight className="h-4 w-4 text-slate-600" />
+        </Button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // JadwalPage (main)
@@ -438,6 +472,7 @@ const JadwalPage = () => {
             onPrev={handlePrevMonth}
             onNext={handleNextMonth}
             onToday={handleToday}
+            onChange={setCurrentDate}
           />
 
           <div className="flex items-center gap-2">
