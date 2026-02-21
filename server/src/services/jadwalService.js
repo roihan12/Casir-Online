@@ -152,9 +152,8 @@ const generateJadwalBulk = async (data, auditInfo) => {
     keterangan,
   } = data;
 
-  // Tipe yang tidak butuh shift
-  const TIPE_TANPA_SHIFT = ["libur", "cuti", "izin", "wfh"];
-  const needsShift = !TIPE_TANPA_SHIFT.includes(tipeJadwal);
+  // Hanya tipe 'shift' yang membutuhkan shiftId
+  const needsShift = tipeJadwal === "shift";
 
   try {
     // Verify cabang exists
@@ -202,14 +201,14 @@ const generateJadwalBulk = async (data, auditInfo) => {
       jamKeluar = "00:00:00";
     }
 
-    // Get date range
+    // Get date range (normalisasi ke UTC midnight agar konsisten dengan toISOString())
     const startDate = new Date(tanggalMulai);
-    startDate.setHours(0, 0, 0, 0);
+    startDate.setUTCHours(0, 0, 0, 0);
     const endDate = new Date(tanggalSelesai);
-    endDate.setHours(0, 0, 0, 0);
+    endDate.setUTCHours(0, 0, 0, 0);
 
     // Calculate days between dates
-    const dayDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+    const dayDiff = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
 
     if (dayDiff > 366) {
       throw new ResponseError(400, "Date range cannot exceed 1 year");
@@ -275,17 +274,19 @@ const generateJadwalBulk = async (data, auditInfo) => {
     // Generate schedules for each user and each working day
     for (const user of users) {
       for (let i = 0; i < dayDiff; i++) {
+        // Buat tanggal baru dari startDate + i hari (UTC-safe)
         const currentDate = new Date(startDate);
-        currentDate.setDate(startDate.getDate() + i);
+        currentDate.setUTCDate(startDate.getUTCDate() + i);
 
-        const dayIndex = currentDate.getDay();
+        // Gunakan getUTCDay() agar konsisten dengan toISOString()
+        const dayIndex = currentDate.getUTCDay();
 
         // Check if this is a working day
         if (!workingDays.includes(dayIndex)) {
           continue;
         }
 
-        // Check if schedule already exists
+        // Check if schedule already exists (dateKey pakai UTC date, harus sama dengan getUTCDay)
         const dateKey = `${user.id}_${currentDate.toISOString().split("T")[0]}`;
         if (existingDates.has(dateKey)) {
           skippedCount++;

@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Check,
   Search,
+  Clock,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { id as localeId } from "date-fns/locale";
@@ -40,34 +41,26 @@ import { useUsers } from "../../users/hooks/useUsers";
 import { useBulkGenerateJadwal } from "../hooks/useBulkGenerate";
 
 // ---------------------------------------------------------------------------
-// Schema
-// ---------------------------------------------------------------------------
-
-const bulkSchema = z
-  .object({
-    userIds: z.array(z.string()).min(1, "Pilih minimal satu karyawan"),
-    shiftId: z.string().min(1, "Pilih shift kerja"),
-    tanggalMulai: z.string().min(1, "Tanggal mulai harus diisi"),
-    tanggalSelesai: z.string().min(1, "Tanggal selesai harus diisi"),
-    hariKerja: z.array(z.string()).min(1, "Pilih minimal satu hari kerja"),
-    skipExisting: z.boolean().default(true),
-  })
-  .refine(
-    (data) =>
-      !data.tanggalMulai ||
-      !data.tanggalSelesai ||
-      data.tanggalSelesai >= data.tanggalMulai,
-    {
-      message: "Tanggal selesai tidak boleh sebelum tanggal mulai",
-      path: ["tanggalSelesai"],
-    }
-  );
-
-// ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const HARI_LIST = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
+
+/** Tipe jadwal yang MEMBUTUHKAN shift */
+const TIPE_DENGAN_SHIFT = ["shift"];
+
+/** Tipe jadwal yang MEMBUTUHKAN jam override (masuk/keluar manual) */
+const TIPE_DENGAN_JAM_OVERRIDE = ["reguler"];
+
+/** Semua opsi tipe jadwal */
+const TIPE_JADWAL_OPTIONS = [
+  { value: "shift",   label: "Shift",   color: "bg-blue-100 text-blue-700" },
+  { value: "reguler", label: "Reguler", color: "bg-green-100 text-green-700" },
+  { value: "libur",   label: "Libur",   color: "bg-orange-100 text-orange-700" },
+  { value: "cuti",    label: "Cuti",    color: "bg-purple-100 text-purple-700" },
+  { value: "izin",    label: "Izin",    color: "bg-yellow-100 text-yellow-700" },
+  { value: "wfh",     label: "WFH",     color: "bg-cyan-100 text-cyan-700" },
+];
 
 const STEPS = [
   { id: 1, label: "Karyawan" },
@@ -77,8 +70,63 @@ const STEPS = [
 
 const STEP_FIELDS = {
   1: ["userIds"],
-  2: ["shiftId", "tanggalMulai", "tanggalSelesai", "hariKerja"],
+  2: ["tipeJadwal", "tanggalMulai", "tanggalSelesai", "hariKerja", "shiftId", "jamMasukOverride", "jamKeluarOverride"],
 };
+
+// ---------------------------------------------------------------------------
+// Schema — dinamis berdasarkan tipeJadwal
+// ---------------------------------------------------------------------------
+
+const bulkSchema = z
+  .object({
+    userIds:          z.array(z.string()).min(1, "Pilih minimal satu karyawan"),
+    tipeJadwal:       z.string().min(1, "Pilih tipe jadwal"),
+    shiftId:          z.string().optional(),
+    jamMasukOverride: z.string().optional(),
+    jamKeluarOverride:z.string().optional(),
+    keterangan:       z.string().optional(),
+    tanggalMulai:     z.string().min(1, "Tanggal mulai harus diisi"),
+    tanggalSelesai:   z.string().min(1, "Tanggal selesai harus diisi"),
+    hariKerja:        z.array(z.string()).min(1, "Pilih minimal satu hari kerja"),
+    skipExisting:     z.boolean().default(true),
+  })
+  .superRefine((data, ctx) => {
+    // Validasi tanggal
+    if (data.tanggalMulai && data.tanggalSelesai && data.tanggalSelesai < data.tanggalMulai) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Tanggal selesai tidak boleh sebelum tanggal mulai",
+        path: ["tanggalSelesai"],
+      });
+    }
+
+    // Validasi shift — wajib jika tipe = shift
+    if (TIPE_DENGAN_SHIFT.includes(data.tipeJadwal) && !data.shiftId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Pilih shift kerja",
+        path: ["shiftId"],
+      });
+    }
+
+    // Validasi jam override — wajib jika tipe = reguler
+    if (TIPE_DENGAN_JAM_OVERRIDE.includes(data.tipeJadwal)) {
+      if (!data.jamMasukOverride) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Jam masuk harus diisi untuk jadwal reguler",
+          path: ["jamMasukOverride"],
+        });
+      }
+      if (!data.jamKeluarOverride) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Jam keluar harus diisi untuk jadwal reguler",
+          path: ["jamKeluarOverride"],
+        });
+      }
+    }
+  });
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -94,38 +142,41 @@ const safeFormat = (dateStr, fmt, options) => {
 };
 
 const getDefaultValues = (defaultStartDate, defaultEndDate) => ({
-  userIds: [],
-  shiftId: "",
-  tanggalMulai: defaultStartDate || format(new Date(), "yyyy-MM-dd"),
-  tanggalSelesai: defaultEndDate || format(new Date(), "yyyy-MM-dd"),
-  hariKerja: ["Senin", "Selasa", "Rabu", "Kamis", "Jumat"],
-  skipExisting: true,
+  userIds:           [],
+  tipeJadwal:        "shift",
+  shiftId:           "",
+  jamMasukOverride:  "",
+  jamKeluarOverride: "",
+  keterangan:        "",
+  tanggalMulai:      defaultStartDate || format(new Date(), "yyyy-MM-dd"),
+  tanggalSelesai:    defaultEndDate   || format(new Date(), "yyyy-MM-dd"),
+  hariKerja:         ["Senin", "Selasa", "Rabu", "Kamis", "Jumat"],
+  skipExisting:      true,
 });
 
+const getTipeLabel = (value) =>
+  TIPE_JADWAL_OPTIONS.find((t) => t.value === value)?.label ?? value;
+
+const getTipeColor = (value) =>
+  TIPE_JADWAL_OPTIONS.find((t) => t.value === value)?.color ?? "";
+
 // ---------------------------------------------------------------------------
-// Local UI helper — replaces FormItem / FormLabel / FormControl / FormMessage
+// UI Field wrapper
 // ---------------------------------------------------------------------------
 
 const Field = ({ label, error, description, children }) => (
   <div className="space-y-1.5">
-    {label && (
-      <label className="text-sm font-medium text-gray-700">{label}</label>
-    )}
+    {label && <label className="text-sm font-medium text-gray-700">{label}</label>}
     {children}
-    {description && (
-      <p className="text-[10px] text-gray-500">{description}</p>
-    )}
-    {error && (
-      <p className="text-sm font-medium text-red-500">{error}</p>
-    )}
+    {description && <p className="text-[10px] text-gray-500">{description}</p>}
+    {error && <p className="text-sm font-medium text-red-500">{error}</p>}
   </div>
 );
 
 // ---------------------------------------------------------------------------
-// Sub-components
+// Step indicator
 // ---------------------------------------------------------------------------
 
-/** Visual step indicator */
 const StepIndicator = ({ currentStep }) => (
   <div className="flex items-center justify-center gap-0 mb-6">
     {STEPS.map((step, idx) => (
@@ -165,7 +216,10 @@ const StepIndicator = ({ currentStep }) => (
   </div>
 );
 
-/** Step 1 — employee selection */
+// ---------------------------------------------------------------------------
+// Step 1 — Pilih Karyawan
+// ---------------------------------------------------------------------------
+
 const StepEmployees = ({ form, users }) => {
   const [search, setSearch] = useState("");
   const selectedUserIds = form.watch("userIds") ?? [];
@@ -181,17 +235,14 @@ const StepEmployees = ({ form, users }) => {
 
   const allFilteredIds = filtered.map((u) => u.id);
   const allSelected =
-    allFilteredIds.length > 0 &&
-    allFilteredIds.every((id) => selectedUserIds.includes(id));
+    allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedUserIds.includes(id));
 
   const toggleAll = useCallback(() => {
     const current = form.getValues("userIds");
     if (allSelected) {
-      form.setValue(
-        "userIds",
-        current.filter((id) => !allFilteredIds.includes(id)),
-        { shouldValidate: true }
-      );
+      form.setValue("userIds", current.filter((id) => !allFilteredIds.includes(id)), {
+        shouldValidate: true,
+      });
     } else {
       const merged = Array.from(new Set([...current, ...allFilteredIds]));
       form.setValue("userIds", merged, { shouldValidate: true });
@@ -212,7 +263,6 @@ const StepEmployees = ({ form, users }) => {
 
   return (
     <div className="space-y-3">
-      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
         <Input
@@ -223,7 +273,6 @@ const StepEmployees = ({ form, users }) => {
         />
       </div>
 
-      {/* Select All row */}
       <label className="flex items-center gap-3 px-3 py-2 rounded-md bg-blue-50/50 border border-blue-100 cursor-pointer">
         <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
         <span className="text-xs font-semibold text-blue-700">
@@ -236,7 +285,6 @@ const StepEmployees = ({ form, users }) => {
         )}
       </label>
 
-      {/* User list */}
       <div className="border rounded-md max-h-[260px] overflow-y-auto divide-y bg-gray-50/30">
         {filtered.length === 0 && (
           <p className="text-xs text-center text-muted-foreground py-6">
@@ -253,9 +301,7 @@ const StepEmployees = ({ form, users }) => {
               onCheckedChange={(checked) => toggleUser(user.id, checked)}
             />
             <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-medium truncate">
-                {user.namaLengkap || user.email}
-              </p>
+              <p className="text-sm font-medium truncate">{user.namaLengkap || user.email}</p>
               <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
               <p className="text-[10px] text-muted-foreground truncate">
                 {user.userRoles?.map((r) => r.role.namaRole).join(", ")}
@@ -266,23 +312,59 @@ const StepEmployees = ({ form, users }) => {
       </div>
 
       {errors.userIds && (
-        <p className="text-xs text-red-500 font-medium">
-          {errors.userIds.message}
-        </p>
+        <p className="text-xs text-red-500 font-medium">{errors.userIds.message}</p>
       )}
     </div>
   );
 };
 
-/** Step 2 — schedule settings */
+// ---------------------------------------------------------------------------
+// Step 2 — Pengaturan Jadwal (multi-type aware)
+// ---------------------------------------------------------------------------
+
 const StepSchedule = ({ form, shiftData }) => {
   const errors = form.formState.errors;
-  const shiftId = form.watch("shiftId");
-  const hariKerja = form.watch("hariKerja") ?? [];
-  const skipExisting = form.watch("skipExisting");
+  const tipeJadwal      = form.watch("tipeJadwal");
+  const shiftId         = form.watch("shiftId");
+  const hariKerja       = form.watch("hariKerja") ?? [];
+  const skipExisting    = form.watch("skipExisting");
+
+  const needsShift      = TIPE_DENGAN_SHIFT.includes(tipeJadwal);
+  const needsJamOverride = TIPE_DENGAN_JAM_OVERRIDE.includes(tipeJadwal);
 
   return (
     <div className="space-y-5">
+      {/* Tipe Jadwal */}
+      <Field label="Tipe Jadwal" error={errors.tipeJadwal?.message}>
+        <div className="flex flex-wrap gap-2 pt-1">
+          {TIPE_JADWAL_OPTIONS.map((tipe) => {
+            const isSelected = tipeJadwal === tipe.value;
+            return (
+              <button
+                key={tipe.value}
+                type="button"
+                onClick={() => {
+                  form.setValue("tipeJadwal", tipe.value, { shouldValidate: true });
+                  // reset fields yang tidak relevan
+                  form.setValue("shiftId", "");
+                  form.setValue("jamMasukOverride", "");
+                  form.setValue("jamKeluarOverride", "");
+                }}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all select-none",
+                  isSelected
+                    ? `${tipe.color} border-transparent ring-2 ring-offset-1 ring-blue-400 shadow-sm`
+                    : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
+                )}
+              >
+                {tipe.label}
+              </button>
+            );
+          })}
+        </div>
+      </Field>
+
+      {/* Tanggal */}
       <div className="grid grid-cols-2 gap-4">
         <Field label="Mulai Tanggal" error={errors.tanggalMulai?.message}>
           <Input type="date" {...form.register("tanggalMulai")} />
@@ -292,29 +374,73 @@ const StepSchedule = ({ form, shiftData }) => {
         </Field>
       </div>
 
-      <Field label="Shift Kerja" error={errors.shiftId?.message}>
-        <Select
-          value={shiftId}
-          onValueChange={(val) =>
-            form.setValue("shiftId", val, { shouldValidate: true })
-          }
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Pilih shift" />
-          </SelectTrigger>
-          <SelectContent>
-            {shiftData?.data?.map((shift) => {
-              console.log(shift);
-              return (
+      {/* Shift — hanya untuk tipe 'shift' */}
+      {needsShift && (
+        <Field label="Shift Kerja" error={errors.shiftId?.message}>
+          <Select
+            value={shiftId}
+            onValueChange={(val) => form.setValue("shiftId", val, { shouldValidate: true })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Pilih shift" />
+            </SelectTrigger>
+            <SelectContent>
+              {shiftData?.data?.map((shift) => (
                 <SelectItem key={shift.id} value={shift.id}>
                   {`${shift.namaShift} (${shift.jamMasuk} - ${shift.jamKeluar})`}
                 </SelectItem>
-              )
-            } )}
-          </SelectContent>
-        </Select>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+      )}
+
+      {/* Jam override — hanya untuk tipe 'reguler' */}
+      {needsJamOverride && (
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Jam Masuk" error={errors.jamMasukOverride?.message}>
+            <div className="relative">
+              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                type="time"
+                className="pl-8"
+                {...form.register("jamMasukOverride")}
+              />
+            </div>
+          </Field>
+          <Field label="Jam Keluar" error={errors.jamKeluarOverride?.message}>
+            <div className="relative">
+              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                type="time"
+                className="pl-8"
+                {...form.register("jamKeluarOverride")}
+              />
+            </div>
+          </Field>
+        </div>
+      )}
+
+      {/* Info untuk tipe tanpa jam */}
+      {!needsShift && !needsJamOverride && (
+        <div className="flex items-start gap-2.5 rounded-lg border border-orange-100 bg-orange-50/50 p-3">
+          <AlertCircle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
+          <p className="text-xs text-orange-700">
+            Jadwal tipe <strong>{getTipeLabel(tipeJadwal)}</strong> tidak memerlukan shift atau
+            jam kerja. Sistem akan mengisi jam 00:00 secara otomatis.
+          </p>
+        </div>
+      )}
+
+      {/* Keterangan opsional */}
+      <Field label="Keterangan (opsional)">
+        <Input
+          placeholder="Catatan tambahan..."
+          {...form.register("keterangan")}
+        />
       </Field>
 
+      {/* Hari Kerja */}
       <Field label="Hari Kerja" error={errors.hariKerja?.message}>
         <div className="flex flex-wrap gap-2 pt-1">
           {HARI_LIST.map((hari) => {
@@ -343,6 +469,7 @@ const StepSchedule = ({ form, shiftData }) => {
         </div>
       </Field>
 
+      {/* Skip existing */}
       <div className="flex flex-row items-start gap-3 rounded-md border p-4 bg-orange-50/30 border-orange-100">
         <Checkbox
           checked={skipExisting}
@@ -363,12 +490,17 @@ const StepSchedule = ({ form, shiftData }) => {
   );
 };
 
-/** Step 3 — confirmation summary */
+// ---------------------------------------------------------------------------
+// Step 3 — Konfirmasi
+// ---------------------------------------------------------------------------
+
 const StepConfirmation = ({ form, selectedUsers }) => {
-  const tanggalMulai = form.watch("tanggalMulai");
+  const tanggalMulai  = form.watch("tanggalMulai");
   const tanggalSelesai = form.watch("tanggalSelesai");
-  const hariKerja = form.watch("hariKerja") ?? [];
-  const errors = form.formState.errors;
+  const hariKerja     = form.watch("hariKerja") ?? [];
+  const tipeJadwal    = form.watch("tipeJadwal");
+  const keterangan    = form.watch("keterangan");
+  const errors        = form.formState.errors;
 
   return (
     <div className="space-y-5">
@@ -387,6 +519,19 @@ const StepConfirmation = ({ form, selectedUsers }) => {
           </span>
           <span className="font-bold">{selectedUsers.length} Orang</span>
         </div>
+
+        <div className="flex justify-between text-sm py-1 border-b border-gray-100">
+          <span className="text-muted-foreground">Tipe Jadwal</span>
+          <span
+            className={cn(
+              "text-xs font-bold px-2 py-0.5 rounded-full",
+              getTipeColor(tipeJadwal)
+            )}
+          >
+            {getTipeLabel(tipeJadwal)}
+          </span>
+        </div>
+
         <div className="flex justify-between text-sm py-1 border-b border-gray-100">
           <span className="text-muted-foreground flex items-center gap-1.5">
             <CalendarIcon className="h-3.5 w-3.5" /> Periode
@@ -396,12 +541,20 @@ const StepConfirmation = ({ form, selectedUsers }) => {
             {safeFormat(tanggalSelesai, "d MMM yyyy", { locale: localeId })}
           </span>
         </div>
+
         <div className="flex justify-between text-sm py-1">
           <span className="text-muted-foreground flex items-center gap-1.5">
             <AlertCircle className="h-3.5 w-3.5" /> Hari Kerja
           </span>
           <span className="font-bold">{hariKerja.length} Hari/Minggu</span>
         </div>
+
+        {keterangan && (
+          <div className="flex justify-between text-sm py-1 border-t border-gray-100">
+            <span className="text-muted-foreground">Keterangan</span>
+            <span className="font-medium text-right max-w-[60%] truncate">{keterangan}</span>
+          </div>
+        )}
       </div>
 
       <div className="max-h-[120px] overflow-y-auto pr-1">
@@ -455,7 +608,7 @@ const BulkGenerateDialog = ({
     defaultValues: getDefaultValues(defaultStartDate, defaultEndDate),
   });
 
-  // Reset only when dialog transitions from closed → open
+  // Reset saat dialog dibuka
   const prevOpenRef = React.useRef(false);
   React.useEffect(() => {
     if (open && !prevOpenRef.current) {
@@ -474,7 +627,7 @@ const BulkGenerateDialog = ({
   const users = getUsersQuery?.data?.data ?? [];
 
   const selectedUserIds = form.watch("userIds") ?? [];
-  const selectedUsers = users.filter((u) => selectedUserIds.includes(u.id));
+  const selectedUsers   = users.filter((u) => selectedUserIds.includes(u.id));
 
   const handleNext = async () => {
     const fields = STEP_FIELDS[step];
@@ -488,26 +641,28 @@ const BulkGenerateDialog = ({
   const handleBack = () => setStep((s) => s - 1);
 
   const onSubmit = (data) => {
-    generateMutation.mutate(
-      { ...data, cabangId },
-      {
-        onSuccess: () => {
-          onOpenChange(false);
-        },
-      }
-    );
+    // Bersihkan field yang tidak dipakai sesuai tipe
+    const payload = { ...data, cabangId };
+    if (!TIPE_DENGAN_SHIFT.includes(data.tipeJadwal)) {
+      delete payload.shiftId;
+    }
+    if (!TIPE_DENGAN_JAM_OVERRIDE.includes(data.tipeJadwal)) {
+      delete payload.jamMasukOverride;
+      delete payload.jamKeluarOverride;
+    }
+
+    generateMutation.mutate(payload, {
+      onSuccess: () => onOpenChange(false),
+    });
   };
 
-  const isSubmitting =
-    generateMutation.isPending ?? generateMutation.isLoading ?? false;
+  const isSubmitting = generateMutation.isPending ?? generateMutation.isLoading ?? false;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">
-            Bulk Generate Jadwal
-          </DialogTitle>
+          <DialogTitle className="text-2xl font-bold">Bulk Generate Jadwal</DialogTitle>
           <DialogDescription>
             Buat jadwal kerja untuk banyak karyawan sekaligus.
           </DialogDescription>
@@ -518,9 +673,7 @@ const BulkGenerateDialog = ({
         <div className="space-y-4">
           {step === 1 && <StepEmployees form={form} users={users} />}
           {step === 2 && <StepSchedule form={form} shiftData={shiftData} />}
-          {step === 3 && (
-            <StepConfirmation form={form} selectedUsers={selectedUsers} />
-          )}
+          {step === 3 && <StepConfirmation form={form} selectedUsers={selectedUsers} />}
 
           <DialogFooter className="mt-6 border-t pt-4">
             {step > 1 && (

@@ -9,7 +9,7 @@ const createJadwalValidation = Joi.object({
   userId: Joi.string().required(),
   cabangId: Joi.string().required(),
   tanggal: Joi.date().required(),
-  tipeJadwal: Joi.string().valid("shift", "reguler", "libur", "wfh").default("shift"),
+  tipeJadwal: Joi.string().valid("shift", "reguler", "libur", "cuti", "izin", "wfh").default("shift"),
   shiftId: Joi.string().when("tipeJadwal", {
     is: "shift",
     then: Joi.required(),
@@ -44,19 +44,38 @@ const createJadwalValidation = Joi.object({
 
 // Validation for generating schedules in bulk
 const generateJadwalValidation = Joi.object({
-  userIds: Joi.array().items(Joi.string()).min(1).required(),
-  cabangId: Joi.string().required(),
-  shiftId: Joi.string().required(),
-  tanggalMulai: Joi.date().required(),
-  tanggalSelesai: Joi.date().greater(Joi.ref("tanggalMulai")).required(),
+  userIds:    Joi.array().items(Joi.string()).min(1).required(),
+  cabangId:   Joi.string().required(),
+  tipeJadwal: Joi.string()
+    .valid("shift", "reguler", "libur", "cuti", "izin", "wfh")
+    .default("shift"),
+  shiftId: Joi.string().when("tipeJadwal", {
+    is: "shift",
+    then: Joi.required(),
+    otherwise: Joi.optional().allow("", null),
+  }),
+  jamMasukOverride: Joi.string()
+    .pattern(/^([01]\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/)
+    .when("tipeJadwal", {
+      is: "reguler",
+      then: Joi.required(),
+      otherwise: Joi.optional().allow("", null),
+    }),
+  jamKeluarOverride: Joi.string()
+    .pattern(/^([01]\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/)
+    .when("tipeJadwal", {
+      is: "reguler",
+      then: Joi.required(),
+      otherwise: Joi.optional().allow("", null),
+    }),
+  keterangan:    Joi.string().allow(null, "").optional(),
+  tanggalMulai:  Joi.date().required(),
+  tanggalSelesai: Joi.date().min(Joi.ref("tanggalMulai")).required(),
   hariKerja: Joi.array()
-    .items(
-      Joi.string().valid("Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu")
-    )
+    .items(Joi.string().valid("Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"))
     .min(1)
     .default(["Senin", "Selasa", "Rabu", "Kamis", "Jumat"]),
-  tipeJadwal: Joi.string().valid("shift", "reguler", "libur", "wfh").default("shift"),
-  skipExisting: Joi.boolean().default(true), // Skip days that already have schedules
+  skipExisting: Joi.boolean().default(true),
 });
 
 // Validation for updating a schedule
@@ -90,7 +109,7 @@ const getJadwalValidation = Joi.object({
   cabangId: Joi.string().optional(),
   tanggalMulai: Joi.date().optional(),
   tanggalSelesai: Joi.date().optional(),
-  tipeJadwal: Joi.string().valid("shift", "reguler", "libur", "wfh").optional(),
+  tipeJadwal: Joi.string().valid("shift", "reguler", "libur", "cuti", "izin", "wfh").optional(),
   shiftId: Joi.string().optional(),
   reguId: Joi.string().optional(),
   page: Joi.number().min(1).default(1),

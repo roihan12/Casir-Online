@@ -66,6 +66,10 @@ const masterShiftRoutes = require("./routes/masterShiftRoutes");
 const jadwalRoutes = require("./routes/jadwalRoutes");
 const koreksiAbsensiRoutes = require("./routes/koreksiAbsensiRoutes");
 const reguRoutes = require("./routes/reguRoutes");
+const hariLiburRoutes = require("./routes/hariLiburRoutes");
+const izinRoutes = require("./routes/izinRoutes");
+const kuotaCutiRoutes = require("./routes/kuotaCutiRoutes");
+const penggajianRoutes = require("./routes/penggajianRoutes");
 
 
 const {
@@ -190,6 +194,10 @@ app.use("/api/master-shifts", masterShiftRoutes);
 app.use("/api/jadwal", jadwalRoutes);
 app.use("/api/koreksi-absensi", koreksiAbsensiRoutes);
 app.use("/api/regu", reguRoutes);
+app.use("/api/hari-libur", hariLiburRoutes);
+app.use("/api/izin-cuti", izinRoutes);
+app.use("/api/kuota-cuti", kuotaCutiRoutes);
+app.use("/api/penggajian", penggajianRoutes);
 
 // 404 handler
 app.use((req, res) => {

@@ -478,7 +478,7 @@ function App() {
 
             {/* Attendance Management */}
             <Route
-              path="/attendance"
+              path="/attendance/absensi"
               element={
                 <ProtectedRoute>
                   <DynamicLayout />
@@ -489,7 +489,7 @@ function App() {
             </Route>
 
             <Route
-              path="/attendance/admin"
+              path="/attendance/dashboard"
               element={
                 <ProtectedRoute requiredPermission="absensi:read">
                   <DynamicLayout />
@@ -604,7 +604,7 @@ function App() {
             
             {/* Work Schedule */}
             <Route
-              path="/work-schedule"
+              path="/attendance/work-schedule"
               element={
                 <ProtectedRoute requiredPermission="work-schedule:read">
                   <DynamicLayout />
