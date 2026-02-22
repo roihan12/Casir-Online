@@ -69,10 +69,22 @@ const koreksiIdValidation = Joi.object({
   id: Joi.string().required(),
 });
 
+// Validation for submitting a manual attendance request
+const createAbsensiManualValidation = Joi.object({
+  tanggal: Joi.date().max("now").required()
+    .messages({ "date.max": "Tanggal tidak boleh di masa depan" }),
+  waktuMasuk: Joi.date().required(),
+  waktuKeluar: Joi.date().greater(Joi.ref("waktuMasuk")).required()
+    .messages({ "date.greater": "Waktu keluar harus setelah waktu masuk" }),
+  alasan: Joi.string().min(10).max(500).required(),
+  lokasiAbsensiId: Joi.string().optional().allow(null, ""),
+});
+
 module.exports = {
   createKoreksiValidation,
   approveKoreksiValidation,
   rejectKoreksiValidation,
   getKoreksiValidation,
   koreksiIdValidation,
+  createAbsensiManualValidation,
 };

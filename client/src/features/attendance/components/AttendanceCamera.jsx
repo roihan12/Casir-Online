@@ -244,12 +244,12 @@ const AttendanceCamera = ({
         </div>
 
         {/* Camera/Preview Area */}
-        <div className="relative bg-black aspect-video">
+        <div className="relative bg-black aspect-[4/3] sm:aspect-video">
           
           {/* Status Overlay */}
           {!previewPhoto && (
              <div className="absolute top-4 left-0 right-0 flex justify-center z-10">
-                <div className={`px-4 py-2 rounded-full font-bold text-white shadow-lg backdrop-blur-sm transition-all duration-300 ${
+                <div className={`px-4 py-2 rounded-full font-bold text-white shadow-lg backdrop-blur-sm transition-all duration-300 text-sm sm:text-base ${
                   livenessStatus === 'waiting_for_blink' ? 'bg-blue-600/80 animate-pulse' :
                   livenessStatus === 'verifying' ? 'bg-green-600/90' :
                   'bg-gray-800/70'
@@ -277,7 +277,7 @@ const AttendanceCamera = ({
               {/* Face Frame Overlay */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                  {/* Only show guide frame if looking for face */}
-                 <div className={`w-64 h-72 border-4 rounded-3xl transition-all duration-500 ${
+                 <div className={`w-48 h-56 sm:w-64 sm:h-72 border-4 rounded-3xl transition-all duration-500 ${
                     livenessStatus === 'waiting_for_blink' ? 'border-green-400 border-opacity-70' :
                     livenessStatus === 'detecting_face' ? 'border-white border-opacity-30 border-dashed' :
                     'border-blue-500'

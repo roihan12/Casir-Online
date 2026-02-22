@@ -3,10 +3,11 @@ const { logger } = require("../utils/logger");
 const { haversineDistance, isValidCoordinates } = require("../utils/geoUtils");
 const { ResponseError } = require("../error/responseError");
 const FormData = require("form-data");
-const { uploadFileToSupabase } = require("../utils/uploadToSupabase");
+const { uploadBufferToSupabase } = require("../utils/uploadToSupabase");
 
 // Constants
 const DEFAULT_LATE_THRESHOLD = parseInt(process.env.DEFAULT_LATE_THRESHOLD) || 15; // minutes
+const MAX_EARLY_MINUTES = parseInt(process.env.MAX_EARLY_CLOCK_IN) || 60; // minutes before shift start
 
 /**
  * Clock in with face verification and location validation
@@ -62,12 +63,13 @@ const clockIn = async (data) => {
     const userLocation = await prisma.userLokasiAbsensi.findFirst({
       where: {
         userId,
-        lokasiId: lokasiAbsensiId  // Using lokasiId not lokasiAbsensiId
+        lokasiId: lokasiAbsensiId
       }
     });
 
-    // Note: isRequireAssignment removed - assignment logic handled differently
-    // If user is explicitly assigned, check that. Otherwise allow if location is public.
+    if (!userLocation) {
+      throw new ResponseError(403, "Anda tidak terdaftar di lokasi absensi ini. Hubungi admin untuk mengatur lokasi.");
+    }
 
     // Verify geofencing
     const distance = haversineDistance(
@@ -93,6 +95,18 @@ const clockIn = async (data) => {
       throw new ResponseError(
         400,
         `Face verification failed. Similarity: ${(faceVerifyResult.similarity * 100).toFixed(1)}%`
+      );
+    }
+
+    // 4b. Check face match score against location threshold
+    const minScore = location.minFaceMatchScore
+      ? parseFloat(location.minFaceMatchScore)
+      : 60;
+    const matchScore = faceVerifyResult.similarity * 100;
+    if (matchScore < minScore) {
+      throw new ResponseError(
+        400,
+        `Face match terlalu rendah: ${matchScore.toFixed(1)}% (minimum: ${minScore}%)`
       );
     }
 
@@ -130,9 +144,9 @@ const clockIn = async (data) => {
     // }
 
     // 5. Upload photo to cloud storage
-    // const photoUrl = await uploadFileToSupabase(photoBuffer);
+    const photoUrl = await uploadBufferToSupabase(photoBuffer);
 
-    // logger.info("Photo uploaded", { photoUrl });
+    logger.info("Photo uploaded", { photoUrl });
 
     // 6. Check if already clocked in today
     const today = new Date();
@@ -176,28 +190,50 @@ const clockIn = async (data) => {
       }
     });
 
+    // 7a. Require work schedule
+    if (!workSchedule) {
+      throw new ResponseError(400,
+        "Anda belum memiliki jadwal kerja untuk hari ini. Hubungi admin untuk mengatur jadwal."
+      );
+    }
+
+    // 7b. Block if schedule is libur
+    if (workSchedule.tipe_jadwal === "libur") {
+      throw new ResponseError(400, "Hari ini adalah jadwal libur Anda.");
+    }
+
     let isLate = false;
     let lateMinutes = 0;
     let lateThreshold = DEFAULT_LATE_THRESHOLD; // Default threshold
 
     // Determine the work start time and late threshold from schedule
-    if (workSchedule && workSchedule.jamMasuk) {
+    if (workSchedule.jamMasuk) {
       const [hours, minutes] = workSchedule.jamMasuk.split(':');
       const workStartTime = new Date(today);
       workStartTime.setHours(parseInt(hours), parseInt(minutes), 0);
+
+      // 7c. Check if clock-in is too early
+      const earlyMinutes = Math.round((workStartTime - now) / (1000 * 60));
+      if (earlyMinutes > MAX_EARLY_MINUTES) {
+        throw new ResponseError(400,
+          `Belum bisa absen. Jam kerja dimulai pukul ${workSchedule.jamMasuk}, Anda hanya bisa absen ${MAX_EARLY_MINUTES} menit sebelumnya.`
+        );
+      }
 
       // Use master shift's toleransiTerlambat if shift is assigned, otherwise use default
       if (workSchedule.master_shift && workSchedule.master_shift.toleransiTerlambat !== undefined) {
         lateThreshold = workSchedule.master_shift.toleransiTerlambat;
       }
 
-      isLate = now > workStartTime;
-      lateMinutes = isLate ? Math.round((now - workStartTime) / (1000 * 60)) : 0;
+      // Late = arrived after start time + tolerance
+      const workStartWithTolerance = new Date(workStartTime.getTime() + lateThreshold * 60 * 1000);
+      isLate = now > workStartWithTolerance;
+      lateMinutes = now > workStartTime ? Math.round((now - workStartTime) / (1000 * 60)) : 0;
     }
 
     // Set status kehadiran based on late threshold
     let statusKehadiran = "hadir";
-    if (isLate && lateMinutes > lateThreshold) {
+    if (isLate) {
       statusKehadiran = "hadir_terlambat";
     }
 
@@ -212,12 +248,13 @@ const clockIn = async (data) => {
         lokasiAbsensiId,
         tanggalAbsensi: today,
         waktuMasuk: now,
-        statusKehadiran,
+        status_kehadiran: statusKehadiran,
         latitudeMasuk: latitude,
         longitudeMasuk: longitude,
-        fotoMasuk: "",
+        fotoMasuk: photoUrl,
         faceRecognitionMasuk: true,  // Boolean, not JSON
         faceMatchScoreMasuk: parseFloat((faceVerifyResult.similarity * 100).toFixed(2)),  // Decimal as percentage
+        shiftId: workSchedule?.master_shift?.id || null,
         keterangan: isLate ? `Terlambat ${lateMinutes} menit (toleransi: ${lateThreshold} menit)` : null
       }
     });
@@ -331,38 +368,38 @@ const clockOut = async (data) => {
     }
 
     // 6. Check liveness if required
-    if (location.requireFaceRecognition) {
-      // Prioritize video liveness check if frames are available
-      if (data.frames && data.frames.length > 0) {
-        logger.info("Performing multi-frame liveness check (Clock Out)", { frameCount: data.frames.length });
+    // if (location.requireFaceRecognition) {
+    //   // Prioritize video liveness check if frames are available
+    //   if (data.frames && data.frames.length > 0) {
+    //     logger.info("Performing multi-frame liveness check (Clock Out)", { frameCount: data.frames.length });
         
-        // Convert frames to buffers
-        const frameBuffers = data.frames.map(frame => 
-          Buffer.isBuffer(frame) ? frame : Buffer.from(frame, "base64")
-        );
+    //     // Convert frames to buffers
+    //     const frameBuffers = data.frames.map(frame => 
+    //       Buffer.isBuffer(frame) ? frame : Buffer.from(frame, "base64")
+    //     );
         
-        const livenessResult = await checkLivenessVideo(frameBuffers);
+    //     const livenessResult = await checkLivenessVideo(frameBuffers);
         
-        if (!livenessResult.is_live) {
-          throw new ResponseError(
-            400,
-            `Liveness check failed. ${livenessResult.message || "Please ensure you are using a real face."}`
-          );
-        }
-      } else {
-        const livenessResult = await checkLiveness(photoBuffer);
+    //     if (!livenessResult.is_live) {
+    //       throw new ResponseError(
+    //         400,
+    //         `Liveness check failed. ${livenessResult.message || "Please ensure you are using a real face."}`
+    //       );
+    //     }
+    //   } else {
+    //     const livenessResult = await checkLiveness(photoBuffer);
 
-        if (!livenessResult.is_live) {
-          throw new ResponseError(
-            400,
-            "Liveness check failed. Please ensure you are using a real face, not a photo."
-          );
-        }
-      }
-    }
+    //     if (!livenessResult.is_live) {
+    //       throw new ResponseError(
+    //         400,
+    //         "Liveness check failed. Please ensure you are using a real face, not a photo."
+    //       );
+    //     }
+    //   }
+    // }
 
     // 7. Upload photo
-    const photoUrl = await uploadFileToSupabase(photoBuffer);
+    const photoUrl = await uploadBufferToSupabase(photoBuffer);
 
     // 8. Calculate work duration and overtime based on schedule
     const now = new Date();
@@ -376,7 +413,7 @@ const clockOut = async (data) => {
         tanggalSelesai: { gte: today }
       },
       include: {
-        masterShift: {
+        master_shift: {
           select: {
             id: true,
             namaShift: true,
@@ -460,7 +497,7 @@ const clockOut = async (data) => {
 
     // 9. Update attendance record
     // Determine final status based on overtime and early departure
-    let finalStatus = attendance.statusKehadiran;
+    let finalStatus = attendance.status_kehadiran;
     if (earlyDepartureMinutes > 5) { // 5 minute tolerance for early departure
       finalStatus = "hadir_pulang_cepat";
     } else if (isOvertime && overtimeHours > 0) {
@@ -491,7 +528,7 @@ const clockOut = async (data) => {
         isLembur: isOvertime,
         jamLembur: overtimeHours,
         jamKerja: totalHours,
-        statusKehadiran: finalStatus,
+        status_kehadiran: finalStatus,
         keterangan: keterangan || null
       }
     });
@@ -548,8 +585,15 @@ const verifyFace = async (storedEmbedding, photoBuffer, userId) => {
     }
 
   } catch (error) {
-    logger.error("Face verification error", { userId, error: error.message });
-    throw new ResponseError(500, "Face recognition service error: " + error.message);
+    if (error instanceof ResponseError) throw error;
+    if (error.response) {
+      // Face service returned an error response
+      logger.error("Face verification service error", { userId, status: error.response.status, data: error.response.data });
+      throw new ResponseError(400, error.response.data?.message || "Face verification failed");
+    }
+    // Network/connection error
+    logger.error("Face verification connection error", { userId, error: error.message });
+    throw new ResponseError(503, "Face recognition service tidak tersedia. Coba lagi nanti.");
   }
 };
 
@@ -625,9 +669,12 @@ const checkLivenessVideo = async (frameBuffers) => {
  */
 const registerFace = async (userId, photo) => {
   try {
+    // Ensure photo is a Buffer
+    const photoBuffer = Buffer.isBuffer(photo) ? photo : Buffer.from(photo, "base64");
+
     // Create form data
     const formData = new FormData();
-    formData.append("image", photo, "photo.jpg");
+    formData.append("image", photoBuffer, "photo.jpg");
     formData.append("user_id", userId);
 
     // Call face recognition service
@@ -639,7 +686,7 @@ const registerFace = async (userId, photo) => {
 
     if (response.data.success) {
       // Update user face data in database
-      const photoUrl = await uploadFileToSupabase(photo);
+      const photoUrl = await uploadBufferToSupabase(photoBuffer);
 
       logger.info("Photo URL: ", photoUrl);
 
@@ -728,7 +775,7 @@ const getAttendanceHistory = async (filters) => {
     endDate,
     status,
     page = 1,
-    limit = 20
+    limit = 40
   } = filters;
 
   try {
@@ -754,7 +801,7 @@ const getAttendanceHistory = async (filters) => {
     }
 
     if (status) {
-      where.statusKehadiran = status;
+      where.status_kehadiran = status;
     }
 
     // Get total count
@@ -767,7 +814,7 @@ const getAttendanceHistory = async (filters) => {
         user: {
           select: {
             id: true,
-            nama: true,
+            namaLengkap: true,
             email: true
           }
         },
@@ -827,7 +874,7 @@ const getAttendanceStatistics = async (filters) => {
 
     // Get counts by status
     const stats = await prisma.absensiPegawai.groupBy({
-      by: ["statusKehadiran"],
+      by: ["status_kehadiran"],
       where: {
         cabangId,
         ...(Object.keys(dateFilter).length > 0 ? { tanggalAbsensi: dateFilter } : {})
@@ -849,7 +896,7 @@ const getAttendanceStatistics = async (filters) => {
     };
 
     stats.forEach(stat => {
-      statistics[stat.statusKehadiran] = stat._count.id;
+      statistics[stat.status_kehadiran] = stat._count.id;
     });
 
     // Calculate totals
@@ -943,6 +990,29 @@ const verifyAttendanceLocation = async (userId, lokasiAbsensiId, latitude, longi
     throw error;
   }
 };
+/**
+ * Get face registration status for a user
+ * @param {string} userId - User ID
+ * @returns {Promise<Object>} Face status
+ */
+const getFaceStatus = async (userId) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      faceDataJson: true,
+      faceImageUrl: true,
+    },
+  });
+
+  if (!user) {
+    throw new ResponseError(404, "User not found");
+  }
+
+  return {
+    hasRegisteredFace: !!user.faceDataJson,
+    faceImageUrl: user.faceImageUrl || null,
+  };
+};
 
 module.exports = {
   clockIn,
@@ -953,5 +1023,6 @@ module.exports = {
   getTodayAttendance,
   getAttendanceHistory,
   getAttendanceStatistics,
-  verifyAttendanceLocation
+  verifyAttendanceLocation,
+  getFaceStatus,
 };

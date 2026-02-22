@@ -26,11 +26,15 @@ async function bootstrap() {
     // Initialize Socket.io
     const io = new Server(server, {
       cors: {
-        origin: [
-          "http://localhost:5173",
-          "http://localhost:3000",
-          "http://127.0.0.1:5173",
-        ],
+        origin: function (origin, callback) {
+          if (!origin) return callback(null, true);
+          if (/^https:\/\/localhost:\d+$/.test(origin) || 
+              /^https:\/\/127\.0\.0\.1:\d+$/.test(origin) || 
+              /^https:\/\/192\.168\.\d+\.\d+:\d+$/.test(origin)) {
+            return callback(null, true);
+          }
+          callback(new Error('Not allowed by CORS'));
+        },
         methods: ["GET", "POST"],
         credentials: true
       }

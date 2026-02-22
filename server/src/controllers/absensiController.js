@@ -7,7 +7,8 @@ const {
   getTodayAttendance,
   getAttendanceHistory,
   getAttendanceStatistics,
-  verifyAttendanceLocation
+  verifyAttendanceLocation,
+  getFaceStatus,
 } = require("../services/absensiService");
 const { validate } = require("../validation/validation");
 const {
@@ -336,6 +337,22 @@ const verifyLocationController = async (req, res, next) => {
     next(error);
   }
 };
+/**
+ * Get face registration status
+ */
+const getFaceStatusController = async (req, res, next) => {
+  try {
+    const userId = req.params.userId || req.user.id;
+    const result = await getFaceStatus(userId);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 module.exports = {
   clockInController,
@@ -345,5 +362,6 @@ module.exports = {
   getTodayAttendanceController,
   getAttendanceHistoryController,
   getAttendanceStatisticsController,
-  verifyLocationController
+  verifyLocationController,
+  getFaceStatusController,
 };

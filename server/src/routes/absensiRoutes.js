@@ -8,7 +8,8 @@ const {
   getTodayAttendanceController,
   getAttendanceHistoryController,
   getAttendanceStatisticsController,
-  verifyLocationController
+  verifyLocationController,
+  getFaceStatusController,
 } = require("../controllers/absensiController");
 const { authenticate } = require("../middleware/authMiddleware");
 
@@ -29,5 +30,8 @@ router.post("/verify-location", authenticate, verifyLocationController);
 // Face registration (admin can register for users, users can register themselves)
 router.post("/register-face", authenticate, registerFaceController);
 router.post("/register-face/:userId", authenticate, registerFaceController);
+
+// Face status check
+router.get("/face-status/:userId", authenticate, getFaceStatusController);
 
 module.exports = router;

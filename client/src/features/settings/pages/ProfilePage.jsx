@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import useAuth from "@features/auth/hooks/useAuth";
 import {
@@ -17,7 +17,10 @@ import {
   Upload,
   Image,
 } from "lucide-react";
+import { FaCamera, FaCheckCircle, FaExclamationTriangle, FaSync } from "react-icons/fa";
 import * as authService from "@features/auth/services/authService";
+import { FaceRegistration } from "@features/attendance";
+import api from "../../../services/api";
 import { toast } from "react-hot-toast";
 
 const ProfilePage = () => {
@@ -37,6 +40,13 @@ const ProfilePage = () => {
   const fileInputRef = useRef(null);
   const [avatarFile, setAvatarFile] = useState(null);
 
+  // Face registration state
+  const [faceStatus, setFaceStatus] = useState({
+    loading: true,
+    registered: false,
+    imageUrl: null,
+  });
+
   useEffect(() => {
     if (user) {
       setProfileData({
@@ -54,6 +64,36 @@ const ProfilePage = () => {
     }
   }, [user]);
 
+  // Fetch face registration status
+  const fetchFaceStatus = useCallback(async () => {
+    if (!user) return;
+    try {
+      setFaceStatus((prev) => ({ ...prev, loading: true }));
+      const res = await api.get(`/attendance/face-status/${user.id}`);
+      setFaceStatus({
+        loading: false,
+        registered: res.data?.data?.hasRegisteredFace || false,
+        imageUrl: res.data?.data?.faceImageUrl || null,
+      });
+    } catch {
+      // If endpoint doesn't exist or error, assume not registered
+      setFaceStatus({ loading: false, registered: false, imageUrl: null });
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchFaceStatus();
+  }, [fetchFaceStatus]);
+
+  const handleFaceRegistered = (result) => {
+    setFaceStatus({
+      loading: false,
+      registered: true,
+      imageUrl: result.faceImageUrl || null,
+    });
+    toast.success("Data wajah berhasil didaftarkan!");
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setProfileData({
@@ -66,13 +106,11 @@ const ProfilePage = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Check file type
     if (!file.type.startsWith("image/")) {
       toast.error("File harus berupa gambar");
       return;
     }
 
-    // Check file size (maximum 2MB)
     if (file.size > 2 * 1024 * 1024) {
       toast.error("Ukuran file maksimal 2MB");
       return;
@@ -80,7 +118,6 @@ const ProfilePage = () => {
 
     setAvatarFile(file);
 
-    // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreviewImage(reader.result);
@@ -95,7 +132,6 @@ const ProfilePage = () => {
   const toggleEdit = () => {
     setIsEditing(!isEditing);
     if (!isEditing) {
-      // Reset form data to current user data when entering edit mode
       setProfileData({
         namaLengkap: user.namaLengkap || "",
         email: user.email || "",
@@ -120,22 +156,18 @@ const ProfilePage = () => {
     setLoading(true);
 
     try {
-      // Create form data for multipart/form-data
       const formData = new FormData();
       formData.append("namaLengkap", profileData.namaLengkap);
       formData.append("email", profileData.email);
       formData.append("telepon", profileData.telepon || "");
       formData.append("alamat", profileData.alamat || "");
 
-      // Only append file if a new one is selected
       if (avatarFile) {
         formData.append("avatar", avatarFile);
       }
 
-      // Call profile update API with FormData
       const updatedUser = await authService.updateProfileWithAvatar(formData);
 
-      // Update user context with new data
       setUser({
         ...user,
         ...updatedUser,
@@ -187,7 +219,6 @@ const ProfilePage = () => {
 
   const getUserStatus = () => {
     if (!user || !user.status) return "Tidak diketahui";
-
     if (user.status === "aktif") return "Aktif";
     if (user.status === "nonaktif") return "Nonaktif";
     return user.status;
@@ -204,7 +235,8 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className="py-6 px-4 sm:px-6">
+    <div className="py-6 px-4 sm:px-6 space-y-6">
+      {/* Profile Card */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         {/* Profile Header */}
         <div className="bg-indigo-600 px-6 py-8 text-white">
@@ -471,6 +503,127 @@ const ProfilePage = () => {
                   <p className="text-sm text-gray-500">Terakhir Diperbarui</p>
                   <p className="font-medium">{formatDate(user.updatedAt)}</p>
                 </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Face Registration Card */}
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 text-white">
+          <div className="flex items-center gap-3">
+            <div className="bg-white/20 p-2 rounded-lg">
+              <FaCamera className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Registrasi Wajah — Absensi</h2>
+              <p className="text-blue-100 text-sm">
+                Daftarkan wajah Anda untuk verifikasi saat absen
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6">
+          {faceStatus.loading ? (
+            <div className="flex items-center justify-center py-8">
+              <FaSync className="w-5 h-5 text-indigo-500 animate-spin mr-3" />
+              <span className="text-gray-500">Memuat status wajah...</span>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Status Banner */}
+              <div
+                className={`flex items-start gap-4 p-4 rounded-xl border ${
+                  faceStatus.registered
+                    ? "bg-green-50 border-green-200"
+                    : "bg-amber-50 border-amber-200"
+                }`}
+              >
+                <div
+                  className={`p-2 rounded-full flex-shrink-0 ${
+                    faceStatus.registered ? "bg-green-100" : "bg-amber-100"
+                  }`}
+                >
+                  {faceStatus.registered ? (
+                    <FaCheckCircle className="w-5 h-5 text-green-600" />
+                  ) : (
+                    <FaExclamationTriangle className="w-5 h-5 text-amber-600" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p
+                    className={`font-semibold ${
+                      faceStatus.registered ? "text-green-900" : "text-amber-900"
+                    }`}
+                  >
+                    {faceStatus.registered
+                      ? "Wajah Terdaftar ✓"
+                      : "Wajah Belum Terdaftar"}
+                  </p>
+                  <p
+                    className={`text-sm mt-1 ${
+                      faceStatus.registered ? "text-green-700" : "text-amber-700"
+                    }`}
+                  >
+                    {faceStatus.registered
+                      ? "Anda dapat menggunakan fitur absensi dengan verifikasi wajah."
+                      : "Anda perlu mendaftarkan wajah sebelum bisa melakukan absensi."}
+                  </p>
+                </div>
+
+                {/* Face Image Preview */}
+                {faceStatus.registered && faceStatus.imageUrl && (
+                  <img
+                    src={faceStatus.imageUrl}
+                    alt="Wajah terdaftar"
+                    className="w-16 h-16 object-cover rounded-lg border-2 border-green-300 flex-shrink-0"
+                  />
+                )}
+              </div>
+
+              {/* Tips Section */}
+              {!faceStatus.registered && (
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                  <p className="text-sm font-medium text-blue-900 mb-2">
+                    Tips untuk hasil terbaik:
+                  </p>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-sm text-blue-800">
+                    <li className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0" />
+                      Posisikan wajah di tengah frame
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0" />
+                      Pastikan pencahayaan merata
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0" />
+                      Lihat langsung ke kamera
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0" />
+                      Lepas kacamata jika memungkinkan
+                    </li>
+                  </ul>
+                </div>
+              )}
+
+              {/* Action Button */}
+              <div>
+                <FaceRegistration
+                  userId={user.id}
+                  userName={user.namaLengkap}
+                  hasExistingFace={faceStatus.registered}
+                  onSuccess={handleFaceRegistered}
+                  buttonText={
+                    faceStatus.registered
+                      ? "Perbarui Data Wajah"
+                      : "Daftarkan Wajah"
+                  }
+                  buttonClassName="w-full sm:w-auto"
+                />
               </div>
             </div>
           )}

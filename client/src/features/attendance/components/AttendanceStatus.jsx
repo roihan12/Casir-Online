@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, MapPin, LogOut, CheckCircle, AlertCircle } from 'lucide-react';
+import { Clock, MapPin, LogOut, CheckCircle, AlertCircle, Calendar } from 'lucide-react';
 
 /**
  * AttendanceStatus Component
@@ -12,11 +12,11 @@ import { Clock, MapPin, LogOut, CheckCircle, AlertCircle } from 'lucide-react';
 const AttendanceStatus = ({ attendance, loading }) => {
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm p-6 animate-pulse">
-        <div className="h-6 bg-gray-200 rounded w-1/3 mb-4" />
-        <div className="space-y-3">
-          <div className="h-4 bg-gray-200 rounded" />
-          <div className="h-4 bg-gray-200 rounded w-2/3" />
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 animate-pulse">
+        <div className="h-8 bg-gray-200 rounded-lg w-1/3 mb-6" />
+        <div className="space-y-4">
+          <div className="h-5 bg-gray-200 rounded-lg w-full" />
+          <div className="h-5 bg-gray-200 rounded-lg w-2/3" />
         </div>
       </div>
     );
@@ -24,18 +24,20 @@ const AttendanceStatus = ({ attendance, loading }) => {
 
   if (!attendance) {
     return (
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <AlertCircle className="w-6 h-6 text-yellow-600" />
-          <h3 className="text-lg font-semibold text-gray-900">No Attendance Today</h3>
+      <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-sm border border-gray-100 p-8 text-center sm:text-left flex flex-col sm:flex-row items-center gap-6">
+        <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center shrink-0">
+          <AlertCircle className="w-8 h-8" />
         </div>
-        <p className="text-gray-600">You haven't clocked in yet today. Please clock in to start tracking your attendance.</p>
+        <div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Belum Ada Absensi Hari Ini</h3>
+          <p className="text-gray-500">Anda belum absen masuk hari ini. Silakan absen masuk untuk mulai melacak kehadiran Anda.</p>
+        </div>
       </div>
     );
   }
 
   const formatTime = (dateString) => {
-    if (!dateString) return '-';
+    if (!dateString) return '--:--';
     const date = new Date(dateString);
     return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
   };
@@ -53,127 +55,125 @@ const AttendanceStatus = ({ attendance, loading }) => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'hadir':
-        return 'bg-green-100 text-green-800';
-      case 'terlambat':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'lembur':
-        return 'bg-blue-100 text-blue-800';
-      case 'izin':
-      case 'sakit':
-      case 'cuti':
-        return 'bg-gray-100 text-gray-800';
-      case 'tanpa_keterangan':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'hadir': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case 'terlambat': return 'bg-amber-100 text-amber-700 border-amber-200';
+      case 'lembur': return 'bg-cyan-100 text-cyan-700 border-cyan-200';
+      case 'izin': case 'sakit': case 'cuti': return 'bg-slate-100 text-slate-700 border-slate-200';
+      case 'tanpa_keterangan': return 'bg-rose-100 text-rose-700 border-rose-200';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200';
     }
   };
 
   const getStatusLabel = (status) => {
-    switch (status) {
-      case 'hadir':
-        return 'On Time';
-      case 'terlambat':
-        return 'Late';
-      case 'lembur':
-        return 'Overtime';
-      case 'izin':
-        return 'Permission';
-      case 'sakit':
-        return 'Sick';
-      case 'cuti':
-        return 'Leave';
-      case 'tanpa_keterangan':
-        return 'Absent';
-      default:
-        return status;
-    }
+    const labels = {
+      hadir: 'Tepat Waktu', terlambat: 'Terlambat', lembur: 'Lembur',
+      izin: 'Izin', sakit: 'Sakit', cuti: 'Cuti', tanpa_keterangan: 'Tanpa Keterangan'
+    };
+    return labels[status] || status;
   };
 
-  return (
-    <div className="bg-white rounded-lg shadow-sm p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          {attendance.waktuKeluar ? (
-            <CheckCircle className="w-6 h-6 text-green-600" />
-          ) : (
-            <Clock className="w-6 h-6 text-blue-600" />
-          )}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">
-              {attendance.waktuKeluar ? 'Completed' : 'In Progress'}
-            </h3>
-            <p className="text-sm text-gray-600">{formatDate(attendance.tanggalAbsensi)}</p>
-          </div>
-        </div>
+  const isCompleted = attendance.waktuKeluar;
 
-        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(attendance.statusKehadiran)}`}>
-          {getStatusLabel(attendance.statusKehadiran)}
-        </span>
+  return (
+    <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 overflow-hidden transition-all hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+      {/* Header Area */}
+      <div className={`p-8 border-b ${isCompleted ? 'bg-gradient-to-r from-emerald-50 to-white border-emerald-100' : 'bg-gradient-to-r from-blue-50 to-white border-blue-100'}`}>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className={`p-3 rounded-2xl ${isCompleted ? 'bg-emerald-500 text-white shadow-emerald-200' : 'bg-blue-600 text-white shadow-blue-200'} shadow-lg`}>
+              {isCompleted ? <CheckCircle className="w-6 h-6" /> : <Clock className="w-6 h-6" />}
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">
+                {isCompleted ? 'Shift Selesai' : 'Shift Sedang Berjalan'}
+              </h3>
+              <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                <Calendar className="w-4 h-4" />
+                <span>{formatDate(attendance.tanggalAbsensi)}</span>
+              </div>
+            </div>
+          </div>
+          <span className={`px-4 py-1.5 rounded-full text-sm font-semibold tracking-wide border ${getStatusColor(attendance.statusKehadiran)}`}>
+            {getStatusLabel(attendance.statusKehadiran)}
+          </span>
+        </div>
       </div>
 
-      {/* Details */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Clock In */}
-        <div className="bg-green-50 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Clock className="w-5 h-5 text-green-600" />
-            <span className="font-medium text-gray-900">Clock In</span>
-          </div>
-          <p className="text-2xl font-semibold text-gray-900 mb-1">
-            {formatTime(attendance.waktuMasuk)}
-          </p>
-          {attendance.lokasiAbsensi && (
-            <div className="flex items-center gap-1 text-sm text-gray-600 mt-2">
-              <MapPin className="w-4 h-4" />
-              <span className="truncate">{attendance.lokasiAbsensi.nama}</span>
+      {/* Details Area */}
+      <div className="p-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Clock In Card */}
+          <div className="relative overflow-hidden bg-gray-50 rounded-2xl p-6 border border-gray-100 group hover:border-blue-200 transition-colors">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/5 to-transparent rounded-full -translate-x-4 -translate-y-8" />
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-white rounded-xl shadow-sm border border-gray-100 text-blue-600">
+                <Clock className="w-5 h-5" />
+              </div>
+              <span className="font-semibold text-gray-700">Absen Masuk</span>
             </div>
-          )}
-          {attendance.faceMatchScore && (
-            <p className="text-xs text-gray-500 mt-2">
-              Face match: {(attendance.faceMatchScore * 100).toFixed(1)}%
+            <p className="text-4xl font-black text-gray-900 tracking-tight mb-2">
+              {formatTime(attendance.waktuMasuk)}
             </p>
-          )}
-        </div>
-
-        {/* Clock Out */}
-        {attendance.waktuKeluar ? (
-          <div className="bg-red-50 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <LogOut className="w-5 h-5 text-red-600" />
-              <span className="font-medium text-gray-900">Clock Out</span>
-            </div>
-            <p className="text-2xl font-semibold text-gray-900 mb-1">
-              {formatTime(attendance.waktuKeluar)}
-            </p>
-            {attendance.jamKerja && (
-              <p className="text-sm text-gray-600 mt-2">
-                Total hours: {attendance.jamKerja}h
-                {attendance.isLembur && ` (+${attendance.jamLembur}h overtime)`}
-              </p>
+            {attendance.lokasiAbsensi && (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <MapPin className="w-4 h-4 text-gray-400" />
+                <span className="truncate">{attendance.lokasiAbsensi.nama}</span>
+              </div>
+            )}
+            {attendance.faceMatchScore && (
+              <div className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white border border-gray-200 text-xs font-medium text-gray-600">
+                <span>Kecocokan Wajah: {(attendance.faceMatchScore * 100).toFixed(1)}%</span>
+              </div>
             )}
           </div>
-        ) : (
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <LogOut className="w-5 h-5 text-gray-400" />
-              <span className="font-medium text-gray-900">Clock Out</span>
+
+          {/* Clock Out Card */}
+          <div className={`relative overflow-hidden rounded-2xl p-6 border transition-colors ${isCompleted ? 'bg-gray-50 border-gray-100 hover:border-emerald-200' : 'bg-gray-50/50 border-dashed border-gray-200'}`}>
+            {isCompleted && <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-full -translate-x-4 -translate-y-8" />}
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`p-2 rounded-xl shadow-sm border ${isCompleted ? 'bg-white border-gray-100 text-emerald-600' : 'bg-transparent border-gray-200 text-gray-400'}`}>
+                <LogOut className="w-5 h-5" />
+              </div>
+              <span className={`font-semibold ${isCompleted ? 'text-gray-700' : 'text-gray-400'}`}>Absen Keluar</span>
             </div>
-            <p className="text-gray-500">Not yet clocked out</p>
+            
+            {isCompleted ? (
+              <>
+                <p className="text-4xl font-black text-gray-900 tracking-tight mb-2">
+                  {formatTime(attendance.waktuKeluar)}
+                </p>
+                {attendance.jamKerja && (
+                  <div className="mt-4 pt-4 border-t border-gray-200 text-sm">
+                    <span className="text-gray-500">Total Waktu: </span>
+                    <span className="font-bold text-gray-900">{attendance.jamKerja}j</span>
+                    {attendance.isLembur && (
+                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                        +{attendance.jamLembur}j lembur
+                      </span>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="h-full flex flex-col justify-center">
+                <p className="text-lg font-medium text-gray-400">Belum absen keluar</p>
+                <p className="text-sm text-gray-400 mt-1">Shift Anda masih berlangsung.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Notes Section */}
+        {attendance.keterangan && (
+          <div className="mt-6 p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-start gap-3">
+            <div className="text-gray-400 mt-0.5">ℹ️</div>
+            <div>
+              <p className="text-sm font-semibold text-gray-700">Catatan Tambahan</p>
+              <p className="text-sm text-gray-600 mt-1">{attendance.keterangan}</p>
+            </div>
           </div>
         )}
       </div>
-
-      {/* Notes */}
-      {attendance.keterangan && (
-        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-900">
-            <span className="font-medium">Note:</span> {attendance.keterangan}
-          </p>
-        </div>
-      )}
     </div>
   );
 };

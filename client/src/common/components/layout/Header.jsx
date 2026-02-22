@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
   Search,
+  Menu,
   Bell,
   X,
   Clock,
@@ -270,6 +271,15 @@ const Header = () => {
   return (
     <header className="bg-white p-2 md:p-4 flex items-center justify-between border-b">
       <div className="flex items-center flex-1 min-w-0">
+        {/* Mobile Sidebar Toggle Button */}
+        <button
+          type="button"
+          className="md:hidden mr-2 p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg flex-shrink-0"
+          onClick={() => window.dispatchEvent(new Event("toggleMobileSidebar"))}
+        >
+          <Menu size={20} />
+        </button>
+
         <div className="relative w-full md:w-80" ref={searchRef}>
           <form onSubmit={handleSearchSubmit}>
             <div className="flex">

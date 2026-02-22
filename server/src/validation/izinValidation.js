@@ -11,7 +11,7 @@ const createIzinValidation = Joi.object({
   cabangId: Joi.string().required(),
   tanggalMulai: Joi.date().required(),
   tanggalSelesai: Joi.date().min(Joi.ref("tanggalMulai")).required(),
-  alasan: Joi.string().min(10).max(500).required(),
+  alasan: Joi.string().min(5).max(500).required(),
   lampiranFile: Joi.string().uri().max(500).optional().allow(null, ""),
 });
 
@@ -22,7 +22,7 @@ const createCutiValidation = Joi.object({
   cabangId: Joi.string().required(),
   tanggalMulai: Joi.date().required(),
   tanggalSelesai: Joi.date().min(Joi.ref("tanggalMulai")).required(),
-  alasan: Joi.string().min(10).max(500).required(),
+  alasan: Joi.string().min(5).max(500).required(),
   lampiranFile: Joi.string().uri().max(500).optional().allow(null, ""),
 });
 

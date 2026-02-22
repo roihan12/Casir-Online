@@ -38,7 +38,7 @@ const ClockOutButton = ({ attendanceRecord, onSuccess, onError, className = '' }
       setShowCamera(true);
 
     } catch (err) {
-      const errorMessage = err.message || 'Failed to prepare clock out';
+      const errorMessage = err.message || 'Gagal mempersiapkan absen keluar';
       setError(errorMessage);
       if (onError) onError(errorMessage);
     } finally {
@@ -58,7 +58,7 @@ const ClockOutButton = ({ attendanceRecord, onSuccess, onError, className = '' }
       const lokasiAbsensiId = attendanceRecord?.lokasiAbsensiId;
 
       if (!lokasiAbsensiId) {
-        throw new Error('Attendance location not found');
+        throw new Error('Lokasi absensi tidak ditemukan');
       }
 
       // Handle both single photo (string) and multi-frame (object)
@@ -71,7 +71,7 @@ const ClockOutButton = ({ attendanceRecord, onSuccess, onError, className = '' }
          photoPayload = photo;
       } else {
          console.error("Unexpected capture result format", photo);
-         throw new Error("Failed to process photo capture");
+         throw new Error("Gagal memproses pengambilan foto");
       }
 
       // Call clock out API
@@ -88,7 +88,7 @@ const ClockOutButton = ({ attendanceRecord, onSuccess, onError, className = '' }
       }
 
     } catch (err) {
-      const errorMessage = err.message || 'Clock out failed';
+      const errorMessage = err.message || 'Absen keluar gagal';
       setError(errorMessage);
       if (onError) onError(errorMessage);
     } finally {
@@ -113,12 +113,12 @@ const ClockOutButton = ({ attendanceRecord, onSuccess, onError, className = '' }
         {isProcessing || locationLoading ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
-            Processing...
+            Memproses...
           </>
         ) : (
           <>
             <Clock className="w-5 h-5" />
-            Clock Out
+            Absen Keluar
           </>
         )}
       </button>
@@ -130,7 +130,7 @@ const ClockOutButton = ({ attendanceRecord, onSuccess, onError, className = '' }
           <div className="flex-1">
             <p className="text-sm text-red-800">{error}</p>
             {locationError && (
-              <p className="text-xs text-red-600 mt-1">Location: {locationError}</p>
+              <p className="text-xs text-red-600 mt-1">Lokasi: {locationError}</p>
             )}
           </div>
           <button

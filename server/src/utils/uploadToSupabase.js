@@ -29,6 +29,34 @@ const uploadFileToSupabase = async (file) => {
   };
 };
 
+/**
+ * Upload a Buffer directly to Supabase (for attendance photos)
+ * @param {Buffer} buffer - File buffer
+ * @param {string} folder - Storage folder (default: "absensi")
+ * @returns {Promise<string>} Public URL of the uploaded file
+ */
+const uploadBufferToSupabase = async (buffer, folder = "absensi") => {
+  const timestamp = Date.now();
+  const fileName = `${timestamp}-attendance.jpg`;
+  const filePath = `${folder}/${fileName}`;
+
+  const { data, error } = await supabase.storage
+    .from(bucketName)
+    .upload(filePath, buffer, {
+      contentType: "image/jpeg",
+    });
+
+  if (error) {
+    throw new ResponseError(400, `Error uploading file: ${error.message}`);
+  }
+
+  const { data: urlData } = supabase.storage
+    .from(bucketName)
+    .getPublicUrl(filePath);
+
+  return urlData.publicUrl;
+};
+
 const deleteFilesFromSupabase = async (filePaths) => {
   if (!filePaths || filePaths.length === 0) return;
 
@@ -44,4 +72,4 @@ const deleteFilesFromSupabase = async (filePaths) => {
   return data;
 };
 
-module.exports = { uploadFileToSupabase, deleteFilesFromSupabase };
+module.exports = { uploadFileToSupabase, uploadBufferToSupabase, deleteFilesFromSupabase };

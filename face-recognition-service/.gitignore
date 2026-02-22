@@ -1,0 +1,66 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+# See https://pyinstaller.readthedocs.io
+*.manifest
+*.spec
+
+# Unit test / coverage
+.coverage
+.tox/
+htmlcov/
+.nox/
+
+# Editors
+.idea/  # JetBrains IDEs (e.g., PyCharm)
+.vscode/ # Visual Studio Code
+*.swp
+*~
+.DS_Store # macOS files
+Thumbs.db # Windows files
+
+# Environment
+.env
+.venv
+
+# Package managers
+# Pipenv
+# Pipfile.lock is required to be in version control.
+# Pipfile, Pipfile.lock, .venv/
+
+# Poetry
+# poetry.lock is required to be in version control.
+# .venv/
+
+# PDM
+# pdm.lock is required to be in version control.
+# .venv/
+
+# Others
+.ipynb_checkpoints # Jupyter Notebook checkpoints
+profile_default/
+ipython_config.py

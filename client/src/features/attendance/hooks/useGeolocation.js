@@ -37,35 +37,42 @@ export const useGeolocation = (options = {}) => {
       setLoading(true);
       setError(null);
 
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const positionData = {
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-            accuracy: pos.coords.accuracy,
-            altitude: pos.coords.altitude,
-            altitudeAccuracy: pos.coords.altitudeAccuracy,
-            heading: pos.coords.heading,
-            speed: pos.coords.speed,
-            timestamp: pos.timestamp
-          };
+      const tryGetPosition = (options) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const positionData = {
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy: pos.coords.accuracy,
+              altitude: pos.coords.altitude,
+              altitudeAccuracy: pos.coords.altitudeAccuracy,
+              heading: pos.coords.heading,
+              speed: pos.coords.speed,
+              timestamp: pos.timestamp
+            };
 
-          setPosition(positionData);
-          setLoading(false);
-          resolve(positionData);
-        },
-        (err) => {
-          const errorMessage = getGeolocationErrorMessage(err);
-          setError(errorMessage);
-          setLoading(false);
-          reject(new Error(errorMessage));
-        },
-        {
-          enableHighAccuracy,
-          timeout,
-          maximumAge
-        }
-      );
+            setPosition(positionData);
+            setLoading(false);
+            resolve(positionData);
+          },
+          (err) => {
+            // First time it failed, if it was a timeout and we were using high accuracy, try again with low accuracy
+            if (err.code === err.TIMEOUT && options.enableHighAccuracy) {
+              console.warn('High accuracy geolocation timed out, falling back to low accuracy');
+              tryGetPosition({ ...options, enableHighAccuracy: false, timeout: 15000 });
+              return;
+            }
+
+            const errorMessage = getGeolocationErrorMessage(err);
+            setError(errorMessage);
+            setLoading(false);
+            reject(new Error(errorMessage));
+          },
+          options
+        );
+      };
+
+      tryGetPosition({ enableHighAccuracy, timeout, maximumAge });
     });
   }, [enableHighAccuracy, timeout, maximumAge]);
 
@@ -130,13 +137,16 @@ export const useGeolocation = (options = {}) => {
   const getGeolocationErrorMessage = (error) => {
     switch (error.code) {
       case error.PERMISSION_DENIED:
-        return 'Location permission denied. Please enable location access in your browser settings.';
+        if (window.isSecureContext === false) {
+          return 'Izin lokasi ditolak karena koneksi tidak aman. Jika Anda mengakses via jaringan lokal (IP) di HP, fitur absensi lokasi membutuhkan HTTPS atau localhost.';
+        }
+        return 'Izin lokasi ditolak. Harap izinkan akses lokasi (location) di pengaturan browser Anda, lalu muat ulang halaman.';
       case error.POSITION_UNAVAILABLE:
-        return 'Location information is unavailable. Please check your device settings.';
+        return 'Informasi lokasi tidak tersedia. Pastikan GPS/Lokasi perangkat Anda menyala.';
       case error.TIMEOUT:
-        return 'Location request timed out. Please try again.';
+        return 'Permintaan lokasi memakan waktu terlalu lama (timeout). Periksa sinyal GPS Anda dan coba lagi.';
       default:
-        return 'An unknown error occurred while getting location.';
+        return 'Terjadi kesalahan tidak dikenal saat mengambil lokasi.';
     }
   };
 

@@ -7,6 +7,7 @@ const {
   rejectKoreksiValidation,
   getKoreksiValidation,
   koreksiIdValidation,
+  createAbsensiManualValidation,
 } = require("../validation/koreksiAbsensiValidation");
 
 /**
@@ -154,6 +155,31 @@ const cancelKoreksi = async (req, res, next) => {
   }
 };
 
+/**
+ * Submit a manual attendance request (forgot to clock in)
+ */
+const createAbsensiManual = async (req, res, next) => {
+  try {
+    const request = validate(createAbsensiManualValidation, req.body);
+
+    const auditInfo = {
+      userId: req.user.id,
+      cabangId: req.user.cabangId,
+      ipAddress: req.ip || req.socket.remoteAddress,
+    };
+
+    const result = await koreksiAbsensiService.createAbsensiManual(request, auditInfo);
+
+    res.status(201).json({
+      success: true,
+      message: "Pengajuan absensi manual berhasil dikirim. Menunggu persetujuan.",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createKoreksi,
   getKoreksi,
@@ -161,4 +187,5 @@ module.exports = {
   approveKoreksi,
   rejectKoreksi,
   cancelKoreksi,
+  createAbsensiManual,
 };

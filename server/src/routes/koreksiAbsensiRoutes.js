@@ -14,6 +14,12 @@ router.post(
   koreksiAbsensiController.createKoreksi
 );
 
+// POST - Submit a manual attendance request (forgot to clock in)
+router.post(
+  "/manual",
+  koreksiAbsensiController.createAbsensiManual
+);
+
 // GET - Get correction requests (filtered by permissions)
 router.get(
   "/",

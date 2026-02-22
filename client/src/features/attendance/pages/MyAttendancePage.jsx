@@ -1,24 +1,30 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Calendar, MapPin, Navigation, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
+import { Calendar, MapPin, Navigation, RefreshCw, AlertCircle, CheckCircle, Users, User } from 'lucide-react';
 import AttendanceStatus from '../components/AttendanceStatus';
 import ClockInButton from '../components/ClockInButton';
 import ClockOutButton from '../components/ClockOutButton';
+import TeamAttendanceToday from '../components/TeamAttendanceToday';
+import AttendanceMap from '../components/AttendanceMap';
+import MyAttendanceHistory from '../components/MyAttendanceHistory';
 import { getTodayAttendance } from '../services/attendanceService';
+import { useAuth } from '../../../common/hooks/useAuth';
+import { FileText } from 'lucide-react';
 
 /**
  * MyAttendancePage Component
- * Employee's personal attendance page with clock in/out and status display
+ * Employee's personal attendance page and Admin's Team Overview
  */
 const MyAttendancePage = () => {
+  const { hasPermission, isSuperAdmin } = useAuth();
+  const isAdmin = hasPermission('absensi:read') || isSuperAdmin();
+
+  const [activeTab, setActiveTab] = useState('my'); // 'my' | 'team'
   const [attendance, setAttendance] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [notification, setNotification] = useState(null);
 
-  /**
-   * Fetch today's attendance
-   */
   const fetchAttendance = useCallback(async () => {
     try {
       setError(null);
@@ -33,199 +39,240 @@ const MyAttendancePage = () => {
     }
   }, []);
 
-  /**
-   * Refresh attendance data
-   */
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchAttendance();
   };
 
-  /**
-   * Handle successful clock in/out
-   */
   const handleSuccess = (message = 'Operation successful') => {
     setNotification({ type: 'success', message });
     fetchAttendance();
     setTimeout(() => setNotification(null), 5000);
   };
 
-  /**
-   * Handle clock in/out error
-   */
-   const handleError = (message) => {
+  const handleError = (message) => {
     setNotification({ type: 'error', message });
     setTimeout(() => setNotification(null), 5000);
   };
 
-  // Load attendance on mount
   useEffect(() => {
-    fetchAttendance();
-  }, [fetchAttendance]);
+    if (activeTab === 'my') {
+      fetchAttendance();
+    }
+  }, [fetchAttendance, activeTab]);
 
   const canClockIn = !attendance || !attendance.waktuMasuk;
   const canClockOut = attendance && attendance.waktuMasuk && !attendance.waktuKeluar;
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">My Attendance</h1>
-              <p className="text-gray-600 mt-1">
-                {new Date().toLocaleDateString('id-ID', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </p>
+  const renderMyAttendance = () => (
+    <div className="space-y-8 animate-fade-in">
+      {/* Action Cards */}
+      {!loading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Clock In */}
+          {canClockIn && (
+            <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-8 border border-gray-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-shadow">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-3 bg-emerald-100 text-emerald-600 rounded-2xl">
+                  <Calendar className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Mulai Shift</h3>
+                  <p className="text-sm text-gray-500">Catat waktu masuk Anda</p>
+                </div>
+              </div>
+              <ClockInButton
+                onSuccess={() => handleSuccess('Berhasil absen masuk!')}
+                onError={handleError}
+                className="w-full"
+              />
             </div>
+          )}
+
+          {/* Clock Out */}
+          {canClockOut && (
+            <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-8 border border-gray-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-shadow">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-3 bg-blue-100 text-blue-600 rounded-2xl">
+                  <Navigation className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Akhiri Shift</h3>
+                  <p className="text-sm text-gray-500">Catat waktu keluar Anda</p>
+                </div>
+              </div>
+              <ClockOutButton
+                attendanceRecord={attendance}
+                onSuccess={() => handleSuccess('Berhasil absen keluar! Selamat beristirahat!')}
+                onError={handleError}
+                className="w-full"
+              />
+            </div>
+          )}
+          
+          {/* Completed state card */}
+          {attendance?.waktuMasuk && attendance?.waktuKeluar && (
+            <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl p-8 text-white shadow-lg shadow-emerald-200 col-span-1 md:col-span-2 flex flex-col sm:flex-row items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
+                  <CheckCircle className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">Shift Selesai</h3>
+                  <p className="text-emerald-50 mt-1 opacity-90">Kerja bagus hari ini! Sampai jumpa di shift berikutnya.</p>
+                </div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm px-6 py-4 rounded-2xl border border-white/20 text-center w-full sm:w-auto">
+                <p className="text-sm text-emerald-100 mb-1">Total Waktu</p>
+                <p className="text-3xl font-bold tracking-tight">{attendance.jamKerja}h{attendance.isLembur && <span className="text-sm ml-2 bg-white/20 px-2 py-0.5 rounded font-medium">+{attendance.jamLembur}h</span>}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Status Details */}
+      <AttendanceStatus attendance={attendance} loading={loading} />
+      
+      {/* Live Map with Radius Checking */}
+      <AttendanceMap />
+      
+      {/* Help Section */}
+      <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 flex flex-col sm:flex-row gap-6 items-start">
+        <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center shrink-0">
+          <span className="text-slate-600 font-bold text-xl">?</span>
+        </div>
+        <div>
+          <h3 className="font-semibold text-slate-800 mb-2">Butuh Bantuan?</h3>
+          <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm text-slate-600">
+            <li className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
+              <span className="truncate">Pastikan lokasi akurat</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
+              <span className="truncate">Izinkan akses kamera</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
+              <span className="truncate">Posisi wajah terlihat jelas</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
+              <span className="truncate">Butuh pencahayaan baik</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-[calc(100vh-4rem)] bg-[#F8FAFC] py-8 pb-20">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Top Header */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Absensi</h1>
+            <p className="text-slate-500 mt-1 font-medium bg-slate-100 w-fit px-3 py-1 rounded-full text-sm">
+              {new Date().toLocaleDateString('id-ID', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </p>
+          </div>
+          {activeTab === 'my' && (
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="p-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50 transition-colors"
-              aria-label="Refresh"
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 disabled:opacity-50 transition-all font-medium text-slate-700 w-fit"
             >
-              <RefreshCw className={`w-5 h-5 text-gray-600 ${refreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+              Segarkan
             </button>
-          </div>
+          )}
         </div>
 
-        {/* Notification */}
+        {/* Global Notifications */}
         {notification && (
-          <div
-            className={`mb-6 p-4 rounded-lg flex items-start gap-3 ${
-              notification.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-            }`}
-          >
+          <div className={`mb-8 p-4 rounded-2xl flex items-start gap-3 shadow-sm border ${
+            notification.type === 'success' ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'
+          }`}>
             {notification.type === 'success' ? (
-              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <CheckCircle className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
             ) : (
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-rose-600 mt-0.5 shrink-0" />
             )}
-            <div className="flex-1">
-              <p
-                className={`text-sm ${
-                  notification.type === 'success' ? 'text-green-900' : 'text-red-900'
-                }`}
-              >
-                {notification.message}
-              </p>
-            </div>
-            <button
-              onClick={() => setNotification(null)}
-              className={`${
-                notification.type === 'success' ? 'text-green-600 hover:text-green-800' : 'text-red-600 hover:text-red-800'
-              }`}
-            >
-              ×
-            </button>
+            <p className={`flex-1 text-sm font-medium ${notification.type === 'success' ? 'text-emerald-900' : 'text-rose-900'}`}>
+              {notification.message}
+            </p>
+            <button onClick={() => setNotification(null)} className="text-gray-400 hover:text-gray-600">×</button>
           </div>
         )}
 
-        {/* Error State */}
+        {/* Global Error */}
         {error && !loading && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm text-red-900">{error}</p>
-            </div>
+          <div className="mb-8 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-start gap-3 shadow-sm">
+            <AlertCircle className="w-5 h-5 text-rose-600 mt-0.5 shrink-0" />
+            <p className="flex-1 text-sm font-medium text-rose-900">{error}</p>
             <button
               onClick={fetchAttendance}
-              className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors"
+              className="px-3 py-1 bg-rose-600 text-white text-xs font-semibold rounded-lg hover:bg-rose-700 transition-colors shadow-sm shadow-rose-200"
             >
-              Retry
+              Coba Lagi
             </button>
           </div>
         )}
 
-        {/* Attendance Status */}
-        <div className="mb-8">
-          <AttendanceStatus attendance={attendance} loading={loading} />
+        {/* Tab Navigation */}
+        <div className="flex p-1 bg-slate-100/80 backdrop-blur-sm rounded-2xl w-fit mb-8 border border-slate-200/50 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('my')}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
+              activeTab === 'my'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+            }`}
+          >
+            <User className="w-4 h-4" />
+            Absensi Saya
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
+              activeTab === 'history'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            Riwayat Kehadiran
+          </button>
+
+          {isAdmin && (
+            <button
+              onClick={() => setActiveTab('team')}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
+                activeTab === 'team'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              Absensi Tim Hari Ini
+            </button>
+          )}
         </div>
 
-        {/* Actions */}
-        {!loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Clock In Button */}
-            {canClockIn && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <Calendar className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Clock In</h3>
-                    <p className="text-sm text-gray-600">Start your work day</p>
-                  </div>
-                </div>
-                <ClockInButton
-                  onSuccess={() => handleSuccess('Clocked in successfully!')}
-                  onError={handleError}
-                  className="w-full"
-                />
-              </div>
-            )}
 
-            {/* Clock Out Button */}
-            {canClockOut && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-red-100 rounded-lg">
-                    <Navigation className="w-5 h-5 text-red-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Clock Out</h3>
-                    <p className="text-sm text-gray-600">End your work day</p>
-                  </div>
-                </div>
-                <ClockOutButton
-                  attendanceRecord={attendance}
-                  onSuccess={() => handleSuccess('Clocked out successfully! Have a nice rest!')}
-                  onError={handleError}
-                  className="w-full"
-                />
-              </div>
-            )}
-
-            {/* Information Cards */}
-            {attendance?.waktuMasuk && attendance?.waktuKeluar && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <MapPin className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Completed</h3>
-                    <p className="text-sm text-gray-600">See you tomorrow!</p>
-                  </div>
-                </div>
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <p className="text-gray-600 text-sm">
-                    You have completed your attendance for today. Total hours: <span className="font-semibold">{attendance.jamKerja}h</span>
-                    {attendance.isLembur && (
-                      <span className="text-blue-600"> (+{attendance.jamLembur}h overtime)</span>
-                    )}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Help Section */}
-        <div className="mt-8 bg-blue-50 rounded-lg p-6">
-          <h3 className="font-semibold text-blue-900 mb-3">Need Help?</h3>
-          <ul className="space-y-2 text-sm text-blue-800">
-            <li>• Make sure you're at your assigned location before clocking in/out</li>
-            <li>• Allow camera and location permissions when prompted</li>
-            <li>• Position your face clearly in the camera frame</li>
-            <li>• Ensure good lighting for accurate face recognition</li>
-            <li>• Contact your administrator if you cannot access any locations</li>
-          </ul>
+        {/* Tab Content */}
+        <div className="mt-2 text-slate-800">
+          {activeTab === 'my' && renderMyAttendance()}
+          {activeTab === 'history' && <MyAttendanceHistory />}
+          {activeTab === 'team' && isAdmin && <TeamAttendanceToday />}
         </div>
       </div>
     </div>

@@ -64,6 +64,19 @@ import LoyaltyConfigPage from "./features/settings/pages/LoyaltyConfigPage";
 // Attendance Feature
 import { MyAttendancePage, AttendanceAdminPage, LocationManagementPage } from "./features/attendance";
 
+// Leave Feature
+import HariLiburPage from "./features/leave/pages/HariLiburPage";
+import MyLeavePage from "./features/leave/pages/MyLeavePage";
+import LeaveApprovalPage from "./features/leave/pages/LeaveApprovalPage";
+import LeaveQuotaPage from "./features/leave/pages/LeaveQuotaPage";
+
+// Payroll Feature
+import KomponenGajiPage from "./features/payroll/pages/KomponenGajiPage";
+import PegawaiPayrollPage from "./features/payroll/pages/PegawaiPayrollPage";
+import SlipGajiAdminPage from "./features/payroll/pages/SlipGajiAdminPage";
+import MySlipGajiPage from "./features/payroll/pages/MySlipGajiPage";
+import PrintSlipGajiPage from "./features/payroll/pages/PrintSlipGajiPage";
+
 // Other Components
 import NotFoundPage from "./features/common/pages/NotFoundPage";
 import SearchResults from "./features/common/pages/SearchResults";
@@ -213,6 +226,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <NoAccessPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="payroll/slips/print/:id"
+              element={
+                <ProtectedRoute>
+                  <PrintSlipGajiPage />
                 </ProtectedRoute>
               }
             />
@@ -508,6 +530,66 @@ function App() {
               }
             >
               <Route index element={<LocationManagementPage />} />
+            </Route>
+
+            {/* Leave Management */}
+            <Route
+              path="/leave"
+              element={
+                <ProtectedRoute>
+                  <DynamicLayout />
+                </ProtectedRoute>
+              }
+            >
+              {/* Employee Routes */}
+              <Route path="my-leave" element={<MyLeavePage />} />
+              
+              {/* Admin Routes */}
+              <Route path="approval" element={
+                <ProtectedRoute requiredPermission="izin_cuti:approve">
+                  <LeaveApprovalPage />
+                </ProtectedRoute>
+              } />
+              <Route path="quota" element={
+                <ProtectedRoute requiredPermission="izin_cuti:manage_kuota">
+                  <LeaveQuotaPage />
+                </ProtectedRoute>
+              } />
+              <Route path="holidays" element={
+                <ProtectedRoute requiredPermission="hari_libur:manage">
+                  <HariLiburPage />
+                </ProtectedRoute>
+              } />
+            </Route>
+
+            {/* Payroll Management */}
+            <Route
+              path="/payroll"
+              element={
+                <ProtectedRoute>
+                  <DynamicLayout />
+                </ProtectedRoute>
+              }
+            >
+              {/* Employee Routes */}
+              <Route path="my-slip" element={<MySlipGajiPage />} />
+
+              {/* Admin Routes */}
+              <Route path="komponen" element={
+                <ProtectedRoute requiredPermission="penggajian:manage_komponen">
+                  <KomponenGajiPage />
+                </ProtectedRoute>
+              } />
+              <Route path="gaji" element={
+                <ProtectedRoute requiredPermission="penggajian:manage_gaji">
+                  <PegawaiPayrollPage />
+                </ProtectedRoute>
+              } />
+              <Route path="slip" element={
+                <ProtectedRoute requiredPermission="penggajian:manage_slip">
+                  <SlipGajiAdminPage />
+                </ProtectedRoute>
+              } />
             </Route>
 
             {/* Reports */}

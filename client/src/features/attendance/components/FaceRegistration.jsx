@@ -36,14 +36,24 @@ const FaceRegistration = ({
   /**
    * Handle photo capture and registration
    */
-  const handlePhotoCapture = async (photoBase64) => {
+  const handlePhotoCapture = async (capturedData) => {
     try {
       setIsRegistering(true);
       setError(null);
       setShowCamera(false);
 
+      // AttendanceCamera returns { frames, mainPhoto } — extract mainPhoto
+      const rawPhoto = typeof capturedData === 'object' && capturedData.mainPhoto
+        ? capturedData.mainPhoto
+        : capturedData;
+
+      // Strip data URL prefix if present (e.g. "data:image/jpeg;base64,...")
+      const base64Photo = typeof rawPhoto === 'string' && rawPhoto.includes(',')
+        ? rawPhoto.split(',')[1]
+        : rawPhoto;
+
       // Call registration API
-      const result = await registerFace(userId, photoBase64);
+      const result = await registerFace(userId, base64Photo);
 
       setFaceData(result);
       setSuccess(true);

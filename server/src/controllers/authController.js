@@ -20,18 +20,20 @@ const login = async (req, res) => {
       userAgent
     );
 
+    const isProduction = process.env.NODE_ENV === "production";
+
     res.cookie("auth_token", result.token, {
       httpOnly: true,
-      secure: true,
-      sameSite: "None",
+      secure: isProduction,
+      sameSite: isProduction ? "None" : "Lax",
       maxAge: 86400000,
     });
 
     if (result.sessionId) {
       res.cookie("session_id", result.sessionId, {
         httpOnly: true,
-        secure: true,
-        sameSite: "None",
+        secure: isProduction,
+        sameSite: isProduction ? "None" : "Lax",
         maxAge: 86400000,
       });
     }

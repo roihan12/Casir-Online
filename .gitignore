@@ -27,3 +27,4 @@ dist-ssr
 ./web
 .trae/
 .claude/*
+venv/*

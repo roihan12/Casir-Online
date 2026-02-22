@@ -1,7 +1,8 @@
 import axios from "axios";
 
-// Dapatkan API URL dari environment variable
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3000/api";
+// Dapatkan API URL dari environment variable, gunakan base IP komputer jika diakses dari jaringan lokal
+// Digunakan relative path "/api" agar Vite dev server memproksi ke HTTPS secara otomatis (mengatasi Mixed Content)
+const API_URL = import.meta.env?.VITE_API_BASE_URL || process.env.REACT_APP_API_URL || "/api";
 
 // Buat instance axios dengan konfigurasi dasar
 const api = axios.create({
@@ -18,8 +19,6 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-
-    console.log("from api.js");
 
     // Pastikan error.response ada untuk menghindari error
     if (

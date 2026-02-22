@@ -247,7 +247,7 @@ const ClockInButton = ({ onSuccess, onError, className = '' }) => {
           <div className="flex-1">
             <p className="text-sm text-red-800">{error}</p>
             {locationError && (
-              <p className="text-xs text-red-600 mt-1">Location: {locationError}</p>
+              <p className="text-xs text-red-600 mt-1">Lokasi: {locationError}</p>
             )}
           </div>
           <button

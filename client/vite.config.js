@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
+import mkcert from 'vite-plugin-mkcert'
 import dotenv from 'dotenv'
 import path from 'path'
 
@@ -7,7 +8,7 @@ dotenv.config()
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), mkcert()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -23,5 +24,19 @@ export default defineConfig({
   },
   define: {
     'process.env': process.env
+  },
+  server: {
+    host: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true
+      },
+      '/socket.io': {
+        target: 'http://localhost:3000',
+        ws: true,
+        changeOrigin: true
+      }
+    }
   }
 })
