@@ -377,23 +377,23 @@ const CustomerManagementPage = () => {
 
   return (
     <div className="p-4 md:p-6">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-gray-900">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
           Manajemen Pelanggan
         </h1>
-        <p className="mt-2 text-sm text-gray-700">
+        <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-gray-700">
           Kelola data pelanggan dari semua cabang
         </p>
       </div>
 
       {/* Branch Filter Section */}
-      <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="bg-white rounded-lg shadow-sm p-3 mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center text-sm text-gray-600">
           <Building2 className="h-4 w-4 mr-2 text-indigo-500" />
           <span className="font-medium">Filter Cabang:</span>
         </div>
         <select
-          className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white disabled:bg-gray-100 disabled:text-gray-500"
+          className="w-full sm:w-64 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white disabled:bg-gray-100 disabled:text-gray-500"
           value={selectedBranchId || (hasSingleBranch && availableBranches[0]?.id) || "all"}
           onChange={(e) => setSelectedBranchId(e.target.value === "all" ? null : e.target.value)}
           disabled={!adminMode && hasSingleBranch}
@@ -409,172 +409,164 @@ const CustomerManagementPage = () => {
 
       {/* Single branch indicator */}
       {hasSingleBranch && availableBranches.length === 1 && (
-        <div className="bg-indigo-50 rounded-lg p-3 mb-4 flex items-center text-sm">
+        <div className="bg-indigo-50 rounded-lg p-3 mb-4 flex items-center text-xs sm:text-sm">
           <Building2 className="h-4 w-4 mr-2 text-indigo-500" />
           <span className="text-indigo-700">
-            Menampilkan data untuk: <strong>{availableBranches[0]?.namaCabang}</strong>
+            Data: <strong>{availableBranches[0]?.namaCabang}</strong>
           </span>
         </div>
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow p-5">
-          <div className="flex justify-between">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        <div className="bg-white rounded-lg shadow-sm p-3 sm:p-5 border border-gray-100">
+          <div className="flex justify-between items-start">
             <div>
-              <p className="text-sm font-medium text-gray-500">
-                Total Pelanggan
+              <p className="text-[10px] sm:text-sm font-medium text-gray-500">
+                Total
               </p>
-              <p className="text-2xl font-semibold text-gray-900">
+              <p className="text-lg sm:text-2xl font-semibold text-gray-900">
                 {stats.total}
               </p>
             </div>
-            <Users className="h-10 w-10 text-indigo-500" />
+            <Users className="h-5 w-5 sm:h-8 sm:w-8 text-indigo-500" />
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-5">
-          <div className="flex justify-between">
+        <div className="bg-white rounded-lg shadow-sm p-3 sm:p-5 border border-gray-100">
+          <div className="flex justify-between items-start">
             <div>
-              <p className="text-sm font-medium text-gray-500">Pelanggan VIP</p>
-              <p className="text-2xl font-semibold text-purple-600">
+              <p className="text-[10px] sm:text-sm font-medium text-gray-500">VIP</p>
+              <p className="text-lg sm:text-2xl font-semibold text-purple-600">
                 {stats.vip}
               </p>
             </div>
-            <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
-              <Heart className="h-6 w-6 text-purple-500" />
+            <div className="h-6 w-6 sm:h-8 sm:w-8 rounded-full bg-purple-100 flex items-center justify-center">
+              <Heart className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-purple-500" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-5">
-          <div className="flex justify-between">
+        <div className="bg-white rounded-lg shadow-sm p-3 sm:p-5 border border-gray-100">
+          <div className="flex justify-between items-start">
             <div>
-              <p className="text-sm font-medium text-gray-500">
-                Pelanggan Grosir
+              <p className="text-[10px] sm:text-sm font-medium text-gray-500">
+                Grosir
               </p>
-              <p className="text-2xl font-semibold text-blue-600">
+              <p className="text-lg sm:text-2xl font-semibold text-blue-600">
                 {stats.grosir}
               </p>
             </div>
-            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-              <ShoppingBag className="h-6 w-6 text-blue-500" />
+            <div className="h-6 w-6 sm:h-8 sm:w-8 rounded-full bg-blue-100 flex items-center justify-center">
+              <ShoppingBag className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-blue-500" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-5">
-          <div className="flex justify-between">
+        <div className="bg-white rounded-lg shadow-sm p-3 sm:p-5 border border-gray-100">
+          <div className="flex justify-between items-start">
             <div>
-              <p className="text-sm font-medium text-gray-500">
-                Pelanggan Nonaktif
+              <p className="text-[10px] sm:text-sm font-medium text-gray-500">
+                Nonaktif
               </p>
-              <p className="text-2xl font-semibold text-red-600">
+              <p className="text-lg sm:text-2xl font-semibold text-red-600">
                 {stats.inactive}
               </p>
             </div>
-            <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
-              <AlertTriangle className="h-6 w-6 text-red-500" />
+            <div className="h-6 w-6 sm:h-8 sm:w-8 rounded-full bg-red-100 flex items-center justify-center">
+              <AlertTriangle className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-red-500" />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="relative flex-1 max-w-md">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
+      <div className="bg-white shadow rounded-lg overflow-hidden border">
+        <div className="p-4 sm:p-6 space-y-4">
+          <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                className="block w-full pl-10 pr-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                placeholder="Cari pelanggan..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
-            <input
-              type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              placeholder="Cari pelanggan..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+
+            <div className="grid grid-cols-2 sm:flex items-center gap-2 sm:gap-4">
+              <div className="flex items-center">
+                <select
+                  id="segmentFilter"
+                  className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm h-10"
+                  value={segmentFilter}
+                  onChange={(e) => setSegmentFilter(e.target.value)}
+                >
+                  <option value="all">Semua Segmen</option>
+                  <option value="retail">Retail</option>
+                  <option value="grosir">Grosir</option>
+                  <option value="vip">VIP</option>
+                </select>
+              </div>
+
+              <div className="flex items-center">
+                <select
+                  id="statusFilter"
+                  className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm h-10"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">Semua Status</option>
+                  <option value="aktif">Aktif</option>
+                  <option value="nonaktif">Nonaktif</option>
+                </select>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center">
-              <label
-                htmlFor="segmentFilter"
-                className="mr-2 text-sm text-gray-600"
-              >
-                Segmen:
-              </label>
-              <select
-                id="segmentFilter"
-                className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                value={segmentFilter}
-                onChange={(e) => setSegmentFilter(e.target.value)}
-              >
-                <option value="all">Semua</option>
-                <option value="retail">Retail</option>
-                <option value="grosir">Grosir</option>
-                <option value="vip">VIP</option>
-              </select>
-            </div>
-
-            <div className="flex items-center">
-              <label
-                htmlFor="statusFilter"
-                className="mr-2 text-sm text-gray-600"
-              >
-                Status:
-              </label>
-              <select
-                id="statusFilter"
-                className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="all">Semua</option>
-                <option value="aktif">Aktif</option>
-                <option value="nonaktif">Nonaktif</option>
-              </select>
-            </div>
-
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 pt-2 border-t lg:border-t-0 lg:pt-0">
             <button
               onClick={handleRefresh}
-              className={`inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
+              className={`flex-1 sm:flex-none inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-xs sm:text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                 isRefreshing ? "opacity-50 cursor-not-allowed" : ""
-              }`}
+              } h-10`}
               disabled={isRefreshing}
             >
               <RefreshCw
                 className={`h-4 w-4 sm:mr-2 ${isRefreshing ? "animate-spin" : ""}`}
               />
-              <span className="hidden sm:inline">Muat Ulang</span>
+              <span className="ml-2 sm:ml-0">Muat Ulang</span>
             </button>
 
             {canManage && (
               <button
                 onClick={() => navigate("/customers/segments")}
-                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="flex-1 sm:flex-none inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-xs sm:text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 h-10"
               >
                 <Filter className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Segmentasi</span>
+                <span className="ml-2 sm:ml-0">Segmentasi</span>
               </button>
             )}
 
             {canManage && (
               <button
                 onClick={() => navigate("/customers/loyalty")}
-                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="flex-1 sm:flex-none inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-xs sm:text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 h-10"
               >
-                <Heart className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Loyalitas</span>
+                <Heart className="h-4 w-4 sm:mr-2 text-red-500" />
+                <span className="ml-2 sm:ml-0">Loyalitas</span>
               </button>
             )}
 
             {canCreate && (
               <button
                 onClick={handleAddCustomer}
-                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="col-span-2 sm:flex-none inline-flex items-center justify-center px-4 py-2 border border-transparent text-xs sm:text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 h-10"
               >
-                <UserPlus className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Tambah Pelanggan</span>
+                <Plus className="h-4 w-4 mr-2" />
+                Tambah Pelanggan
               </button>
             )}
           </div>

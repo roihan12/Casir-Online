@@ -345,23 +345,23 @@ const CustomerDetail = () => {
 
   return (
     <div className="p-4 md:p-6">
-      <div className="mb-6 flex justify-between items-center">
+      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
         <div className="flex items-center">
           <button
             onClick={() => navigate("/customers")}
-            className="mr-4 p-2 rounded-full hover:bg-gray-100"
+            className="mr-3 sm:mr-4 p-2 rounded-full hover:bg-gray-100 bg-white shadow-sm sm:shadow-none"
           >
             <ArrowLeft className="h-5 w-5 text-gray-600" />
           </button>
-          <h1 className="text-2xl font-semibold text-gray-900">
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
             Detail Pelanggan
           </h1>
         </div>
 
-        <div className="flex space-x-3">
+        <div className="flex w-full sm:w-auto gap-2">
           <button
             onClick={handleRefresh}
-            className={`p-2 rounded-full hover:bg-gray-100 ${
+            className={`p-2 bg-white border rounded-lg hover:bg-gray-50 flex items-center justify-center ${
               isRefreshing ? "opacity-50 cursor-not-allowed" : ""
             }`}
             disabled={isRefreshing}
@@ -374,87 +374,90 @@ const CustomerDetail = () => {
           </button>
           <button
             onClick={handleEditCustomer}
-            className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm leading-4 font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 h-10"
           >
             <Edit className="h-4 w-4 mr-2" />
             Edit
           </button>
           <button
             onClick={handleDeleteCustomer}
-            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-lg text-gray-700 bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 h-10 transition-colors"
           >
-            <Trash className="h-4 w-4 mr-2 text-red-500" />
+            <Trash className="h-4 w-4 mr-2" />
             Hapus
           </button>
         </div>
       </div>
 
       {/* Customer header card */}
-      <div className="bg-white rounded-lg shadow overflow-hidden mb-6">
-        <div className="p-6">
-          <div className="flex items-start">
-            <div className="h-16 w-16 rounded-full bg-indigo-100 flex items-center justify-center">
-              <User className="h-8 w-8 text-indigo-600" />
+      <div className="bg-white rounded-lg shadow-sm border overflow-hidden mb-6">
+        <div className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left">
+            <div className="h-20 w-20 sm:h-16 sm:w-16 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+              <User className="h-10 w-10 sm:h-8 sm:w-8 text-indigo-600" />
             </div>
-            <div className="ml-6">
-              <h2 className="text-xl font-bold text-gray-900">
-                {customer.namaPelanggan}
-              </h2>
-              <div className="mt-1 flex items-center">
-                <span
-                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mr-2 ${getSegmentBadgeClass(
-                    customer.segmen
-                  )}`}
-                >
-                  {getSegmentDisplay(customer.segmen)}
-                </span>
-                <span
-                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    customer.status === "aktif"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
-                >
-                  {customer.status === "aktif" ? "Aktif" : "Nonaktif"}
-                </span>
+            <div className="mt-4 sm:mt-0 sm:ml-6 flex-1">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 justify-center sm:justify-start">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+                  {customer.namaPelanggan}
+                </h2>
+                <div className="flex items-center justify-center sm:justify-start gap-2">
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${getSegmentBadgeClass(
+                      customer.segmen
+                    )}`}
+                  >
+                    {getSegmentDisplay(customer.segmen)}
+                  </span>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                      customer.status === "aktif"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {customer.status === "aktif" ? "Aktif" : "Nonaktif"}
+                  </span>
+                </div>
               </div>
-              <div className="mt-4 flex flex-wrap">
+              
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {customer.cabang && (
-                  <div className="flex items-center mr-6 mb-2">
-                    <MapPin className="h-4 w-4 text-gray-400 mr-1" />
+                  <div className="flex items-center justify-center sm:justify-start">
+                    <MapPin className="h-4 w-4 text-gray-400 mr-2" />
                     <span className="text-sm text-gray-600">
                       {customer.cabang.namaCabang}
                     </span>
                   </div>
                 )}
                 {customer.telepon && (
-                  <div className="flex items-center mr-6 mb-2">
-                    <Phone className="h-4 w-4 text-gray-400 mr-1" />
+                  <div className="flex items-center justify-center sm:justify-start">
+                    <Phone className="h-4 w-4 text-gray-400 mr-2" />
                     <span className="text-sm text-gray-600">
                       {customer.telepon}
                     </span>
                   </div>
                 )}
                 {customer.email && (
-                  <div className="flex items-center mr-6 mb-2">
-                    <Mail className="h-4 w-4 text-gray-400 mr-1" />
-                    <span className="text-sm text-gray-600">
+                  <div className="flex items-center justify-center sm:justify-start">
+                    <Mail className="h-4 w-4 text-gray-400 mr-2" />
+                    <span className="text-sm text-gray-600 truncate max-w-[200px]">
                       {customer.email}
                     </span>
                   </div>
                 )}
                 {customer.tanggalLahir && (
-                  <div className="flex items-center mr-6 mb-2">
-                    <Calendar className="h-4 w-4 text-gray-400 mr-1" />
+                  <div className="flex items-center justify-center sm:justify-start">
+                    <Calendar className="h-4 w-4 text-gray-400 mr-2" />
                     <span className="text-sm text-gray-600">
                       {formatDate(customer.tanggalLahir)}
                     </span>
                   </div>
                 )}
-                <div className="flex items-center mb-2">
-                  <Heart className="h-4 w-4 text-red-400 mr-1" />
-                  <span className="text-sm text-gray-600">
-                    {customer.poin || 0} poin
+                <div className="flex items-center justify-center sm:justify-start">
+                  <Heart className="h-4 w-4 text-red-400 mr-2" />
+                  <span className="text-sm text-gray-600 font-medium">
+                    {customer.poin || 0} poin loyalitas
                   </span>
                 </div>
               </div>
@@ -469,39 +472,39 @@ const CustomerDetail = () => {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="-mb-px flex space-x-8">
+      <div className="border-b border-gray-200 mb-6 overflow-x-auto scrollbar-hide">
+        <nav className="-mb-px flex space-x-6 sm:space-x-8 min-w-max px-4 sm:px-0">
           <button
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center ${
               activeTab === "info"
                 ? "border-indigo-500 text-indigo-600"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             }`}
             onClick={() => setActiveTab("info")}
           >
-            <User className="h-4 w-4 inline mr-2" />
+            <User className="h-4 w-4 mr-2" />
             Informasi
           </button>
           <button
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center ${
               activeTab === "transactions"
                 ? "border-indigo-500 text-indigo-600"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             }`}
             onClick={() => setActiveTab("transactions")}
           >
-            <ShoppingCart className="h-4 w-4 inline mr-2" />
+            <ShoppingCart className="h-4 w-4 mr-2" />
             Riwayat Transaksi
           </button>
           <button
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center ${
               activeTab === "loyalty"
                 ? "border-indigo-500 text-indigo-600"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             }`}
             onClick={() => setActiveTab("loyalty")}
           >
-            <Gift className="h-4 w-4 inline mr-2" />
+            <Gift className="h-4 w-4 mr-2" />
             Riwayat Poin
           </button>
         </nav>

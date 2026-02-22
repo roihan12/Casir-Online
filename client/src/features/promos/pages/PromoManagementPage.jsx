@@ -197,25 +197,23 @@ const PromoManagement = () => {
 
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">
           Manajemen Promo
         </h1>
-        <div className="flex space-x-2">
-          <button
-            onClick={handleCreatePromo}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-indigo-700"
-          >
-            <Plus size={16} className="mr-2" />
-            Tambah Promo
-          </button>
-        </div>
+        <button
+          onClick={handleCreatePromo}
+          className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center justify-center hover:bg-indigo-700 transition-colors"
+        >
+          <Plus size={18} className="mr-2" />
+          Tambah Promo
+        </button>
       </div>
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow mb-6">
         <div className="p-4 border-b">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="relative flex-1">
               <Search
                 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
@@ -223,16 +221,16 @@ const PromoManagement = () => {
               />
               <input
                 type="text"
-                className="pl-10 pr-4 py-2 border rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
                 placeholder="Cari promo atau kode promo..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange("search", e.target.value)}
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2 px-3 py-2 border rounded-lg hover:bg-gray-50"
+                className={`flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 border rounded-lg transition-colors ${showFilters ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'hover:bg-gray-50'}`}
               >
                 <Filter size={18} />
                 <span>Filter</span>
@@ -244,12 +242,12 @@ const PromoManagement = () => {
               </button>
               <button
                 onClick={fetchPromos}
-                className="flex items-center gap-2 px-3 py-2 border rounded-lg hover:bg-gray-50"
+                className="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 border rounded-lg hover:bg-gray-50 transition-colors"
               >
-                <RefreshCw size={18} />
+                <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
                 <span className="hidden sm:inline">Refresh</span>
               </button>
-              <button className="flex items-center gap-2 px-3 py-2 border rounded-lg hover:bg-gray-50">
+              <button className="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 border rounded-lg hover:bg-gray-50 transition-colors">
                 <Download size={18} />
                 <span className="hidden sm:inline">Export</span>
               </button>
@@ -533,23 +531,23 @@ const PromoManagement = () => {
 
         {/* Pagination */}
         {!loading && promos.length > 0 && (
-          <div className="px-4 py-3 border-t flex flex-col sm:flex-row items-center justify-between">
-            <div className="text-sm text-gray-500 mb-3 sm:mb-0">
+          <div className="px-4 py-4 border-t flex flex-col lg:flex-row items-center justify-between gap-4">
+            <div className="text-sm text-gray-500 text-center lg:text-left">
               Menampilkan {(pagination.currentPage - 1) * filters.limit + 1} -{" "}
               {Math.min(
                 pagination.currentPage * filters.limit,
                 pagination.totalItems
               )}{" "}
-              dari {pagination.totalItems} promo
+              dari <span className="font-semibold text-gray-900">{pagination.totalItems}</span> promo
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-2">
               <button
                 onClick={() => handlePageChange(1)}
                 disabled={pagination.currentPage === 1}
-                className={`px-3 py-1 rounded border ${
+                className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
                   pagination.currentPage === 1
-                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "hover:bg-gray-50"
+                    ? "bg-gray-50 text-gray-400 cursor-not-allowed border-gray-200"
+                    : "hover:bg-gray-50 text-gray-700 border-gray-300"
                 }`}
               >
                 Pertama
@@ -557,24 +555,24 @@ const PromoManagement = () => {
               <button
                 onClick={() => handlePageChange(pagination.currentPage - 1)}
                 disabled={pagination.currentPage === 1}
-                className={`px-3 py-1 rounded border ${
+                className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
                   pagination.currentPage === 1
-                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "hover:bg-gray-50"
+                    ? "bg-gray-50 text-gray-400 cursor-not-allowed border-gray-200"
+                    : "hover:bg-gray-50 text-gray-700 border-gray-300"
                 }`}
               >
                 Sebelumnya
               </button>
-              <span className="px-3 py-1">
+              <span className="px-4 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-semibold border border-indigo-100">
                 {pagination.currentPage} / {pagination.totalPages}
               </span>
               <button
                 onClick={() => handlePageChange(pagination.currentPage + 1)}
                 disabled={pagination.currentPage === pagination.totalPages}
-                className={`px-3 py-1 rounded border ${
+                className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
                   pagination.currentPage === pagination.totalPages
-                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "hover:bg-gray-50"
+                    ? "bg-gray-50 text-gray-400 cursor-not-allowed border-gray-200"
+                    : "hover:bg-gray-50 text-gray-700 border-gray-300"
                 }`}
               >
                 Selanjutnya
@@ -582,10 +580,10 @@ const PromoManagement = () => {
               <button
                 onClick={() => handlePageChange(pagination.totalPages)}
                 disabled={pagination.currentPage === pagination.totalPages}
-                className={`px-3 py-1 rounded border ${
+                className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
                   pagination.currentPage === pagination.totalPages
-                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "hover:bg-gray-50"
+                    ? "bg-gray-50 text-gray-400 cursor-not-allowed border-gray-200"
+                    : "hover:bg-gray-50 text-gray-700 border-gray-300"
                 }`}
               >
                 Terakhir

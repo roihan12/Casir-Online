@@ -155,16 +155,18 @@ const ShiftReports = () => {
 
   return (
     <div className="p-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Riwayat & Laporan Shift</h1>
-          <p className="text-gray-500 mt-1">Kelola dan tinjau performa shift kasir Anda</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">Riwayat & Laporan Shift</h1>
+          <p className="text-sm text-gray-500 mt-1">Kelola dan tinjau performa shift kasir Anda</p>
         </div>
-        <div className="flex items-center gap-3">
-          <CabangIndicator size="lg" />
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <div className="flex-1 sm:flex-none">
+            <CabangIndicator size="lg" />
+          </div>
           <button
             onClick={handleExportReport}
-            className="bg-white text-green-600 border border-green-200 px-4 py-2.5 rounded-xl flex items-center text-sm font-bold hover:bg-green-50 transition-all shadow-sm"
+            className="flex-1 sm:flex-none bg-white text-emerald-600 border border-emerald-200 px-4 py-2.5 rounded-xl flex items-center justify-center text-sm font-bold hover:bg-emerald-50 transition-all shadow-sm"
           >
             <Download size={18} className="mr-2" />
             Excel
@@ -173,59 +175,57 @@ const ShiftReports = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-              <Clock size={20} />
-            </div>
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Shift</span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 flex-shrink-0">
+            <Clock size={24} />
           </div>
-          <p className="text-3xl font-black text-gray-900">{summary.totalShifts}</p>
-          <p className="text-xs text-gray-500 mt-2">Sesuai filter yang diterapkan</p>
+          <div>
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Total Shift</span>
+            <p className="text-2xl font-black text-gray-900 mt-0.5">{summary.totalShifts}</p>
+          </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-green-600">
-              <ShoppingCart size={20} />
-            </div>
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Transaksi</span>
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center text-green-600 flex-shrink-0">
+            <ShoppingCart size={24} />
           </div>
-          <p className="text-3xl font-black text-gray-900">{summary.totalTransactions}</p>
-          <p className="text-xs text-green-600 mt-2 font-medium">Berhasil diproses</p>
+          <div>
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Transaksi</span>
+            <p className="text-2xl font-black text-gray-900 mt-0.5">{summary.totalTransactions}</p>
+          </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
-              <DollarSign size={20} />
-            </div>
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Pendapatan</span>
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 sm:col-span-2 lg:col-span-1">
+          <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 flex-shrink-0">
+            <DollarSign size={24} />
           </div>
-          <p className="text-3xl font-black text-gray-900">{formatCurrency(summary.totalRevenue)}</p>
-          <p className="text-xs text-gray-500 mt-2">Total dari semua shift</p>
+          <div>
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Pendapatan</span>
+            <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(summary.totalRevenue)}</p>
+          </div>
         </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Filters Header */}
-        <div className="p-5 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50/30">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="relative">
+        {/* Filters Header */}
+        <div className="p-5 border-b border-gray-100 flex flex-col xl:flex-row xl:items-center justify-between gap-5 bg-gray-50/30">
+          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-4">
+            <div className="flex items-center gap-2 flex-1 sm:flex-none">
+              <div className="relative flex-1">
                 <input
                   type="date"
-                  className="pl-3 pr-2 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                  className="w-full pl-3 pr-2 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all bg-white"
                   value={filters.startDate}
                   onChange={(e) => handleDateChange("startDate", e.target.value)}
                 />
               </div>
-              <span className="text-gray-400 text-sm">s/d</span>
-              <div className="relative">
+              <span className="text-gray-400 text-sm font-bold">~</span>
+              <div className="relative flex-1">
                 <input
                   type="date"
-                  className="pl-3 pr-2 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                  className="w-full pl-3 pr-2 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all bg-white"
                   value={filters.endDate}
                   onChange={(e) => handleDateChange("endDate", e.target.value)}
                 />
@@ -233,23 +233,23 @@ const ShiftReports = () => {
             </div>
 
             <select
-              className="px-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+              className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all bg-white cursor-pointer"
               value={filters.status}
               onChange={handleStatusChange}
             >
               <option value="">Semua Status</option>
-              <option value="dibuka">Dibuka</option>
-              <option value="ditutup">Ditutup</option>
-              <option value="disesuaikan">Disesuaikan</option>
+              <option value="dibuka">Status: Dibuka</option>
+              <option value="ditutup">Status: Ditutup</option>
+              <option value="disesuaikan">Status: Disesuaikan</option>
             </select>
           </div>
 
-          <form onSubmit={handleSearch} className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-indigo-500" size={18} />
+          <form onSubmit={handleSearch} className="relative group w-full xl:w-72">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-indigo-500" size={18} />
             <input
               type="text"
               placeholder="Cari nama kasir..."
-              className="pl-10 pr-4 py-2 w-full md:w-64 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+              className="pl-11 pr-4 py-2.5 w-full border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all bg-white shadow-sm"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
             />

@@ -374,26 +374,26 @@ const GlobalTransactionDetail = () => {
   }
 
   return (
-    <div className="w-full p-6">
+    <div className="w-full p-4 lg:p-6">
       {/* Dashboard Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800">Dashboard</h1>
-        <p className="text-sm text-gray-600">Detail informasi transaksi</p>
+        <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">Dashboard</h1>
+        <p className="text-xs sm:text-sm text-gray-600">Detail informasi transaksi</p>
       </div>
 
       {/* Header Actions */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 mb-6">
         <button
-          className="flex items-center text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-md px-4 py-2 text-sm"
+          className="flex items-center justify-center text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-md px-4 py-2 text-sm w-full sm:w-auto"
           onClick={handleBack}
         >
           <ArrowLeft size={16} className="mr-2" />
           Kembali
         </button>
 
-        <div className="flex space-x-2">
+        <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2">
           <button
-            className="flex items-center text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-md px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center justify-center text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-md px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handlePrintReceipt}
             disabled={isPrinting}
           >
@@ -402,10 +402,10 @@ const GlobalTransactionDetail = () => {
             ) : (
               <Printer size={16} className="mr-2" />
             )}
-            {isPrinting ? "Mencetak..." : "Cetak Struk"}
+            <span className="truncate">{isPrinting ? "Mencetak..." : "Cetak Struk"}</span>
           </button>
           <button
-            className="flex items-center text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-md px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center justify-center text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-md px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleDownloadPdf}
             disabled={isDownloading}
           >
@@ -414,12 +414,12 @@ const GlobalTransactionDetail = () => {
             ) : (
               <Download size={16} className="mr-2" />
             )}
-            {isDownloading ? "Mengunduh..." : "Unduh PDF"}
+            <span className="truncate">{isDownloading ? "Mengunduh..." : "Unduh PDF"}</span>
           </button>
           {/* Tampilkan tombol pelunasan jika transaksi belum lunas */}
           {displayData.status_pembayaran === "BELUM_LUNAS" && (
             <button
-              className="flex items-center text-white bg-green-600 hover:bg-green-700 border border-green-600 rounded-md px-4 py-2 text-sm"
+              className="col-span-2 sm:col-auto flex items-center justify-center text-white bg-green-600 hover:bg-green-700 border border-green-600 rounded-md px-4 py-2 text-sm"
               onClick={() => setPelunasanModalOpen(true)}
             >
               <CreditCardIcon size={16} className="mr-2" />
@@ -466,7 +466,7 @@ const GlobalTransactionDetail = () => {
             </div>
 
             <div className="flex flex-col items-start md:items-end">
-              <div className="text-2xl font-bold text-indigo-600 mb-2">
+              <div className="text-xl sm:text-2xl font-bold text-indigo-600 mb-2">
                 {formatCurrency(displayData.total)}
               </div>
 

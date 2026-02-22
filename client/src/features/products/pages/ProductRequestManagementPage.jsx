@@ -357,24 +357,25 @@ const ProductRequestManagement = () => {
   return (
     <div>
       <div className="px-6 py-4">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 sm:gap-0">
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
             Manajemen Request Produk
           </h1>
-          <div className="flex space-x-2">
+          <div className="flex flex-row w-full sm:w-auto gap-2">
             <button
               onClick={() => navigate("/products")}
-              className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center hover:bg-gray-200"
+              className="flex-1 sm:flex-none bg-gray-100 text-gray-700 px-3 sm:px-4 py-2 rounded-lg flex items-center justify-center hover:bg-gray-200 transition-colors text-sm"
             >
-              <Package className="h-5 w-5 mr-2" />
-              Produk
+              <Package className="h-5 w-5 sm:mr-2" />
+              <span className="hidden sm:inline">Produk</span>
+              <span className="sm:hidden ml-1">Katalog</span>
             </button>
             {canCreateProduct && (
               <button
                 onClick={handleAddRequest}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-indigo-700"
+                className="flex-[2] sm:flex-none bg-indigo-600 text-white px-3 sm:px-4 py-2 rounded-lg flex items-center justify-center hover:bg-indigo-700 transition-colors text-sm"
               >
-                <Plus className="h-5 w-5 mr-2" />
+                <Plus className="h-5 w-5 sm:mr-2" />
                 Buat Request
               </button>
             )}
@@ -382,31 +383,31 @@ const ProductRequestManagement = () => {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-100">
             <div className="flex items-center">
-              <div className="flex-shrink-0 bg-blue-100 rounded-md p-3">
-                <FileText className="h-6 w-6 text-blue-600" />
+              <div className="flex-shrink-0 bg-blue-100 rounded-md p-2 sm:p-3">
+                <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">
-                  Total Request
+              <div className="ml-3 sm:ml-4">
+                <p className="text-[10px] sm:text-sm font-medium text-gray-500">
+                  Total
                 </p>
-                <p className="text-2xl font-semibold text-gray-900">
+                <p className="text-lg sm:text-2xl font-semibold text-gray-900">
                   {analyticsData?.totalRequests ||
                     (Array.isArray(requestList) ? requestList.length : 0)}
                 </p>
               </div>
             </div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-100">
             <div className="flex items-center">
-              <div className="flex-shrink-0 bg-yellow-100 rounded-md p-3">
-                <Clock className="h-6 w-6 text-yellow-600" />
+              <div className="flex-shrink-0 bg-yellow-100 rounded-md p-2 sm:p-3">
+                <Clock className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Draft</p>
-                <p className="text-2xl font-semibold text-gray-900">
+              <div className="ml-3 sm:ml-4">
+                <p className="text-[10px] sm:text-sm font-medium text-gray-500">Draft</p>
+                <p className="text-lg sm:text-2xl font-semibold text-gray-900">
                   {analyticsData?.statusDistribution?.draft ||
                     (Array.isArray(requestList)
                       ? requestList.filter((r) => r.status === "draft").length
@@ -415,14 +416,14 @@ const ProductRequestManagement = () => {
               </div>
             </div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-100">
             <div className="flex items-center">
-              <div className="flex-shrink-0 bg-green-100 rounded-md p-3">
-                <CheckCircle className="h-6 w-6 text-green-600" />
+              <div className="flex-shrink-0 bg-green-100 rounded-md p-2 sm:p-3">
+                <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Disetujui</p>
-                <p className="text-2xl font-semibold text-gray-900">
+              <div className="ml-3 sm:ml-4">
+                <p className="text-[10px] sm:text-sm font-medium text-gray-500">Disetujui</p>
+                <p className="text-lg sm:text-2xl font-semibold text-gray-900">
                   {analyticsData?.statusDistribution?.approved ||
                     (Array.isArray(requestList)
                       ? requestList.filter((r) => r.status === "approved")
@@ -432,14 +433,14 @@ const ProductRequestManagement = () => {
               </div>
             </div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-100">
             <div className="flex items-center">
-              <div className="flex-shrink-0 bg-indigo-100 rounded-md p-3">
-                <CheckCircle className="h-6 w-6 text-indigo-600" />
+              <div className="flex-shrink-0 bg-indigo-100 rounded-md p-2 sm:p-3">
+                <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Selesai</p>
-                <p className="text-2xl font-semibold text-gray-900">
+              <div className="ml-3 sm:ml-4">
+                <p className="text-[10px] sm:text-sm font-medium text-gray-500">Selesai</p>
+                <p className="text-lg sm:text-2xl font-semibold text-gray-900">
                   {analyticsData?.statusDistribution?.completed ||
                     (Array.isArray(requestList)
                       ? requestList.filter((r) => r.status === "completed")
@@ -453,8 +454,8 @@ const ProductRequestManagement = () => {
 
         {/* Table Section */}
         <div className="bg-white rounded-lg shadow-sm mb-6">
-          <div className="p-4 border-b flex items-center justify-between flex-wrap gap-4">
-            <div className="relative">
+          <div className="p-4 border-b flex flex-col items-stretch gap-4">
+            <div className="relative w-full sm:w-64">
               <Search
                 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
                 size={18}
@@ -462,18 +463,18 @@ const ProductRequestManagement = () => {
               <input
                 type="text"
                 placeholder="Cari request..."
-                className="pl-10 pr-4 py-2 border rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="pl-10 pr-4 py-2 border rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
 
-            <div className="flex items-center flex-wrap gap-4">
+            <div className="grid grid-cols-2 lg:flex lg:flex-wrap items-center gap-2 sm:gap-4">
               {/* Branch Filter - Only show if user has multiple branches or is super admin */}
               {(isSuperAdmin || userCabang.length > 1) && (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center">
                   <Select value={branchFilter} onValueChange={setBranchFilter}>
-                    <SelectTrigger className="w-48">
+                    <SelectTrigger className="w-full lg:w-48 text-xs sm:text-sm h-9">
                       <SelectValue placeholder="Semua Cabang" />
                     </SelectTrigger>
                     <SelectContent>
@@ -488,10 +489,9 @@ const ProductRequestManagement = () => {
                 </div>
               )}
 
-              <div className="flex items-center space-x-2">
-                <Filter className="text-gray-400" size={18} />
+              <div className="flex items-center">
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-full lg:w-40 text-xs sm:text-sm h-9">
                     <SelectValue placeholder="Semua Tipe" />
                   </SelectTrigger>
                   <SelectContent>
@@ -502,9 +502,9 @@ const ProductRequestManagement = () => {
                 </Select>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-44">
+                  <SelectTrigger className="w-full lg:w-44 text-xs sm:text-sm h-9">
                     <SelectValue placeholder="Semua Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -518,12 +518,12 @@ const ProductRequestManagement = () => {
                 </Select>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center">
                 <Select
                   value={priorityFilter}
                   onValueChange={setPriorityFilter}
                 >
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-full lg:w-40 text-xs sm:text-sm h-9">
                     <SelectValue placeholder="Semua Prioritas" />
                   </SelectTrigger>
                   <SelectContent>
@@ -536,15 +536,15 @@ const ProductRequestManagement = () => {
                 </Select>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600">Tampilkan:</span>
+              <div className="flex items-center justify-end col-span-2 lg:col-span-1 border-t lg:border-t-0 pt-2 lg:pt-0">
+                <span className="text-xs sm:text-sm text-gray-600 mr-2 whitespace-nowrap">Tampilkan:</span>
                 <Select
                   value={itemsPerPage.toString()}
                   onValueChange={(val) =>
                     handleItemsPerPageChange({ target: { value: val } })
                   }
                 >
-                  <SelectTrigger className="w-20">
+                  <SelectTrigger className="w-16 sm:w-20 text-xs sm:text-sm h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

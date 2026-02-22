@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../utils/api";
+import { useCabang } from "@features/cabang/hooks/useCabang";
 
 /**
  * Custom hook for search functionality across the application
@@ -7,42 +9,37 @@ import { useNavigate } from "react-router-dom";
  */
 const useSearch = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState({});
   const navigate = useNavigate();
+  const { selectedCabang } = useCabang();
 
   // Search categories with their respective endpoints and search functions
   const searchCategories = [
     { id: "all", label: "Semua" },
-    { id: "products", label: "Produk", endpoint: "/api/products/search" },
+    { id: "products", label: "Produk", endpoint: "/api/produk" },
     {
       id: "transactions",
       label: "Transaksi",
-      endpoint: "/api/transactions/search",
+      endpoint: "/api/transaksi",
     },
-    { id: "customers", label: "Pelanggan", endpoint: "/api/customers/search" },
-    { id: "suppliers", label: "Supplier", endpoint: "/api/suppliers/search" },
+    { id: "customers", label: "Pelanggan", endpoint: "/api/pelanggan" },
+    { id: "suppliers", label: "Supplier", endpoint: "/api/supplier" },
     {
       id: "inventory",
-      label: "Operasi Inventaris",
-      endpoint: "/api/inventory/search",
+      label: "Inventaris",
+      endpoint: "/api/inventory",
     },
-    {
-      id: "financial",
-      label: "Data Keuangan",
-      endpoint: "/api/financial/search",
-    },
-    { id: "users", label: "Pengguna", endpoint: "/api/users/search" },
-    { id: "branches", label: "Cabang", endpoint: "/api/branches/search" },
-    { id: "settings", label: "Pengaturan", endpoint: "/api/settings/search" },
+    { id: "users", label: "Pengguna", endpoint: "/api/users" },
+    { id: "branches", label: "Cabang", endpoint: "/api/cabang" },
   ];
 
   /**
    * Perform search across all categories or in a specific category
    * @param {string} query - Search query
    * @param {string} category - Category to search in (default: "all")
-   * @returns {Promise<Array>} Search results
+   * @returns {Promise<Object>} Search results
    */
-  const performSearch = async (query, category = "all") => {
+  const performSearch = useCallback(async (query, category = "all") => {
     if (!query || query.trim() === "") {
       setResults([]);
       return [];
@@ -53,22 +50,20 @@ const useSearch = () => {
 
     try {
       if (category === "all") {
-        // Search across all categories in parallel
+        // Search across primary categories in parallel
+        const primaryCategories = ["products", "transactions", "customers", "suppliers"];
         const searchPromises = searchCategories
-          .filter((cat) => cat.id !== "all" && cat.endpoint)
+          .filter((cat) => primaryCategories.includes(cat.id))
           .map((cat) => fetchCategoryResults(query, cat));
 
         const allResults = await Promise.all(searchPromises);
-        const flattenedResults = allResults.flat();
-
-        // Group by category
-        const groupedResults = flattenedResults.reduce((acc, result) => {
-          if (!acc[result.category]) {
-            acc[result.category] = [];
+        
+        const groupedResults = {};
+        allResults.forEach((res) => {
+          if (res.items.length > 0) {
+            groupedResults[res.category] = res.items;
           }
-          acc[result.category].push(result);
-          return acc;
-        }, {});
+        });
 
         setResults(groupedResults);
         return groupedResults;
@@ -78,20 +73,20 @@ const useSearch = () => {
           (cat) => cat.id === category
         );
         if (categoryConfig && categoryConfig.endpoint) {
-          const results = await fetchCategoryResults(query, categoryConfig);
-          const groupedResults = { [category]: results };
+          const res = await fetchCategoryResults(query, categoryConfig);
+          const groupedResults = res.items.length > 0 ? { [category]: res.items } : {};
           setResults(groupedResults);
           return groupedResults;
         }
-        return [];
+        return {};
       }
     } catch (error) {
       console.error("Search error:", error);
-      return [];
+      return {};
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedCabang]);
 
   /**
    * Fetch search results for a specific category
@@ -100,174 +95,49 @@ const useSearch = () => {
    * @returns {Promise<Array>} Category search results
    */
   const fetchCategoryResults = async (query, categoryConfig) => {
-    // In a real implementation, this would make an API call
-    // For now, we'll simulate results based on the category
+    try {
+      const params = {
+        search: query,
+        limit: 5,
+      };
 
-    // Mock implementation - replace with actual API calls
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Simulated results for each category
-        const mockResults = {
-          products: [
-            {
-              id: "p1",
-              name: "Keyboard Logitech K380",
-              category: "products",
-              type: "product",
-              stock: 25,
-            },
-            {
-              id: "p2",
-              name: "Mouse Logitech M720",
-              category: "products",
-              type: "product",
-              stock: 15,
-            },
-          ],
-          transactions: [
-            {
-              id: "t1",
-              number: "TRX-21092",
-              category: "transactions",
-              type: "transaction",
-              date: "2023-04-01",
-            },
-            {
-              id: "t2",
-              number: "TRX-21088",
-              category: "transactions",
-              type: "transaction",
-              date: "2023-03-30",
-            },
-          ],
-          customers: [
-            {
-              id: "c1",
-              name: "Ahmad Fadillah",
-              category: "customers",
-              type: "customer",
-              email: "ahmad@example.com",
-            },
-            {
-              id: "c2",
-              name: "Budi Santoso",
-              category: "customers",
-              type: "customer",
-              email: "budi@example.com",
-            },
-          ],
-          suppliers: [
-            {
-              id: "s1",
-              name: "PT Maju Jaya",
-              category: "suppliers",
-              type: "supplier",
-              contact: "+6281234567890",
-            },
-            {
-              id: "s2",
-              name: "CV Abadi Sejahtera",
-              category: "suppliers",
-              type: "supplier",
-              contact: "+6287654321098",
-            },
-          ],
-          inventory: [
-            {
-              id: "i1",
-              name: "Stock Opname - April 2023",
-              category: "inventory",
-              type: "stock-opname",
-              date: "2023-04-05",
-            },
-            {
-              id: "i2",
-              name: "Transfer - TRF-202304001",
-              category: "inventory",
-              type: "transfer",
-              date: "2023-04-02",
-            },
-          ],
-          financial: [
-            {
-              id: "f1",
-              name: "Laporan Penjualan - Maret 2023",
-              category: "financial",
-              type: "sales-report",
-              date: "2023-04-01",
-            },
-            {
-              id: "f2",
-              name: "Laporan Pajak Q1 2023",
-              category: "financial",
-              type: "tax-report",
-              date: "2023-04-15",
-            },
-          ],
-          users: [
-            {
-              id: "u1",
-              name: "Dewi Anggraini",
-              category: "users",
-              type: "user",
-              role: "Kasir",
-            },
-            {
-              id: "u2",
-              name: "Eko Prasetyo",
-              category: "users",
-              type: "user",
-              role: "Admin Cabang",
-            },
-          ],
-          branches: [
-            {
-              id: "b1",
-              name: "Cabang Kebon Jeruk",
-              category: "branches",
-              type: "branch",
-              address: "Jl. Kebon Jeruk No. 15",
-            },
-            {
-              id: "b2",
-              name: "Cabang Kelapa Gading",
-              category: "branches",
-              type: "branch",
-              address: "Jl. Kelapa Gading Blok M",
-            },
-          ],
-          settings: [
-            {
-              id: "st1",
-              name: "Pengaturan Pajak",
-              category: "settings",
-              type: "setting",
-              path: "/settings/tax",
-            },
-            {
-              id: "st2",
-              name: "Pengaturan Printer",
-              category: "settings",
-              type: "setting",
-              path: "/settings/printer",
-            },
-          ],
-        };
+      // Add cabangId if applicable
+      if (selectedCabang?.id && selectedCabang.id !== "global") {
+        if (categoryConfig.id === "products") {
+          params.cabangId = selectedCabang.id;
+        } else if (categoryConfig.id === "transactions") {
+          params.cabangId = selectedCabang.id;
+        }
+      }
 
-        // Filter mock results based on the query
-        const results = (mockResults[categoryConfig.id] || [])
-          .filter((item) =>
-            Object.values(item).some(
-              (val) =>
-                typeof val === "string" &&
-                val.toLowerCase().includes(query.toLowerCase())
-            )
-          )
-          .slice(0, 5); // Limit to 5 results per category
+      const response = await api.get(categoryConfig.endpoint, { params });
+      
+      // Handle the fact that our API returns data in different structures
+      let items = [];
+      if (response.data?.status || response.data?.success) {
+        items = response.data.data;
+        // If data is an object with a data property (pagination structure)
+        if (items && !Array.isArray(items) && Array.isArray(items.data)) {
+          items = items.data;
+        }
+      } else if (Array.isArray(response.data)) {
+        items = response.data;
+      }
 
-        resolve(results);
-      }, 300); // Simulate network delay
-    });
+      // Map results to include category for the formatter in Header.jsx
+      const mappedItems = (Array.isArray(items) ? items : []).map(item => ({
+        ...item,
+        category: categoryConfig.id
+      }));
+
+      return {
+        category: categoryConfig.id,
+        items: mappedItems
+      };
+    } catch (error) {
+      console.error(`Error fetching ${categoryConfig.id}:`, error);
+      return { category: categoryConfig.id, items: [] };
+    }
   };
 
   /**

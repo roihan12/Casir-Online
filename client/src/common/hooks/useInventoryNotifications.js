@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import inventoryNotificationService from "../services/inventoryNotificationService";
+import inventoryNotificationService from "../../services/inventoryNotificationService";
 import { toast } from "react-hot-toast";
 
 export const useInventoryNotifications = () => {

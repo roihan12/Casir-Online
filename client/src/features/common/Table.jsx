@@ -76,26 +76,27 @@ const Table = ({
       </div>
 
       {usePagination && pagination.totalPages > 1 && (
-        <div className="px-6 pb-6">
-          <div className="bg-gray-50 p-4 border border-gray-200 rounded-lg mt-4 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="text-sm text-gray-500">
+        <div className="px-4 sm:px-6 pb-6 mt-4">
+          <div className="bg-gray-50 p-4 border border-gray-200 rounded-lg flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="text-sm text-gray-500 order-2 sm:order-1">
               <span className="font-medium text-gray-700">
                 {pagination.totalItems}
               </span>{" "}
               items total
             </div>
 
-            <Pagination
-              currentPage={pagination.currentPage}
-              totalPages={pagination.totalPages}
-              hasNextPage={pagination.hasNextPage}
-              hasPrevPage={pagination.hasPrevPage}
-              onPageChange={onPageChange}
-              align="center"
-              className=""
-            />
+            <div className="order-1 sm:order-2 w-full sm:w-auto overflow-x-auto py-1">
+              <Pagination
+                currentPage={pagination.currentPage}
+                totalPages={pagination.totalPages}
+                hasNextPage={pagination.hasNextPage}
+                hasPrevPage={pagination.hasPrevPage}
+                onPageChange={onPageChange}
+                align="center"
+              />
+            </div>
 
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-gray-500 order-3 sm:order-3">
               Halaman{" "}
               <span className="font-medium text-indigo-600">
                 {pagination.currentPage}

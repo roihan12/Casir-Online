@@ -340,19 +340,10 @@ const UserForm = ({ user, onSubmit, onCancel, isLoading = false }) => {
   };
 
   return (
-    <div className="bg-white shadow-sm rounded-lg">
-      <div className="flex items-center justify-between border-b px-6 py-4 bg-gray-50/50">
-        <h2 className="text-xl font-bold text-gray-900 tracking-tight">
-          {isEditMode ? "Edit User" : "Tambah User Baru"}
-        </h2>
-        {isEditMode && (
-          <Badge variant="outline" className="ml-2">Mode Edit</Badge>
-        )}
-      </div>
-
+    <div className="bg-white">
       <form onSubmit={hookFormSubmit(onFormSubmit)} className="flex flex-col h-full overflow-hidden">
         {/* Scrollable Form Body */}
-        <div className="p-6 overflow-y-auto max-h-[calc(100vh-250px)] md:max-h-[65vh]">
+        <div className="p-4 sm:p-6 overflow-y-auto max-h-[70vh] sm:max-h-[65vh]">
           <div className="flex flex-col md:flex-row gap-8">
             {/* Left Column - User Info */}
           <div className="w-full md:w-1/2 space-y-4">

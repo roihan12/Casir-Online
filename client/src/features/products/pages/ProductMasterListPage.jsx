@@ -348,15 +348,15 @@ const ProductMasterList = () => {
   return (
     <div className="p-4">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 flex items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 sm:gap-0">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-800 flex items-center">
           <Package className="mr-2 h-6 w-6" />
           Manajemen Produk Master
         </h1>
         {canManage && (
           <button
             onClick={handleAddProduct}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center"
+            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center justify-center transition-colors"
           >
             <Plus className="h-4 w-4 mr-2" />
             Tambah Produk
@@ -376,18 +376,18 @@ const ProductMasterList = () => {
             <Spinner />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {/* Total Products */}
             <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-indigo-500">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-sm text-gray-500 mb-1">Total Produk</p>
-                  <h3 className="text-2xl font-bold text-gray-800">
+                  <p className="text-[10px] sm:text-sm text-gray-500 mb-0.5 sm:mb-1">Total Produk</p>
+                  <h3 className="text-lg sm:text-2xl font-bold text-gray-800">
                     {dashboardData?.data?.totalProducts || 0}
                   </h3>
                 </div>
-                <div className="bg-indigo-100 p-2 rounded-lg">
-                  <Package className="h-6 w-6 text-indigo-600" />
+                <div className="bg-indigo-100 p-1.5 sm:p-2 rounded-lg">
+                  <Package className="h-4 w-4 sm:h-6 sm:w-6 text-indigo-600" />
                 </div>
               </div>
               <div className="mt-3 text-xs text-gray-500">
@@ -400,13 +400,13 @@ const ProductMasterList = () => {
             <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-green-500">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-sm text-gray-500 mb-1">Produk Aktif</p>
-                  <h3 className="text-2xl font-bold text-gray-800">
+                  <p className="text-[10px] sm:text-sm text-gray-500 mb-0.5 sm:mb-1">Produk Aktif</p>
+                  <h3 className="text-lg sm:text-2xl font-bold text-gray-800">
                     {dashboardData?.data?.activeProducts || 0}
                   </h3>
                 </div>
-                <div className="bg-green-100 p-2 rounded-lg">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
+                <div className="bg-green-100 p-1.5 sm:p-2 rounded-lg">
+                  <CheckCircle className="h-4 w-4 sm:h-6 sm:w-6 text-green-600" />
                 </div>
               </div>
               <div className="mt-3 text-xs text-gray-500">
@@ -423,13 +423,13 @@ const ProductMasterList = () => {
             <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-red-500">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-sm text-gray-500 mb-1">Produk Nonaktif</p>
-                  <h3 className="text-2xl font-bold text-gray-800">
+                  <p className="text-[10px] sm:text-sm text-gray-500 mb-0.5 sm:mb-1">Produk Nonaktif</p>
+                  <h3 className="text-lg sm:text-2xl font-bold text-gray-800">
                     {dashboardData?.data?.inactiveProducts || 0}
                   </h3>
                 </div>
-                <div className="bg-red-100 p-2 rounded-lg">
-                  <XCircle className="h-6 w-6 text-red-600" />
+                <div className="bg-red-100 p-1.5 sm:p-2 rounded-lg">
+                  <XCircle className="h-4 w-4 sm:h-6 sm:w-6 text-red-600" />
                 </div>
               </div>
               <div className="mt-3 text-xs text-gray-500">
@@ -446,13 +446,13 @@ const ProductMasterList = () => {
             <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-yellow-500">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-sm text-gray-500 mb-1">Total Kategori</p>
-                  <h3 className="text-2xl font-bold text-gray-800">
+                  <p className="text-[10px] sm:text-sm text-gray-500 mb-0.5 sm:mb-1">Total Kategori</p>
+                  <h3 className="text-lg sm:text-2xl font-bold text-gray-800">
                     {dashboardData?.data?.totalCategories || 0}
                   </h3>
                 </div>
-                <div className="bg-yellow-100 p-2 rounded-lg">
-                  <Tag className="h-6 w-6 text-yellow-600" />
+                <div className="bg-yellow-100 p-1.5 sm:p-2 rounded-lg">
+                  <Tag className="h-4 w-4 sm:h-6 sm:w-6 text-yellow-600" />
                 </div>
               </div>
               <div className="mt-3 text-xs text-gray-500">
@@ -466,39 +466,39 @@ const ProductMasterList = () => {
 
       {/* Filters & Search */}
       <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-        <div className="flex flex-col md:flex-row justify-between gap-4 mb-4">
+        <div className="flex flex-col sm:flex-row justify-between gap-4">
           <div className="relative flex-grow">
             <input
               type="text"
               placeholder="Cari produk..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="w-full pl-10 pr-4 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
               value={searchTerm}
               onChange={handleSearchChange}
             />
-            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-3 top-3 sm:top-2.5 h-5 w-5 text-gray-400" />
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="flex items-center justify-center px-4 py-2.5 sm:py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
           >
             <Filter className="h-5 w-5 mr-2 text-gray-500" />
-            Filter
+            {showFilters ? "Sembunyikan Filter" : "Filter"}
           </button>
         </div>
 
         {/* Advanced Filters */}
         {showFilters && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 border-t pt-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mt-4 border-t pt-4">
+            <div className="col-span-1">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                 Kategori
               </label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full px-2 sm:px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 text-xs sm:text-sm"
                 value={selectedKategori}
                 onChange={(e) => setSelectedKategori(e.target.value)}
               >
-                <option value="">Semua Kategori</option>
+                <option value="">Semua</option>
                 {categories?.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.namaKategori}
@@ -506,24 +506,24 @@ const ProductMasterList = () => {
                 ))}
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="col-span-1">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                 Status
               </label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full px-2 sm:px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 text-xs sm:text-sm"
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
               >
-                <option value="">Semua Status</option>
+                <option value="">Semua</option>
                 <option value="aktif">Aktif</option>
                 <option value="nonaktif">Nonaktif</option>
               </select>
             </div>
-            <div className="flex items-end">
+            <div className="col-span-2 md:col-span-1 flex items-end">
               <button
                 onClick={handleResetFilters}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center"
+                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center justify-center text-xs sm:text-sm transition-colors"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Reset Filter

@@ -496,35 +496,35 @@ const InventoryManagement = ({ cabangData }) => {
   return (
     <div className="pb-6">
       {/* Dashboard Header */}
-      <div className="flex flex-col items-center justify-center bg-indigo-600 text-white py-8 mb-6">
-        <h1 className="text-2xl font-bold mb-2">Manajemen Inventori</h1>
-        <div className="flex items-center">
-          <Database size={24} className="mr-2" />
+      <div className="flex flex-col items-center justify-center bg-indigo-600 text-white py-6 sm:py-8 mb-6 px-4 text-center">
+        <h1 className="text-xl sm:text-2xl font-bold mb-2">Manajemen Inventori</h1>
+        <div className="flex items-center text-sm sm:text-base">
+          <Database size={20} className="mr-2 sm:h-6 sm:w-6" />
           <span>Kelola stok produk dan pergerakan inventori</span>
         </div>
       </div>
 
       {/* Branch Selection */}
-      <div className="mx-6 mb-6">
-        <div className="bg-white p-4 rounded-xl shadow-sm">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between">
-            <div className="mb-4 sm:mb-0">
-              <h2 className="text-lg font-medium text-gray-900">
+      <div className="mx-4 sm:mx-6 mb-6">
+        <div className="bg-white p-4 sm:p-5 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900">
                 Pilih Cabang
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-xs sm:text-sm text-gray-500">
                 Filter data inventori berdasarkan cabang
               </p>
             </div>
-            <div className="w-full sm:w-64">
+            <div className="w-full lg:w-72">
               {isCabangLoading ? (
-                <div className="flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                <div className="flex items-center justify-center px-3 py-2 border border-gray-200 rounded-lg">
                   <Spinner size="small" />
-                  <span className="ml-2">Memuat data cabang...</span>
+                  <span className="ml-2 text-sm text-gray-500">Memuat data...</span>
                 </div>
               ) : (
                 <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer"
                   value={selectedBranchId}
                   onChange={(e) => setSelectedBranchId(e.target.value)}
                   disabled={isCabangLoading}
@@ -545,42 +545,33 @@ const InventoryManagement = ({ cabangData }) => {
       {/* Add this section after the branch selection and before the stats cards */}
       {selectedBranchId === "all" &&
         dashboardData?.metadata?.branchCount > 0 && (
-          <div className="mx-6 mb-6">
-            <div className="bg-purple-50 p-4 rounded-xl shadow-sm border border-purple-200">
-              <div className="flex items-center">
-                <div className="mr-4 bg-purple-100 p-2 rounded-full">
-                  <Database className="h-6 w-6 text-purple-600" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-medium text-gray-900">
-                    Melihat Data Agregat Seluruh Cabang
-                  </h2>
-                  <p className="text-sm text-gray-600">
-                    Menampilkan ringkasan inventori dari semua{" "}
-                    {dashboardData?.metadata?.branchCount} cabang.
-                    {dashboardData?.metadata?.lastRefreshed && (
-                      <span className="ml-1">
-                        Terakhir diperbarui pada{" "}
-                        {new Date(
-                          dashboardData.metadata.lastRefreshed
-                        ).toLocaleString("id-ID", {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    )}
-                  </p>
-                </div>
+          <div className="mx-4 sm:mx-6 mb-6">
+            <div className="bg-purple-50 p-4 rounded-xl shadow-sm border border-purple-100 flex items-start sm:items-center">
+              <div className="mr-3 sm:mr-4 bg-purple-100 p-2 rounded-lg flex-shrink-0">
+                <Database className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
+              </div>
+              <div>
+                <h2 className="text-sm sm:text-base font-semibold text-gray-900 leading-tight">
+                  Melihat Data Agregat Seluruh Cabang
+                </h2>
+                <p className="text-xs sm:text-sm text-gray-600 mt-0.5">
+                  Menampilkan ringkasan inventori dari semua{" "}
+                  {dashboardData?.metadata?.branchCount} cabang.
+                  {dashboardData?.metadata?.lastRefreshed && (
+                    <span className="block sm:inline sm:ml-1 mt-1 sm:mt-0 text-[10px] sm:text-xs">
+                      (Terakhir: {new Date(dashboardData.metadata.lastRefreshed).toLocaleString("id-ID", {
+                        day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+                      })})
+                    </span>
+                  )}
+                </p>
               </div>
             </div>
           </div>
         )}
 
       {/* Stats Cards */}
-      <div className="mx-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
+      <div className="mx-4 sm:mx-6 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
         <GlobalStatsCard
           title="Total Produk"
           value={dashboardData?.summaryData?.totalProduk || 0}
@@ -617,40 +608,42 @@ const InventoryManagement = ({ cabangData }) => {
         />
 
         <GlobalStatsCard
-          title="Kedaluwarsa < 30 Hari"
+          title="Kedaluwarsa"
           value={dashboardData?.summaryData?.kadaluwarsa30Hari || 0}
-          percentage="dari total produk"
+          percentage="< 30 Hari"
           isPositive={false}
           icon={Calendar}
           isLoading={isDashboardLoading}
         />
 
-        <GlobalStatsCard
-          title="Nilai Inventori"
-          value={formatCurrency(
-            dashboardData?.summaryData?.nilaiInventori || 0
-          )}
-          percentage="Total aset persediaan"
-          isPositive={true}
-          icon={BarChart2}
-          isLoading={isDashboardLoading}
-        />
+        <div className="col-span-2 sm:col-span-2 xl:col-span-1">
+          <GlobalStatsCard
+            title="Nilai Inventori"
+            value={formatCurrency(
+              dashboardData?.summaryData?.nilaiInventori || 0
+            )}
+            percentage="Total aset persediaan"
+            isPositive={true}
+            icon={BarChart2}
+            isLoading={isDashboardLoading}
+          />
+        </div>
       </div>
 
       {/* Movement Stats Cards */}
-      <div className="mx-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-xl shadow-sm p-6">
+      <div className="mx-4 sm:mx-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-xl shadow-sm p-5 sm:p-6 border border-gray-100">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-medium text-gray-900">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">
                 Pergerakan Stok
               </h3>
-              <p className="text-sm text-gray-500">
+              <p className="text-xs sm:text-sm text-gray-500">
                 {selectedPeriod} hari terakhir
               </p>
             </div>
-            <div className="bg-green-100 p-3 rounded-full">
-              <Repeat className="w-6 h-6 text-green-600" />
+            <div className="bg-green-100 p-2.5 sm:p-3 rounded-lg flex-shrink-0">
+              <Repeat className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
             </div>
           </div>
           <div className="mt-4">
@@ -658,16 +651,16 @@ const InventoryManagement = ({ cabangData }) => {
               <Spinner />
             ) : (
               <>
-                <p className="text-2xl font-bold">
+                <p className="text-xl sm:text-2xl font-bold text-gray-900">
                   {dashboardData?.movementData?.pergerakanStok?.total || 0}
                 </p>
-                <div className="mt-1 flex items-center text-sm">
+                <div className="mt-1 flex items-center text-xs sm:text-sm">
                   <span
                     className={
                       dashboardData?.movementData?.pergerakanStok?.perubahan >=
                       0
-                        ? "text-green-500"
-                        : "text-red-500"
+                        ? "text-green-600 font-medium"
+                        : "text-red-600 font-medium"
                     }
                   >
                     {dashboardData?.movementData?.pergerakanStok?.perubahan >= 0
@@ -678,24 +671,24 @@ const InventoryManagement = ({ cabangData }) => {
                     %
                   </span>
                   <span className="text-gray-500 ml-1">
-                    dari periode sebelumnya
+                    dari periode lalu
                   </span>
                 </div>
               </>
             )}
           </div>
         </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6">
+ 
+        <div className="bg-white rounded-xl shadow-sm p-5 sm:p-6 border border-gray-100">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-medium text-gray-900">Stok Masuk</h3>
-              <p className="text-sm text-gray-500">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Stok Masuk</h3>
+              <p className="text-xs sm:text-sm text-gray-500">
                 {selectedPeriod} hari terakhir
               </p>
             </div>
-            <div className="bg-blue-100 p-3 rounded-full">
-              <ArrowUpDown className="w-6 h-6 text-blue-600" />
+            <div className="bg-blue-100 p-2.5 sm:p-3 rounded-lg flex-shrink-0">
+              <ArrowUpDown className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
             </div>
           </div>
           <div className="mt-4">
@@ -703,15 +696,15 @@ const InventoryManagement = ({ cabangData }) => {
               <Spinner />
             ) : (
               <>
-                <p className="text-2xl font-bold">
+                <p className="text-xl sm:text-2xl font-bold text-gray-900">
                   {dashboardData?.movementData?.stokMasuk?.total || 0}
                 </p>
-                <div className="mt-1 flex items-center text-sm">
+                <div className="mt-1 flex items-center text-xs sm:text-sm">
                   <span
                     className={
                       dashboardData?.movementData?.stokMasuk?.perubahan >= 0
-                        ? "text-green-500"
-                        : "text-red-500"
+                        ? "text-green-600 font-medium"
+                        : "text-red-600 font-medium"
                     }
                   >
                     {dashboardData?.movementData?.stokMasuk?.perubahan >= 0
@@ -720,24 +713,24 @@ const InventoryManagement = ({ cabangData }) => {
                     {dashboardData?.movementData?.stokMasuk?.perubahan || 0}%
                   </span>
                   <span className="text-gray-500 ml-1">
-                    dari periode sebelumnya
+                    dari periode lalu
                   </span>
                 </div>
               </>
             )}
           </div>
         </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6">
+ 
+        <div className="bg-white rounded-xl shadow-sm p-5 sm:p-6 border border-gray-100">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-medium text-gray-900">Stok Keluar</h3>
-              <p className="text-sm text-gray-500">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Stok Keluar</h3>
+              <p className="text-xs sm:text-sm text-gray-500">
                 {selectedPeriod} hari terakhir
               </p>
             </div>
-            <div className="bg-orange-100 p-3 rounded-full">
-              <Package className="w-6 h-6 text-orange-600" />
+            <div className="bg-orange-100 p-2.5 sm:p-3 rounded-lg flex-shrink-0">
+              <Package className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
             </div>
           </div>
           <div className="mt-4">
@@ -745,15 +738,15 @@ const InventoryManagement = ({ cabangData }) => {
               <Spinner />
             ) : (
               <>
-                <p className="text-2xl font-bold">
+                <p className="text-xl sm:text-2xl font-bold text-gray-900">
                   {dashboardData?.movementData?.stokKeluar?.total || 0}
                 </p>
-                <div className="mt-1 flex items-center text-sm">
+                <div className="mt-1 flex items-center text-xs sm:text-sm">
                   <span
                     className={
                       dashboardData?.movementData?.stokKeluar?.perubahan >= 0
-                        ? "text-green-500"
-                        : "text-red-500"
+                        ? "text-green-600 font-medium"
+                        : "text-red-600 font-medium"
                     }
                   >
                     {dashboardData?.movementData?.stokKeluar?.perubahan >= 0
@@ -762,26 +755,26 @@ const InventoryManagement = ({ cabangData }) => {
                     {dashboardData?.movementData?.stokKeluar?.perubahan || 0}%
                   </span>
                   <span className="text-gray-500 ml-1">
-                    dari periode sebelumnya
+                    dari periode lalu
                   </span>
                 </div>
               </>
             )}
           </div>
         </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6">
+ 
+        <div className="bg-white rounded-xl shadow-sm p-5 sm:p-6 border border-gray-100">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-medium text-gray-900">
-                Transfer Antar Cabang
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">
+                Hubungan Cabang
               </h3>
-              <p className="text-sm text-gray-500">
-                {selectedPeriod} hari terakhir
+              <p className="text-xs sm:text-sm text-gray-500">
+                Transfer antar cabang
               </p>
             </div>
-            <div className="bg-purple-100 p-3 rounded-full">
-              <Truck className="w-6 h-6 text-purple-600" />
+            <div className="bg-purple-100 p-2.5 sm:p-3 rounded-lg flex-shrink-0">
+              <Truck className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
             </div>
           </div>
           <div className="mt-4">
@@ -789,11 +782,11 @@ const InventoryManagement = ({ cabangData }) => {
               <Spinner />
             ) : (
               <>
-                <p className="text-2xl font-bold">
+                <p className="text-xl sm:text-2xl font-bold text-gray-900">
                   {dashboardData?.movementData?.transferCabang?.total || 0}
                 </p>
-                <div className="mt-1 flex items-center text-sm">
-                  <span className="text-purple-500">
+                <div className="mt-1 flex items-center text-xs sm:text-sm">
+                  <span className="text-purple-600 font-medium">
                     {dashboardData?.movementData?.transferCabang
                       ?.cabangTerhubung || 0}
                   </span>
@@ -809,92 +802,54 @@ const InventoryManagement = ({ cabangData }) => {
       {selectedBranchId === "all" &&
         dashboardData?.metadata?.branches &&
         dashboardData.metadata.branches.length > 0 && (
-          <div className="mx-6 mb-6">
-            <div className="bg-white p-4 rounded-xl shadow-sm">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
+          <div className="mx-4 sm:mx-6 mb-6">
+            <div className="bg-white p-4 sm:p-5 rounded-xl shadow-sm border border-gray-100">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
                 Ringkasan per Cabang
               </h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th
-                        scope="col"
-                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Cabang
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Total Produk
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Stok Rendah
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Habis Stok
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Nilai Inventori
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Aksi
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {dashboardData.metadata.branches.map((branch) => (
-                      <tr key={branch.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 h-8 w-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600">
-                              <Database size={16} />
-                            </div>
-                            <div className="ml-3">
-                              <div className="text-sm font-medium text-gray-900">
-                                {branch.name}
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <div className="inline-block min-w-full align-middle">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Cabang</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Produk</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Stok Rendah</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Habis Stok</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nilai</th>
+                        <th scope="col" className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {dashboardData.metadata.branches.map((branch) => (
+                        <tr key={branch.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="flex-shrink-0 h-8 w-8 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600">
+                                <Database size={14} />
+                              </div>
+                              <div className="ml-3">
+                                <div className="text-sm font-medium text-gray-900">{branch.name}</div>
                               </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                          {branch.totalProducts}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                          {branch.lowStock}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                          {branch.outOfStock}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                          {formatCurrency(branch.totalValue)}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-center">
-                          <button
-                            onClick={() => setSelectedBranchId(branch.id)}
-                            className="inline-flex items-center px-2.5 py-1.5 border border-indigo-500 text-xs font-medium rounded text-indigo-500 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                          >
-                            Lihat Detail
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">{branch.totalProducts}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">{branch.lowStock}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">{branch.outOfStock}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{formatCurrency(branch.totalValue)}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-center">
+                            <button
+                              onClick={() => setSelectedBranchId(branch.id)}
+                              className="inline-flex items-center px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-lg hover:bg-indigo-100 transition-colors"
+                            >
+                              Detail
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
@@ -1025,9 +980,10 @@ const InventoryManagement = ({ cabangData }) => {
       </div>
 
       {/* Inventory Table */}
-      <div className="mx-6 bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="mx-4 sm:mx-6 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
+            {/* ... table content remains same but outer div ensures scroll ... */}
             <thead className="bg-gray-50">
               <tr>
                 <th

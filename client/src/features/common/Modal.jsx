@@ -66,10 +66,10 @@ const Modal = ({
   const modalSizeClass = sizeClasses[size] || sizeClasses.md;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-auto bg-gray-600 bg-opacity-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-gray-600 bg-opacity-50 flex items-center justify-center p-2 sm:p-4">
       <div
         ref={modalRef}
-        className={`bg-white rounded-lg shadow-xl ${modalSizeClass} w-full animate-fadeIn`}
+        className={`bg-white rounded-lg shadow-xl ${modalSizeClass} w-full max-h-[95vh] flex flex-col animate-fadeIn`}
       >
         {/* Modal Header */}
         {title && (

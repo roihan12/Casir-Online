@@ -132,59 +132,63 @@ const ShiftManagement = () => {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-800">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
             Manajemen Shift
           </h1>
-          <p className="text-sm text-gray-500">
-            Kelola shift aktif di {selectedCabang?.namaCabang || "cabang"}
+          <p className="text-sm text-gray-500 mt-1">
+            Kelola shift aktif di <span className="font-semibold text-indigo-600">{selectedCabang?.namaCabang || "cabang"}</span>
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <button 
             onClick={handleViewReports}
-            className="bg-white text-gray-700 border border-gray-300 px-4 py-2 rounded-lg flex items-center text-sm font-medium hover:bg-gray-50 transition-colors"
+            className="flex-1 sm:flex-none bg-white text-gray-700 border border-gray-300 px-4 py-2 rounded-xl flex items-center justify-center text-sm font-bold hover:bg-gray-50 transition-all shadow-sm"
           >
-            <Calendar size={16} className="mr-2 text-indigo-500" />
-            Riwayat & Laporan
+            <Calendar size={18} className="mr-2 text-indigo-500" />
+            Riwayat
           </button>
-          <CabangIndicator size="lg" />
+          <div className="flex-1 sm:flex-none">
+            <CabangIndicator size="lg" />
+          </div>
         </div>
       </div>
 
       <div className="bg-white rounded-lg shadow mb-6">
-        <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+        <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center">
-            <Clock size={18} className="text-indigo-500 mr-2" />
-            <h2 className="text-lg font-medium">Daftar Shift Aktif</h2>
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 mr-3">
+              <Clock size={18} />
+            </div>
+            <h2 className="text-lg font-bold text-gray-800">Daftar Shift Aktif</h2>
           </div>
           <button 
             onClick={handleCreateNewShift}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center text-sm font-medium hover:bg-indigo-700 transition-colors"
+            className="w-full sm:w-auto bg-indigo-600 text-white px-5 py-2.5 rounded-xl flex items-center justify-center text-sm font-bold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100"
           >
-            <Plus size={16} className="mr-1" />
+            <Plus size={18} className="mr-1.5" />
             Buka Shift Baru
           </button>
         </div>
 
         <div className="p-4">
-          <div className="flex justify-between mb-4">
-            <div className="w-1/3">
+          <div className="flex flex-col sm:flex-row justify-between gap-4 mb-4">
+            <div className="w-full sm:w-1/2 lg:w-1/3">
               <form onSubmit={handleSearch}>
-                <div className="relative">
+                <div className="relative group">
                   <input
                     type="text"
                     placeholder="Cari berdasarkan nama kasir..."
-                    className="w-full pr-10 pl-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full pr-10 pl-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all bg-gray-50/50"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                   <button
                     type="submit"
-                    className="absolute right-0 top-0 mt-2 mr-3 text-gray-400 hover:text-gray-600"
+                    className="absolute right-0 top-0 h-full px-3 text-gray-400 hover:text-indigo-600 transition-colors"
                   >
-                    <Search size={20} />
+                    <Search size={18} />
                   </button>
                 </div>
               </form>
@@ -205,27 +209,34 @@ const ShiftManagement = () => {
       </div>
 
       {/* Summary section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-gray-600 font-medium">Total Shift Aktif</h3>
-            <Users size={20} className="text-indigo-500" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 flex-shrink-0">
+            <Users size={24} />
           </div>
-          <p className="text-2xl font-semibold text-gray-800">
-            {pagination.totalItems}
-          </p>
+          <div>
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Total Aktif</h3>
+            <p className="text-2xl font-black text-gray-900 leading-none mt-1">
+              {pagination.totalItems}
+            </p>
+          </div>
         </div>
 
-        <div className="bg-white col-span-2 p-4 rounded-lg shadow flex items-center justify-between">
-          <div>
-            <h3 className="text-gray-600 font-medium">Lihat Semua Riwayat Shift</h3>
-            <p className="text-sm text-gray-500">Saring berdasarkan tanggal, kasir, dan status</p>
+        <div className="bg-white px-6 py-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between sm:col-span-2">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 flex-shrink-0">
+              <Calendar size={24} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-gray-800 uppercase tracking-tight">Riwayat Shift</h3>
+              <p className="text-xs text-gray-500 mt-0.5">Saring berdasarkan tanggal & status</p>
+            </div>
           </div>
           <button 
             onClick={handleViewReports}
-            className="text-indigo-600 font-medium flex items-center hover:underline"
+            className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 font-bold flex items-center hover:bg-indigo-100 transition-colors text-sm"
           >
-            Buka Laporan <ArrowRight size={16} className="ml-1" />
+            Buka <ArrowRight size={18} className="ml-1" />
           </button>
         </div>
       </div>

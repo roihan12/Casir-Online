@@ -351,16 +351,16 @@ const SupplierManagementPage = () => {
   return (
     <div className="pb-6">
       {/* Dashboard Header */}
-      <div className="flex flex-col items-center justify-center bg-indigo-600 text-white py-8 mb-6">
-        <h1 className="text-2xl font-bold mb-2">Manajemen Supplier</h1>
-        <div className="flex items-center">
-          <Truck size={24} className="mr-2" />
+      <div className="flex flex-col items-center justify-center bg-indigo-600 text-white py-6 sm:py-8 mb-6 px-4 text-center">
+        <h1 className="text-xl sm:text-2xl font-bold mb-2">Manajemen Supplier</h1>
+        <div className="flex items-center text-sm sm:text-base">
+          <Truck size={20} className="mr-2 sm:h-6 sm:w-6" />
           <span>Kelola semua supplier dan relasi bisnis</span>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="mx-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="mx-4 sm:mx-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <GlobalStatsCard
           title="Total Supplier"
           value={supplierStats.total}
@@ -402,17 +402,17 @@ const SupplierManagementPage = () => {
       </div>
 
       {/* Action Bar */}
-      <div className="mx-6 flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      <div className="mx-4 sm:mx-6 flex flex-col lg:flex-row justify-between items-stretch lg:items-center mb-6 gap-4">
         {/* Search Bar */}
         <form
           onSubmit={handleSearch}
-          className="w-full md:w-auto flex-grow md:max-w-md"
+          className="w-full lg:max-w-md"
         >
           <div className="relative">
             <input
               type="text"
               placeholder="Cari supplier..."
-              className="w-full px-4 py-2 pr-10 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-4 py-2 pr-10 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -420,19 +420,18 @@ const SupplierManagementPage = () => {
               type="submit"
               className="absolute right-0 top-0 mt-2 mr-3 text-gray-400 hover:text-indigo-500"
             >
-              <Search size={20} />
+              <Search size={18} />
             </button>
           </div>
         </form>
 
         {/* Filters & Actions */}
-        <div className="flex flex-wrap gap-2 w-full md:w-auto">
-          {/* Cabang Filter */}
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 w-full lg:w-auto">
           {/* Cabang Filter */}
           {cabangList && cabangList.length > 1 && (
-            <div className="relative">
+            <div className="relative col-span-2 sm:col-auto">
               <select
-                className="appearance-none bg-white border border-gray-300 rounded-lg py-2 pl-3 pr-10 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full appearance-none bg-white border border-gray-300 rounded-lg py-2 pl-3 pr-10 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                 value={cabangFilter || ""}
                 onChange={handleCabangChange}
               >
@@ -451,7 +450,7 @@ const SupplierManagementPage = () => {
           {/* Status Filter */}
           <div className="relative">
             <select
-              className="appearance-none bg-white border border-gray-300 rounded-lg py-2 pl-3 pr-10 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full appearance-none bg-white border border-gray-300 rounded-lg py-2 pl-3 pr-10 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
@@ -460,42 +459,42 @@ const SupplierManagementPage = () => {
               <option value="nonaktif">Nonaktif</option>
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-              {/* <ChevronDown size={16} /> */}
+              <ChevronDown size={16} />
             </div>
           </div>
 
           {/* Refresh Button */}
           <button
-            className="flex items-center justify-center px-3 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50"
+            className="flex items-center justify-center px-3 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 text-sm"
             onClick={() => refetchSuppliers()}
             disabled={isLoadingSuppliers}
           >
             <RefreshCw
-              size={16}
+              size={14}
               className={`mr-1 ${isLoadingSuppliers ? "animate-spin" : ""}`}
             />
             <span>Refresh</span>
           </button>
 
           {/* Export Button */}
-          <button className="flex items-center justify-center px-3 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50">
-            <Download size={16} className="mr-1" />
+          <button className="flex items-center justify-center px-3 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 text-sm">
+            <Download size={14} className="mr-1" />
             <span>Export</span>
           </button>
 
           {/* Add New Supplier Button */}
           <button
-            className="flex items-center justify-center px-3 py-2 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700"
+            className="col-span-2 sm:col-auto flex items-center justify-center px-3 py-2 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 text-sm"
             onClick={() => navigate("/suppliers/create")}
           >
-            <PlusCircle size={16} className="mr-1" />
+            <PlusCircle size={14} className="mr-1" />
             <span>Tambah Supplier</span>
           </button>
         </div>
       </div>
 
       {/* Suppliers Table */}
-      <div className="mx-6">
+      <div className="mx-4 sm:mx-6">
         <Table
           columns={columns}
           data={suppliers}
@@ -511,27 +510,27 @@ const SupplierManagementPage = () => {
             hasPrevPage: pagination.hasPrevPage,
           }}
           onPageChange={setCurrentPage}
-          className="rounded-xl shadow-sm overflow-hidden"
+          className="rounded-xl shadow-sm border border-gray-200"
           tableClassName="divide-y divide-gray-200"
         />
       </div>
 
       {/* Page Size Selector (outside Table component) */}
       {!isLoadingSuppliers && suppliers.length > 0 && (
-        <div className="mx-6 mt-4 flex justify-end">
+        <div className="mx-4 sm:mx-6 mt-4 flex justify-end">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Tampilkan:</span>
+            <span className="text-xs sm:text-sm text-gray-600">Tampilkan:</span>
             <select
               value={pageSize}
               onChange={(e) => handlePageSizeChange(e.target.value)}
-              className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+              className="border border-gray-300 rounded-md px-2 py-1 text-xs sm:text-sm"
             >
               <option value={5}>5</option>
               <option value={10}>10</option>
               <option value={25}>25</option>
               <option value={50}>50</option>
             </select>
-            <span className="text-sm text-gray-600">per halaman</span>
+            <span className="text-xs sm:text-sm text-gray-600 whitespace-nowrap">per halaman</span>
           </div>
         </div>
       )}

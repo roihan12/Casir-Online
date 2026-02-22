@@ -289,31 +289,30 @@ const GlobalTransactions = () => {
     }));
   };
 
-  // Dummy data untuk demonstrasi
- 
-
   // Time range options component - Modern Clean Design
   const TimeRangeSelector = () => (
-    <div className="inline-flex bg-gray-100 p-1 rounded-lg">
-      {[
-        { id: "1d", label: "Hari Ini" },
-        { id: "7d", label: "7 Hari" },
-        { id: "30d", label: "30 Hari" },
-        { id: "90d", label: "90 Hari" },
-        { id: "1y", label: "1 Tahun" }
-      ].map((option) => (
-        <button
-          key={option.id}
-          className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
-            timeRange === option.id 
-              ? "bg-white text-gray-900 shadow-sm ring-1 ring-black/5" 
-              : "text-gray-500 hover:text-gray-900 hover:bg-gray-200/50"
-          }`}
-          onClick={() => handleChangeTimeRange(option.id)}
-        >
-          {option.label}
-        </button>
-      ))}
+    <div className="flex bg-gray-100 p-1 rounded-lg overflow-x-auto scrollbar-hide max-w-full">
+      <div className="flex min-w-max">
+        {[
+          { id: "1d", label: "Hari Ini" },
+          { id: "7d", label: "7 Hari" },
+          { id: "30d", label: "30 Hari" },
+          { id: "90d", label: "90 Hari" },
+          { id: "1y", label: "1 Tahun" }
+        ].map((option) => (
+          <button
+            key={option.id}
+            className={`px-3 sm:px-4 py-1.5 text-xs font-medium rounded-md transition-all duration-200 whitespace-nowrap ${
+              timeRange === option.id 
+                ? "bg-white text-gray-900 shadow-sm ring-1 ring-black/5" 
+                : "text-gray-500 hover:text-gray-900 hover:bg-gray-200/50"
+            }`}
+            onClick={() => handleChangeTimeRange(option.id)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 
@@ -369,12 +368,12 @@ const GlobalTransactions = () => {
   );
 
   return (
-    <div className="w-full p-6">
+    <div className="w-full p-4 lg:p-6">
       {/* Dashboard Header */}
-      <div className="mb-4 flex justify-between items-center">
+      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-800">Dashboard</h1>
-          <p className="text-sm text-gray-600">
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">Dashboard</h1>
+          <p className="text-xs sm:text-sm text-gray-600">
             Manajemen transaksi global di seluruh cabang
           </p>
         </div>
@@ -384,55 +383,55 @@ const GlobalTransactions = () => {
       {/* Dashboard Stats */}
       {showDashboardStats && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
             {/* Total Transaksi */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 transition-all duration-200 hover:shadow-md hover:border-gray-300">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 transition-all duration-200 hover:shadow-md hover:border-gray-300">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-sm font-medium text-gray-500 tracking-wide">
+                  <p className="text-xs sm:text-sm font-medium text-gray-500 tracking-wide">
                     Total Transaksi
                   </p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-2">
                     {(summary.total_transaksi ?? 0).toLocaleString()}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">periode terpilih</p>
+                  <p className="text-[10px] sm:text-xs text-gray-400 mt-1">periode terpilih</p>
                 </div>
-                <div className="p-3 bg-blue-50 rounded-xl">
-                  <ShoppingCart className="h-6 w-6 text-blue-600" />
+                <div className="p-2 sm:p-3 bg-blue-50 rounded-xl">
+                  <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
                 </div>
               </div>
             </div>
     
             {/* Pendapatan */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 transition-all duration-200 hover:shadow-md hover:border-gray-300">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 transition-all duration-200 hover:shadow-md hover:border-gray-300">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-sm font-medium text-gray-500 tracking-wide">Total Pendapatan</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">
+                  <p className="text-xs sm:text-sm font-medium text-gray-500 tracking-wide">Total Pendapatan</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-2">
                     {formatCurrency(summary.total_penjualan)}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">periode terpilih</p>
+                  <p className="text-[10px] sm:text-xs text-gray-400 mt-1">periode terpilih</p>
                 </div>
-                <div className="p-3 bg-green-50 rounded-xl">
-                  <DollarSign className="h-6 w-6 text-green-600" />
+                <div className="p-2 sm:p-3 bg-green-50 rounded-xl">
+                  <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
                 </div>
               </div>
             </div>
     
             {/* Rata-rata Nilai Transaksi */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 transition-all duration-200 hover:shadow-md hover:border-gray-300">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 transition-all duration-200 hover:shadow-md hover:border-gray-300 sm:col-span-2 lg:col-span-1">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-sm font-medium text-gray-500 tracking-wide">
+                  <p className="text-xs sm:text-sm font-medium text-gray-500 tracking-wide">
                     Rata-rata Transaksi
                   </p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-2">
                     {formatCurrency(summary.rata_rata_nilai_transaksi || 0)}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">per transaksi</p>
+                  <p className="text-[10px] sm:text-xs text-gray-400 mt-1">per transaksi</p>
                 </div>
-                <div className="p-3 bg-amber-50 rounded-xl">
-                  <Clock className="h-6 w-6 text-amber-600" />
+                <div className="p-2 sm:p-3 bg-amber-50 rounded-xl">
+                  <Clock className="h-5 w-5 sm:h-6 sm:w-6 text-amber-600" />
                 </div>
               </div>
             </div>
@@ -441,25 +440,25 @@ const GlobalTransactions = () => {
           {/* Dashboard Detailed Stats */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* Branch Stats - Full Width */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 col-span-1 lg:col-span-3">
-              <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 col-span-1 lg:col-span-2">
+              <div className="p-4 sm:p-6 border-b border-gray-100 flex justify-between items-center">
                 <div className="flex items-center space-x-2">
                   <div className="p-2 bg-purple-100 rounded-lg">
                     <Store className="h-5 w-5 text-purple-600" />
                   </div>
-                  <h2 className="text-lg font-semibold text-gray-900">
+                  <h2 className="text-base sm:text-lg font-semibold text-gray-900">
                     Performa Cabang
                   </h2>
                 </div>
                 <button
                   onClick={() => navigate("/superadmin/cabang")}
-                  className="text-sm font-medium text-indigo-600 hover:text-indigo-800 flex items-center transition-colors"
+                  className="text-xs sm:text-sm font-medium text-indigo-600 hover:text-indigo-800 flex items-center transition-colors"
                 >
                   Lihat Semua
                   <ChevronRight className="h-4 w-4 ml-1" />
                 </button>
               </div>
-              <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {branchDistribution.map((branch) => (
                   <BranchStatCard key={branch.cabang_id} branch={{
                     namaCabang: branch.nama_cabang,
@@ -672,11 +671,15 @@ const GlobalTransactions = () => {
       )}
 
       {/* Content */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
-        <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6 overflow-hidden">
+        <div className="p-4 sm:p-6 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <h2 className="text-lg font-semibold text-gray-900">
             Daftar Transaksi
           </h2>
+          <div className="flex items-center text-xs text-gray-500">
+             <Calendar className="h-3.5 w-3.5 mr-1" />
+             {filters.startDate.format("DD MMM YYYY")} - {filters.endDate.format("DD MMM YYYY")}
+          </div>
         </div>
 
         {/* Filter Section */}
@@ -688,7 +691,7 @@ const GlobalTransactions = () => {
             </h3>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {/* Date Range */}
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -780,14 +783,14 @@ const GlobalTransactions = () => {
             </div>
 
             {/* Search Field */}
-            <div className="sm:col-span-2">
+            <div className="col-span-2">
               <label className="block text-xs font-medium text-gray-700 mb-1">
                 Cari (No. Transaksi / Pelanggan / Supplier)
               </label>
               <div className="relative">
                 <input
                   type="text"
-                  className="w-full rounded-md border border-gray-300 pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full rounded-md border border-gray-300 pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
                   placeholder="Cari..."
                   value={filters.search}
                   onChange={(e) => handleFilterChange("search", e.target.value)}
@@ -799,16 +802,16 @@ const GlobalTransactions = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-end sm:col-span-2 space-x-2">
+            <div className="col-span-2 mt-2 flex flex-wrap gap-2">
               <button
                 onClick={applyFilters}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                className="flex-1 sm:flex-none justify-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
               >
                 Terapkan Filter
               </button>
               <button
                 onClick={resetFilters}
-                className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-4 py-2 rounded-md text-sm font-medium"
+                className="flex-1 sm:flex-none justify-center bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-4 py-2 rounded-md text-sm font-medium transition-colors"
               >
                 Reset
               </button>
@@ -816,20 +819,23 @@ const GlobalTransactions = () => {
                 onClick={() =>
                   toast.success("Fitur ekspor data akan segera tersedia")
                 }
-                className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 ml-auto px-4 py-2 rounded-md text-sm font-medium"
+                className="flex-1 sm:flex-none justify-center bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-4 py-2 rounded-md text-sm font-medium transition-colors"
               >
                 <Download className="h-4 w-4 inline mr-1" />
                 Ekspor
               </button>
-              {canCreate && (
-                <button
-                  onClick={() => navigate("/kasir/pos")}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center"
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Tambah Transaksi
-                </button>
-              )}
+              
+              <div className="w-full sm:w-auto sm:ml-auto pt-2 sm:pt-0">
+                {canCreate && (
+                  <button
+                    onClick={() => navigate("/kasir/pos")}
+                    className="w-full sm:w-auto justify-center bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center transition-colors shadow-sm"
+                  >
+                    <Plus className="h-4 w-4 mr-1.5" />
+                    Tambah Transaksi
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -999,28 +1005,30 @@ const GlobalTransactions = () => {
         </div>
 
         {/* Pagination */}
-        <div className="px-6 py-3 flex items-center justify-between border-t border-gray-200">
-          <div className="flex items-center space-x-2">
+        <div className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between border-t border-gray-200 gap-4">
+          <div className="flex items-center space-x-2 order-2 sm:order-1">
             <button
               onClick={() => setPage(old => Math.max(0, old - 1))}
               disabled={page === 0 || isLoadingTransactions}
-              className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Previous
             </button>
-            <span className="text-sm text-gray-500">
-              Page {page + 1}
-            </span>
+            <div className="bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
+              <span className="text-sm font-semibold text-gray-700 italic">
+                {page + 1}
+              </span>
+            </div>
             <button
               onClick={() => setPage(old => old + 1)}
               disabled={transactions.length < rowsPerPage || isLoadingTransactions}
-              className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Next
             </button>
           </div>
-          <div className="text-sm text-gray-500">
-            Menampilkan {transactions.length} transaksi
+          <div className="text-xs sm:text-sm text-gray-500 font-medium order-1 sm:order-2 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+            Menampilkan <span className="text-gray-900 font-bold">{transactions.length}</span> transaksi
           </div>
         </div>
       </div>

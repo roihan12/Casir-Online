@@ -148,163 +148,180 @@ const ProductRequestForm = ({ requestList, branchList, userList, onSubmitSuccess
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Tipe Request</Label>
-          <Controller
-            name="requestType"
-            control={control}
-            render={({ field }) => (
-              <Select onValueChange={field.onChange} value={field.value}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih Tipe" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="restock">Restock Produk</SelectItem>
-                  <SelectItem value="new_product">Produk Baru</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-          />
-          {errors.requestType && <p className="text-red-500 text-xs">{errors.requestType.message}</p>}
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
+      <div className="overflow-y-auto max-h-[60vh] sm:max-h-[70vh] px-1 -mx-1 py-1 space-y-4 sm:space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label className="text-sm">Tipe Request</Label>
+            <Controller
+              name="requestType"
+              control={control}
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <SelectTrigger className="h-9 sm:h-10 text-sm">
+                    <SelectValue placeholder="Pilih Tipe" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="restock">Restock Produk</SelectItem>
+                    <SelectItem value="new_product">Produk Baru</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.requestType && <p className="text-red-500 text-xs">{errors.requestType.message}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm">Cabang</Label>
+            <Controller
+              name="cabangId"
+              control={control}
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <SelectTrigger className="h-9 sm:h-10 text-sm">
+                    <SelectValue placeholder="Pilih Cabang" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branchList.map((branch) => (
+                      <SelectItem key={branch.id} value={branch.id}>
+                        {branch.namaCabang || branch.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.cabangId && <p className="text-red-500 text-xs">{errors.cabangId.message}</p>}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label className="text-sm">Prioritas</Label>
+            <Controller
+              name="prioritas"
+              control={control}
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <SelectTrigger className="h-9 sm:h-10 text-sm">
+                    <SelectValue placeholder="Pilih Prioritas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="normal">Normal</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                    <SelectItem value="critical">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
         </div>
 
         <div className="space-y-2">
-          <Label>Cabang</Label>
-          <Controller
-            name="cabangId"
-            control={control}
-            render={({ field }) => (
-              <Select onValueChange={field.onChange} value={field.value}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih Cabang" />
-                </SelectTrigger>
-                <SelectContent>
-                  {branchList.map((branch) => (
-                    <SelectItem key={branch.id} value={branch.id}>
-                      {branch.namaCabang || branch.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-          {errors.cabangId && <p className="text-red-500 text-xs">{errors.cabangId.message}</p>}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Prioritas</Label>
-          <Controller
-            name="prioritas"
-            control={control}
-            render={({ field }) => (
-              <Select onValueChange={field.onChange} value={field.value}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih Prioritas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="normal">Normal</SelectItem>
-                  <SelectItem value="urgent">Urgent</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
+          <Label className="text-sm">Alasan Request</Label>
+          <Input 
+            {...register("alasan")} 
+            placeholder="Contoh: Stok menipis, permintaan pelanggan" 
+            className="h-9 sm:h-10 text-sm"
           />
         </div>
-      </div>
 
-      <div className="space-y-2">
-        <Label>Alasan Request</Label>
-        <Input {...register("alasan")} placeholder="Contoh: Stok menipis, permintaan pelanggan" />
-      </div>
+        <div className="border-t pt-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base sm:text-lg font-medium">Item Request</h3>
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm" 
+              onClick={() => append({ jumlahDiminta: 1 })}
+              className="h-8 sm:h-9 text-xs sm:text-sm"
+            >
+              <Plus className="h-4 w-4 mr-1" /> Tambah Item
+            </Button>
+          </div>
 
-      <div className="border-t pt-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium">Item Request</h3>
-          <Button 
-            type="button" 
-            variant="outline" 
-            size="sm" 
-            onClick={() => append({ jumlahDiminta: 1 })}
-          >
-            <Plus className="h-4 w-4 mr-1" /> Tambah Item
-          </Button>
-        </div>
+          <div className="space-y-4">
+            {fields.map((field, index) => (
+              <div key={field.id} className="p-3 sm:p-4 border rounded-lg bg-gray-50 relative group">
+                <button
+                  type="button"
+                  onClick={() => remove(index)}
+                  className="absolute top-2 right-2 text-red-500 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
 
-        <div className="space-y-4">
-          {fields.map((field, index) => (
-            <div key={field.id} className="p-4 border rounded-lg bg-gray-50 relative group">
-              <button
-                type="button"
-                onClick={() => remove(index)}
-                className="absolute top-2 right-2 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {requestType === "restock" ? (
-                  <div className="md:col-span-2 space-y-2">
-                    <Label>Pilih Produk</Label>
-                    <Controller
-                      name={`items.${index}.produkMasterId`}
-                      control={control}
-                      render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Cari Produk..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {produkMasterList.map((produk) => (
-                              <SelectItem key={produk.id} value={produk.id}>
-                                {produk.namaProduk} ({produk.sku})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                <div className="grid grid-cols-1 gap-4">
+                  {requestType === "restock" ? (
+                    <div className="space-y-2">
+                      <Label className="text-sm">Pilih Produk</Label>
+                      <Controller
+                        name={`items.${index}.produkMasterId`}
+                        control={control}
+                        render={({ field }) => (
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger className="h-9 text-sm">
+                              <SelectValue placeholder="Cari Produk..." />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-48 overflow-y-auto">
+                              {produkMasterList.map((produk) => (
+                                <SelectItem key={produk.id} value={produk.id}>
+                                  {produk.namaProduk} ({produk.sku})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                      {errors.items?.[index]?.produkMasterId && (
+                        <p className="text-red-500 text-xs mt-1">{errors.items[index].produkMasterId.message}</p>
                       )}
-                    />
-                    {errors.items?.[index]?.produkMasterId && (
-                      <p className="text-red-500 text-xs mt-1">{errors.items[index].produkMasterId.message}</p>
-                    )}
-                  </div>
-                ) : (
-                  <>
-                    <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
                       {/* Basic Info */}
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <Label>Nama Produk</Label>
-                          <Input {...register(`items.${index}.namaProduk`)} placeholder="Nama Produk Baru" />
+                          <Label className="text-sm">Nama Produk</Label>
+                          <Input 
+                            {...register(`items.${index}.namaProduk`)} 
+                            placeholder="Nama Produk Baru" 
+                            className="h-9 text-sm"
+                          />
                           {errors.items?.[index]?.namaProduk && (
                             <p className="text-red-500 text-xs">{errors.items[index].namaProduk.message}</p>
                           )}
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-3 sm:gap-4">
                           <div className="space-y-2">
-                             <Label>SKU</Label>
-                             <Input {...register(`items.${index}.sku`)} placeholder="SKU" />
+                             <Label className="text-sm">SKU</Label>
+                             <Input 
+                               {...register(`items.${index}.sku`)} 
+                               placeholder="SKU" 
+                               className="h-9 text-sm"
+                             />
                              {errors.items?.[index]?.sku && (
                                <p className="text-red-500 text-xs">{errors.items[index].sku.message}</p>
                              )}
                           </div>
                           <div className="space-y-2">
-                             <Label>Barcode</Label>
-                             <Input {...register(`items.${index}.barcode`)} placeholder="Barcode" />
+                             <Label className="text-sm">Barcode</Label>
+                             <Input 
+                               {...register(`items.${index}.barcode`)} 
+                               placeholder="Barcode" 
+                               className="h-9 text-sm"
+                             />
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                            <div className="space-y-2">
-                             <Label>Kategori</Label>
+                             <Label className="text-sm">Kategori</Label>
                              <Controller
                                name={`items.${index}.kategoriId`}
                                control={control}
                                render={({ field }) => (
                                  <Select onValueChange={field.onChange} value={field.value}>
-                                   <SelectTrigger>
+                                   <SelectTrigger className="h-9 text-sm">
                                      <SelectValue placeholder="Pilih Kategori" />
                                    </SelectTrigger>
                                    <SelectContent>
@@ -317,75 +334,89 @@ const ProductRequestForm = ({ requestList, branchList, userList, onSubmitSuccess
                              />
                            </div>
                            <div className="space-y-2">
-                             <Label>Brand</Label>
-                             <Input {...register(`items.${index}.brand`)} placeholder="Brand" />
+                             <Label className="text-sm">Brand</Label>
+                             <Input 
+                               {...register(`items.${index}.brand`)} 
+                               placeholder="Brand" 
+                               className="h-9 text-sm"
+                             />
                            </div>
                         </div>
                         <div className="space-y-2">
-                            <Label>Satuan</Label>
-                            <Input {...register(`items.${index}.satuan`)} placeholder="Pcs, Box, dll" />
+                            <Label className="text-sm">Satuan</Label>
+                            <Input 
+                              {...register(`items.${index}.satuan`)} 
+                              placeholder="Pcs, Box, dll" 
+                              className="h-9 text-sm"
+                            />
                         </div>
                       </div>
 
                       {/* Prices & Specs */}
                       <div className="space-y-4">
-                         <div className="grid grid-cols-2 gap-4">
+                         <div className="grid grid-cols-2 gap-3 sm:gap-4">
                            <div className="space-y-2">
-                             <Label>Harga Beli</Label>
+                             <Label className="text-sm">Harga Beli</Label>
                              <Input 
                                type="number"
                                {...register(`items.${index}.hargaBeli`, { valueAsNumber: true })} 
                                placeholder="0"
+                               className="h-9 text-sm"
                              />
                            </div>
                            <div className="space-y-2">
-                             <Label>Harga Jual</Label>
+                             <Label className="text-sm">Harga Jual</Label>
                              <Input 
                                type="number"
                                {...register(`items.${index}.hargaJual`, { valueAsNumber: true })} 
                                placeholder="0"
+                               className="h-9 text-sm"
                              />
                            </div>
                          </div>
                          
                          <div className="space-y-2">
-                             <Label>Deskripsi</Label>
-                             <Input {...register(`items.${index}.deskripsi`)} placeholder="Deskripsi singkat produk" />
+                             <Label className="text-sm">Deskripsi</Label>
+                             <Input 
+                               {...register(`items.${index}.deskripsi`)} 
+                               placeholder="Deskripsi singkat produk" 
+                               className="h-9 text-sm"
+                             />
                          </div>
 
                          <div className="grid grid-cols-4 gap-2">
-                           <div className="space-y-2">
-                             <Label className="text-xs">Berat (g)</Label>
+                           <div className="space-y-1">
+                             <Label className="text-[10px] uppercase font-bold text-gray-500">Berat (g)</Label>
                              <Input 
                                type="number" 
-                               className="text-xs px-2"
+                               className="text-xs px-2 h-8"
                                {...register(`items.${index}.berat`, { valueAsNumber: true })} 
                                placeholder="0" 
                              />
                            </div>
-                           <div className="space-y-2">
-                             <Label className="text-xs">P (cm)</Label>
+                           <div className="space-y-1">
+                             <Label className="text-[10px] uppercase font-bold text-gray-500">P (cm)</Label>
                              <Input 
                                type="number" 
-                               className="text-xs px-2"
+                               className="text-xs px-2 h-8"
                                {...register(`items.${index}.dimensiP`, { valueAsNumber: true })} 
                                placeholder="0" 
                              />
                            </div>
-                           <div className="space-y-2">
-                             <Label className="text-xs">L (cm)</Label>
+                           <div className="space-y-1">
+                             <Label className="text-[10px] uppercase font-bold text-gray-500">L (cm)</Label>
                              <Input 
                                type="number" 
-                               className="text-xs px-2"
+                               className="text-xs px-2 h-8"
                                {...register(`items.${index}.dimensiL`, { valueAsNumber: true })} 
                                placeholder="0" 
                              />
                            </div>
-                           <div className="space-y-2">
-                             <Label className="text-xs">T (cm)</Label>
+                           <div className="space-y-1">
+                             <Label className="text-[10px] uppercase font-bold text-gray-500">T (cm)</Label>
                              <Input 
                                type="number" 
-                               className="text-xs px-2"
+                               className="text-xs px-2 h-8"
                                {...register(`items.${index}.dimensiT`, { valueAsNumber: true })} 
                                placeholder="0" 
                              />
@@ -393,38 +424,51 @@ const ProductRequestForm = ({ requestList, branchList, userList, onSubmitSuccess
                          </div>
                       </div>
                     </div>
-                  </>
-                )}
-                
-                <div className="md:col-span-3 mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <div className="space-y-2">
-                      <Label>Jumlah Diminta</Label>
-                      <Input 
-                        type="number" 
-                        {...register(`items.${index}.jumlahDiminta`, { valueAsNumber: true })} 
-                      />
-                      {errors.items?.[index]?.jumlahDiminta && (
-                        <p className="text-red-500 text-xs">{errors.items[index].jumlahDiminta.message}</p>
-                      )}
-                   </div>
-                   <div className="space-y-2">
-                      <Label>Catatan Item</Label>
-                      <Input {...register(`items.${index}.catatan`)} placeholder="Catatan khusus untuk item ini" />
-                   </div>
-
+                  )}
+                  
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-4 border-dashed">
+                     <div className="space-y-2">
+                        <Label className="text-sm">Jumlah Diminta</Label>
+                        <Input 
+                          type="number" 
+                          {...register(`items.${index}.jumlahDiminta`, { valueAsNumber: true })} 
+                          className="h-9 text-sm"
+                        />
+                        {errors.items?.[index]?.jumlahDiminta && (
+                          <p className="text-red-500 text-xs">{errors.items[index].jumlahDiminta.message}</p>
+                        )}
+                     </div>
+                     <div className="space-y-2">
+                        <Label className="text-sm">Catatan Item</Label>
+                        <Input 
+                          {...register(`items.${index}.catatan`)} 
+                          placeholder="Catatan khusus" 
+                          className="h-9 text-sm"
+                        />
+                     </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          {errors.items && <p className="text-red-500 text-sm mt-2">{errors.items.message}</p>}
         </div>
-        {errors.items && <p className="text-red-500 text-sm mt-2">{errors.items.message}</p>}
       </div>
 
-      <div className="flex justify-end space-x-3 pt-6 border-t">
-        <Button type="button" variant="outline" onClick={onCancel}>
+      <div className="flex justify-end space-x-3 pt-4 sm:pt-6 border-t bg-white">
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={onCancel}
+          className="h-9 sm:h-10 text-sm px-4"
+        >
           Batal
         </Button>
-        <Button type="submit" disabled={isLoading}>
+        <Button 
+          type="submit" 
+          disabled={isLoading}
+          className="h-9 sm:h-10 text-sm px-4"
+        >
           {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           Kirim Request
         </Button>

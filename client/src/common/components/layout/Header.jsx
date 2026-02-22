@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import CabangSwitcher from "@features/cabang/components/CabangSwitcher";
 import useSearch from "@common/hooks/useSearch";
+import { useInventoryNotifications } from "@common/hooks/useInventoryNotifications";
+import { useCabang } from "@features/cabang/hooks/useCabang";
 
 const Header = () => {
   const [showNotifications, setShowNotifications] = useState(false);
@@ -32,6 +34,7 @@ const Header = () => {
   const notificationRef = useRef(null);
   const searchRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const { selectedCabang } = useCabang();
   const {
     isLoading,
     results,
@@ -40,6 +43,24 @@ const Header = () => {
     handleResultClick,
     navigateToSearchResults,
   } = useSearch();
+
+  const {
+    useNotifications,
+    useMarkAsRead,
+    useMarkAllAsRead,
+  } = useInventoryNotifications();
+
+  const { data: notificationResponse } = useNotifications(
+    { cabangId: selectedCabang?.id },
+    1,
+    5
+  );
+  
+  const markAsReadMutation = useMarkAsRead();
+  const markAllAsReadMutation = useMarkAllAsRead();
+
+  const notifications = notificationResponse?.data || [];
+  const unreadCount = notificationResponse?.pagination?.totalItems || 0;
 
   // Format tanggal dalam Bahasa Indonesia
   const formatDate = (date) => {
@@ -73,25 +94,24 @@ const Header = () => {
     return () => clearInterval(timerId);
   }, []);
 
-  // Handle search input change with debounce
+  // Handle search input change
   const handleSearchChange = (e) => {
-    const query = e.target.value;
-    setSearchQuery(query);
+    setSearchQuery(e.target.value);
+  };
 
-    if (query.length > 2) {
+  // Debounced search effect
+  useEffect(() => {
+    if (searchQuery.length > 2) {
       setShowSearchDropdown(true);
-      // Debounce search
       const handler = setTimeout(() => {
-        performSearch(query, searchCategory);
-      }, 300);
+        performSearch(searchQuery, searchCategory);
+      }, 500);
 
-      return () => {
-        clearTimeout(handler);
-      };
-    } else if (query.length === 0) {
+      return () => clearTimeout(handler);
+    } else {
       setShowSearchDropdown(false);
     }
-  };
+  }, [searchQuery, searchCategory, performSearch]);
 
   // Handle search category change
   const handleCategoryChange = (category) => {
@@ -136,30 +156,13 @@ const Header = () => {
     }
   };
 
-  // Dummy notifications
-  const dummyNotifications = [
-    {
-      id: 1,
-      title: "Transaksi Berhasil",
-      message: "Transaksi #TRX-21092 telah berhasil diproses",
-      time: "10 menit yang lalu",
-      status: "success",
-    },
-    {
-      id: 2,
-      title: "Stok Menipis",
-      message: "Stok produk Keyboard Logitech K380 hampir habis (2 tersisa)",
-      time: "1 jam yang lalu",
-      status: "warning",
-    },
-    {
-      id: 3,
-      title: "Pembayaran Tertunda",
-      message: "Transaksi #TRX-21088 menunggu verifikasi pembayaran",
-      time: "3 jam yang lalu",
-      status: "pending",
-    },
-  ];
+  const handleMarkAllAsRead = () => {
+    markAllAsReadMutation.mutate(selectedCabang?.id);
+  };
+
+  const handleMarkAsRead = (id) => {
+    markAsReadMutation.mutate(id);
+  };
 
   // Handle click outside untuk menutup dropdown
   useEffect(() => {
@@ -189,13 +192,13 @@ const Header = () => {
     setShowNotifications(!showNotifications);
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case "success":
-        return <CheckCircle size={16} className="text-green-500" />;
-      case "warning":
+  const getStatusIcon = (priority) => {
+    switch (priority) {
+      case "HIGH":
+        return <AlertCircle size={16} className="text-red-500" />;
+      case "MEDIUM":
         return <AlertCircle size={16} className="text-yellow-500" />;
-      case "pending":
+      case "LOW":
         return <Clock size={16} className="text-blue-500" />;
       default:
         return <Bell size={16} className="text-gray-500" />;
@@ -207,61 +210,31 @@ const Header = () => {
     switch (item.category) {
       case "products":
         return {
-          title: item.name,
-          subtitle: `Stok: ${item.stock}`,
+          title: item.namaProduk,
+          subtitle: `Stok: ${item.stok} ${item.satuan || ""}`,
           icon: <Tag size={16} className="text-indigo-500" />,
         };
       case "transactions":
         return {
-          title: item.number,
-          subtitle: `Tanggal: ${item.date}`,
+          title: item.nomor_transaksi,
+          subtitle: `Total: RP ${item.total_harga?.toLocaleString()}`,
           icon: <FileSpreadsheet size={16} className="text-green-500" />,
         };
       case "customers":
         return {
-          title: item.name,
-          subtitle: item.email,
+          title: item.nama,
+          subtitle: item.telepon || item.email,
           icon: <User size={16} className="text-blue-500" />,
         };
       case "suppliers":
         return {
-          title: item.name,
-          subtitle: item.contact,
+          title: item.nama,
+          subtitle: item.kontak,
           icon: <Building size={16} className="text-yellow-500" />,
-        };
-      case "inventory":
-        return {
-          title: item.name,
-          subtitle: `Tanggal: ${item.date}`,
-          icon: <Package size={16} className="text-purple-500" />,
-        };
-      case "financial":
-        return {
-          title: item.name,
-          subtitle: `Tanggal: ${item.date}`,
-          icon: <FileBarChart size={16} className="text-red-500" />,
-        };
-      case "users":
-        return {
-          title: item.name,
-          subtitle: `Role: ${item.role}`,
-          icon: <UserCog size={16} className="text-gray-500" />,
-        };
-      case "branches":
-        return {
-          title: item.name,
-          subtitle: item.address,
-          icon: <Building size={16} className="text-teal-500" />,
-        };
-      case "settings":
-        return {
-          title: item.name,
-          subtitle: "",
-          icon: <Settings size={16} className="text-gray-500" />,
         };
       default:
         return {
-          title: item.name || "Untitled",
+          title: item.nama || item.name || item.nomor || "Tanpa Judul",
           subtitle: "",
           icon: <Search size={16} className="text-gray-500" />,
         };
@@ -452,9 +425,13 @@ const Header = () => {
             onClick={toggleNotifications}
           >
             <Bell size={18} className="md:w-5 md:h-5 text-gray-600" />
-            <div className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs">3</span>
-            </div>
+            {unreadCount > 0 && (
+              <div className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-[10px] font-bold">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              </div>
+            )}
           </div>
 
           {showNotifications && (
@@ -462,8 +439,12 @@ const Header = () => {
               <div className="px-4 py-2 border-b flex justify-between items-center">
                 <p className="text-sm font-medium">Notifikasi</p>
                 <div className="flex space-x-2">
-                  <button className="text-xs text-blue-600 hover:text-blue-800">
-                    Tandai sudah dibaca
+                  <button 
+                    onClick={handleMarkAllAsRead}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                    disabled={markAllAsReadMutation.isLoading}
+                  >
+                    Tandai semua dibaca
                   </button>
                   <X
                     size={16}
@@ -473,33 +454,51 @@ const Header = () => {
                 </div>
               </div>
 
-              <div className="max-h-96 overflow-y-auto">
-                {dummyNotifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className="px-4 py-3 border-b last:border-b-0 hover:bg-gray-50 cursor-pointer"
-                  >
-                    <div className="flex items-start">
-                      <div className="mr-3 mt-0.5">
-                        {getStatusIcon(notification.status)}
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="text-sm font-medium">
-                          {notification.title}
-                        </h4>
-                        <p className="text-xs text-gray-600 mt-1">
-                          {notification.message}
-                        </p>
-                        <div className="flex items-center mt-2">
-                          <Clock size={12} className="text-gray-400 mr-1" />
-                          <span className="text-xs text-gray-400">
-                            {notification.time}
-                          </span>
+              <div className="max-h-80 overflow-y-auto">
+                {notifications.length > 0 ? (
+                  notifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`px-4 py-3 border-b last:border-b-0 hover:bg-gray-50 cursor-pointer transition-colors ${
+                        !notification.isRead ? "bg-indigo-50/30" : ""
+                      }`}
+                      onClick={() => !notification.isRead && handleMarkAsRead(notification.id)}
+                    >
+                      <div className="flex items-start">
+                        <div className="mr-3 mt-1">
+                          {getStatusIcon(notification.priority)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className={`text-sm ${!notification.isRead ? "font-bold text-gray-900" : "font-medium text-gray-700"}`}>
+                            {notification.title}
+                          </h4>
+                          <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                            {notification.message}
+                          </p>
+                          <div className="flex items-center justify-between mt-2">
+                            <div className="flex items-center text-gray-400">
+                              <Clock size={10} className="mr-1" />
+                              <span className="text-[10px]">
+                                {new Date(notification.createdAt).toLocaleString("id-ID", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </div>
+                            {!notification.isRead && (
+                              <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="py-8 text-center">
+                    <Bell size={24} className="mx-auto text-gray-300 mb-2" />
+                    <p className="text-sm text-gray-500">Tidak ada notifikasi</p>
                   </div>
-                ))}
+                )}
               </div>
 
               <div className="px-4 py-2 border-t">

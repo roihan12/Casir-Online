@@ -546,15 +546,15 @@ const ProductManagementPage = () => {
   return (
     <div>
       <div className="px-6 py-4">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 sm:gap-0">
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
             Manajemen Produk
           </h1>
-          <div className="flex space-x-2">
+          <div className="grid grid-cols-2 sm:flex sm:flex-row w-full sm:w-auto gap-2 sm:space-x-2">
             {/* Refresh button */}
             <button
               onClick={handleRefresh}
-              className="bg-white text-gray-700 px-3 py-2 rounded-lg flex items-center hover:bg-gray-100 border border-gray-200"
+              className="bg-white text-gray-700 px-3 py-2 rounded-lg flex items-center justify-center hover:bg-gray-100 border border-gray-200 order-last sm:order-first col-span-2 sm:col-span-1"
               disabled={isLoading}
               title="Refresh data"
             >
@@ -568,10 +568,10 @@ const ProductManagementPage = () => {
             {adminMode && (
               <button
                 onClick={handleNavigateToCategories}
-                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center hover:bg-gray-200"
+                className="bg-gray-100 text-gray-700 px-2 sm:px-4 py-2 rounded-lg flex items-center justify-center hover:bg-gray-200 text-sm whitespace-nowrap"
               >
-                <Layers className="h-5 w-5 mr-2" />
-                Kategori
+                <Layers className="h-5 w-5 sm:mr-2" />
+                <span className="hidden sm:inline">Kategori</span>
               </button>
             )}
 
@@ -579,10 +579,10 @@ const ProductManagementPage = () => {
             {!adminMode && (
               <button
                 onClick={handleNavigateToRequests}
-                className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg flex items-center hover:bg-blue-200"
+                className="bg-blue-100 text-blue-700 px-2 sm:px-4 py-2 rounded-lg flex items-center justify-center hover:bg-blue-200 text-sm whitespace-nowrap"
               >
-                <ShoppingBag className="h-5 w-5 mr-2" />
-                Request Produk
+                <ShoppingBag className="h-5 w-5 sm:mr-2" />
+                <span className="hidden sm:inline">Request Produk</span>
               </button>
             )}
 
@@ -590,26 +590,26 @@ const ProductManagementPage = () => {
               <>
                 <button
                   onClick={() => setShowImportExportModal(true)}
-                  className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center hover:bg-gray-200"
+                  className="bg-gray-100 text-gray-700 px-2 sm:px-4 py-2 rounded-lg flex items-center justify-center hover:bg-gray-200 text-sm whitespace-nowrap"
                 >
-                  <Upload className="h-5 w-5 mr-2" />
-                  Impor/Ekspor
+                  <Upload className="h-5 w-5 sm:mr-2" />
+                  <span className="hidden sm:inline">Impor/Ekspor</span>
                 </button>
 
                 <button
                   onClick={() => setShowQuickAddModal(true)}
-                  className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-emerald-700"
+                  className="bg-emerald-600 text-white px-2 sm:px-4 py-2 rounded-lg flex items-center justify-center hover:bg-emerald-700 text-sm whitespace-nowrap col-span-2 sm:col-span-1"
                 >
-                  <Plus className="h-5 w-5 mr-2" />
-                  Tambah Cepat
+                  <Plus className="h-5 w-5 sm:mr-2" />
+                  <span className="hidden sm:inline">Tambah Cepat</span>
                 </button>
 
                 <button
                   onClick={handleAddProduct}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-indigo-700"
+                  className="bg-indigo-600 text-white px-2 sm:px-4 py-2 rounded-lg flex items-center justify-center hover:bg-indigo-700 text-sm whitespace-nowrap col-span-2 sm:col-span-1"
                 >
-                  <Plus className="h-5 w-5 mr-2" />
-                  Tambah Massal
+                  <Plus className="h-5 w-5 sm:mr-2" />
+                  <span>Tambah Massal</span>
                 </button>
               </>
             )}
@@ -676,8 +676,8 @@ const ProductManagementPage = () => {
         {/* Table Section */}
         <div className="bg-white rounded-lg shadow-sm mb-6">
           <div className="p-4 border-b flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div className="relative">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+              <div className="relative w-full sm:w-64">
                 <Search
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
                   size={18}
@@ -685,7 +685,7 @@ const ProductManagementPage = () => {
                 <input
                   type="text"
                   placeholder="Cari produk..."
-                  className="pl-10 pr-4 py-2 border rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="pl-10 pr-4 py-2 border rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   value={searchQuery}
                   onChange={handleSearchChange}
                 />
@@ -693,17 +693,17 @@ const ProductManagementPage = () => {
 
               <button
                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                className="flex items-center text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded text-sm"
+                className="flex items-center justify-center text-indigo-600 hover:text-indigo-800 px-2 py-2 rounded text-sm font-medium border border-indigo-100 sm:border-transparent hover:bg-indigo-50 sm:hover:bg-transparent"
               >
                 <Filter className="h-4 w-4 mr-1" />
                 {showAdvancedFilters ? "Sembunyikan Filter" : "Filter Lanjutan"}
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center space-x-2">
+            <div className="grid grid-cols-2 md:flex md:flex-wrap items-center gap-2 sm:gap-4">
+              <div className="flex items-center">
                 <select
-                  className="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="border rounded-lg p-2 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm overflow-hidden text-ellipsis"
                   value={categoryFilter}
                   onChange={handleCategoryChange}
                 >
@@ -716,9 +716,9 @@ const ProductManagementPage = () => {
                 </select>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center">
                 <select
-                  className="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
+                  className="border rounded-lg p-2 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500 text-sm"
                   value={cabangFilter}
                   onChange={handleCabangChange}
                   disabled={!adminMode}
@@ -732,9 +732,9 @@ const ProductManagementPage = () => {
                 </select>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center">
                 <select
-                  className="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="border rounded-lg p-2 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                   value={statusFilter}
                   onChange={handleStatusChange}
                 >
@@ -744,43 +744,45 @@ const ProductManagementPage = () => {
                 </select>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center">
                 <select
-                  className="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="border rounded-lg p-2 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                   value={sortByFilter}
                   onChange={handleSortByChange}
                 >
-                  <option value="updatedAt">Tanggal Update</option>
-                  <option value="createdAt">Tanggal Dibuat</option>
-                  <option value="namaProduk">Nama Produk</option>
-                  <option value="hargaJual">Harga Jual</option>
+                  <option value="updatedAt">Update</option>
+                  <option value="createdAt">Dibuat</option>
+                  <option value="namaProduk">Nama</option>
+                  <option value="hargaJual">Harga</option>
                   <option value="stok">Stok</option>
                 </select>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center">
                 <select
-                  className="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="border rounded-lg p-2 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                   value={sortOrderFilter}
                   onChange={handleSortOrderChange}
                 >
-                  <option value="desc">Menurun</option>
-                  <option value="asc">Menaik</option>
+                  <option value="desc">Desc</option>
+                  <option value="asc">Asc</option>
                 </select>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600">Tampilkan:</span>
-                <select
-                  className="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={itemsPerPage}
-                  onChange={handleItemsPerPageChange}
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                </select>
+              <div className="flex items-center col-span-2 md:col-span-1">
+                <div className="flex items-center w-full">
+                  <span className="text-xs text-gray-500 mr-2 whitespace-nowrap">Tampilkan:</span>
+                  <select
+                    className="border rounded-lg p-2 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                    value={itemsPerPage}
+                    onChange={handleItemsPerPageChange}
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
               </div>
             </div>
 

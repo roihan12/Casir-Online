@@ -23,6 +23,18 @@ const Pagination = ({
   className = "",
   align = "left",
 }) => {
+  const [isMobile, setIsMobile] = React.useState(typeof window !== 'undefined' ? window.innerWidth < 640 : false);
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const effectiveSiblingsCount = isMobile ? 0 : siblingsCount;
+
   // Handle page changes
   const handlePageChange = (page) => {
     if (page < 1 || page > totalPages || page === currentPage) {
@@ -34,7 +46,7 @@ const Pagination = ({
 
   // Generate the array of page numbers to display
   const getPageNumbers = () => {
-    if (totalPages <= 7) {
+    if (totalPages <= (isMobile ? 3 : 7)) {
       return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
 
@@ -43,8 +55,8 @@ const Pagination = ({
     const lastPage = totalPages;
 
     // Calculate the start and end of the siblings
-    const leftSiblingIndex = Math.max(currentPage - siblingsCount, firstPage);
-    const rightSiblingIndex = Math.min(currentPage + siblingsCount, lastPage);
+    const leftSiblingIndex = Math.max(currentPage - effectiveSiblingsCount, firstPage);
+    const rightSiblingIndex = Math.min(currentPage + effectiveSiblingsCount, lastPage);
 
     // Include a dot indicator if there's a gap
     const shouldShowLeftDots = leftSiblingIndex > firstPage + 1;
@@ -53,18 +65,18 @@ const Pagination = ({
     // Build the page numbers array
     if (!shouldShowLeftDots && shouldShowRightDots) {
       // Show more pages at start, dots at end
-      const leftItemCount = 5;
-      const leftRange = Array.from({ length: leftItemCount }, (_, i) => i + 1);
+      const leftItemCount = isMobile ? 2 : 5;
+      const leftRange = Array.from({ length: Math.min(leftItemCount, lastPage) }, (_, i) => i + 1);
 
       return [...leftRange, "...", lastPage];
     }
 
     if (shouldShowLeftDots && !shouldShowRightDots) {
       // Show dots at start, more pages at end
-      const rightItemCount = 5;
+      const rightItemCount = isMobile ? 2 : 5;
       const rightRange = Array.from(
-        { length: rightItemCount },
-        (_, i) => lastPage - rightItemCount + i + 1
+        { length: Math.min(rightItemCount, lastPage) },
+        (_, i) => lastPage - Math.min(rightItemCount, lastPage) + i + 1
       );
 
       return [firstPage, "...", ...rightRange];
@@ -101,21 +113,21 @@ const Pagination = ({
 
   return (
     <nav
-      className={`flex items-center space-x-1 ${alignmentClass} ${className}`}
+      className={`flex items-center space-x-0.5 sm:space-x-1 ${alignmentClass} ${className}`}
       aria-label="Pagination"
     >
       {/* Previous Page Button */}
       <button
         onClick={() => handlePageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className={`relative inline-flex items-center rounded-md px-3 py-1 text-sm font-medium ${
+        className={`relative inline-flex items-center rounded-md px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium ${
           currentPage === 1
             ? "text-gray-400 cursor-not-allowed bg-gray-100"
             : "text-gray-700 hover:bg-gray-200 border border-gray-300"
         }`}
       >
-        <ChevronLeft size={16} className="mr-1" />
-        <span>Prev</span>
+        <ChevronLeft size={isMobile ? 14 : 16} className="sm:mr-1" />
+        <span className="hidden sm:inline">Prev</span>
       </button>
 
       {/* Page Numbers */}
@@ -124,7 +136,7 @@ const Pagination = ({
           return (
             <span
               key={`ellipsis-${index}`}
-              className="relative inline-flex items-center px-3 py-1 text-sm font-medium text-gray-700"
+              className="relative inline-flex items-center px-1.5 sm:px-3 py-1 text-xs sm:text-sm font-medium text-gray-700"
             >
               ...
             </span>
@@ -136,10 +148,10 @@ const Pagination = ({
             key={page}
             onClick={() => handlePageChange(page)}
             aria-current={currentPage === page ? "page" : undefined}
-            className={`relative inline-flex items-center rounded-md px-3 py-1 text-sm font-medium ${
+            className={`relative inline-flex items-center rounded-md px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium ${
               currentPage === page
-                ? "bg-indigo-600 text-white hover:bg-indigo-700 transform scale-110 shadow-md"
-                : "text-gray-700 hover:bg-gray-100"
+                ? "bg-indigo-600 text-white hover:bg-indigo-700 transform scale-105 sm:scale-110 shadow-md"
+                : "text-gray-700 hover:bg-gray-100 border border-transparent"
             }`}
           >
             {page}
@@ -151,14 +163,14 @@ const Pagination = ({
       <button
         onClick={() => handlePageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className={`relative inline-flex items-center rounded-md px-3 py-1 text-sm font-medium ${
+        className={`relative inline-flex items-center rounded-md px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium ${
           currentPage === totalPages
             ? "text-gray-400 cursor-not-allowed bg-gray-100"
             : "text-gray-700 hover:bg-gray-200 border border-gray-300"
         }`}
       >
-        <span>Next</span>
-        <ChevronRight size={16} className="ml-1" />
+        <span className="hidden sm:inline">Next</span>
+        <ChevronRight size={isMobile ? 14 : 16} className="sm:ml-1" />
       </button>
     </nav>
   );

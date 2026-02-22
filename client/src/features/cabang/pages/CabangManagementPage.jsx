@@ -288,25 +288,25 @@ const CabangManagementPage = () => {
 
   return (
     <div>
-      <div className="px-6 py-4">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900">
+      <div className="px-4 sm:px-6 py-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 sm:gap-0">
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
             Manajemen Cabang
           </h1>
-          <div className="flex space-x-2">
+          <div className="grid grid-cols-2 sm:flex sm:flex-row w-full sm:w-auto gap-2 sm:space-x-2">
             <button
               onClick={() => setShowImportExportModal(true)}
-              className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center hover:bg-gray-200"
+              className="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg flex items-center justify-center hover:bg-gray-200 transition-colors text-sm sm:text-base"
             >
-              <Download className="h-5 w-5 mr-2" />
-              Impor/Ekspor
+              <Download className="h-4 w-4 sm:h-5 sm:w-5 mr-1.5 sm:mr-2" />
+              <span className="truncate">Impor/Ekspor</span>
             </button>
             <button
               onClick={handleAddCabang}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-indigo-700"
+              className="bg-indigo-600 text-white px-3 py-2 rounded-lg flex items-center justify-center hover:bg-indigo-700 transition-colors text-sm sm:text-base shadow-sm"
             >
-              <Plus className="h-5 w-5 mr-2" />
-              Tambah Cabang
+              <Plus className="h-4 w-4 sm:h-5 sm:w-5 mr-1.5 sm:mr-2" />
+              <span className="truncate">Tambah Cabang</span>
             </button>
           </div>
         </div>

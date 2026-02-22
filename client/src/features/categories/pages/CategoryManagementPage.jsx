@@ -126,21 +126,21 @@ const CategoryManagementPage = () => {
   return (
     <div>
       <div className="px-6 py-4">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 sm:gap-0">
           <div className="flex items-center">
             <button
               onClick={handleNavigateToProducts}
-              className="mr-3 text-gray-600 hover:text-indigo-600"
+              className="mr-3 text-gray-600 hover:text-indigo-600 transition-colors"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
-            <h1 className="text-2xl font-semibold text-gray-900">
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
               Manajemen Kategori
             </h1>
           </div>
           <button
             onClick={handleAddCategory}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-indigo-700"
+            className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center justify-center hover:bg-indigo-700 transition-colors text-sm sm:text-base"
           >
             <Plus className="h-5 w-5 mr-2" />
             Tambah Kategori
@@ -149,8 +149,8 @@ const CategoryManagementPage = () => {
 
         {/* Table Section */}
         <div className="bg-white rounded-lg shadow-sm mb-6">
-          <div className="p-4 border-b flex items-center justify-between flex-wrap gap-4">
-            <div className="relative">
+          <div className="p-4 border-b flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+            <div className="relative w-full sm:w-64">
               <Search
                 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
                 size={18}
@@ -158,35 +158,39 @@ const CategoryManagementPage = () => {
               <input
                 type="text"
                 placeholder="Cari kategori..."
-                className="pl-10 pr-4 py-2 border rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="pl-10 pr-4 py-2 border rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Filter className="text-gray-400" size={18} />
-              <select
-                className="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="all">Semua Status</option>
-                <option value="aktif">Aktif</option>
-                <option value="nonaktif">Nonaktif</option>
-              </select>
+            <div className="grid grid-cols-2 md:flex items-center gap-2 sm:gap-4">
+              <div className="flex items-center sm:space-x-2">
+                <Filter className="hidden sm:block text-gray-400" size={18} />
+                <select
+                  className="border rounded-lg p-2 w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">Semua</option>
+                  <option value="aktif">Aktif</option>
+                  <option value="nonaktif">Nonaktif</option>
+                </select>
+              </div>
 
-              <span className="ml-4 text-sm text-gray-600">Tampilkan:</span>
-              <select
-                className="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                value={itemsPerPage}
-                onChange={handleItemsPerPageChange}
-              >
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-              </select>
+              <div className="flex items-center justify-end sm:space-x-2">
+                <span className="mr-2 text-xs sm:text-sm text-gray-600">Tampilkan:</span>
+                <select
+                  className="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm w-16 sm:w-20"
+                  value={itemsPerPage}
+                  onChange={handleItemsPerPageChange}
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
             </div>
           </div>
 
