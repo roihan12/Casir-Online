@@ -20,7 +20,10 @@ import {
   BarChart2,
   TrendingUp,
   ShoppingBag,
+  Upload,
 } from "lucide-react";
+import ImportProdukMasterModal from "../components/ImportProdukMasterModal";
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 import produkMasterService from "@services/produkMasterService";
@@ -47,6 +50,7 @@ const ProductMasterList = () => {
   const [selectedStatus, setSelectedStatus] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Debounce search term
   React.useEffect(() => {
@@ -354,13 +358,22 @@ const ProductMasterList = () => {
           Manajemen Produk Master
         </h1>
         {canManage && (
-          <button
-            onClick={handleAddProduct}
-            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center justify-center transition-colors"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Tambah Produk
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="w-full sm:w-auto bg-white hover:bg-gray-50 text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg flex items-center justify-center transition-colors shadow-sm"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Import Data
+            </button>
+            <button
+              onClick={handleAddProduct}
+              className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center justify-center transition-colors shadow-sm"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Tambah Produk
+            </button>
+          </div>
         )}
       </div>
 
@@ -568,8 +581,18 @@ const ProductMasterList = () => {
           />
         )}
       </div>
+      {/* Import Modal */}
+      <ImportProdukMasterModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onSuccess={() => {
+          setShowImportModal(false);
+          refetch();
+        }}
+      />
     </div>
   );
 };
+
 
 export default ProductMasterList;

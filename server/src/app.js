@@ -70,6 +70,8 @@ const hariLiburRoutes = require("./routes/hariLiburRoutes");
 const izinRoutes = require("./routes/izinRoutes");
 const kuotaCutiRoutes = require("./routes/kuotaCutiRoutes");
 const penggajianRoutes = require("./routes/penggajianRoutes");
+const importProdukMasterRoutes = require("./routes/importProdukMasterRoutes");
+const importProdukRoutes = require("./routes/importProdukRoutes");
 
 
 const {
@@ -205,6 +207,8 @@ app.use("/api/hari-libur", hariLiburRoutes);
 app.use("/api/izin-cuti", izinRoutes);
 app.use("/api/kuota-cuti", kuotaCutiRoutes);
 app.use("/api/penggajian", penggajianRoutes);
+app.use("/api/import/produk-master", importProdukMasterRoutes);
+app.use("/api/import/produk", importProdukRoutes);
 
 // 404 handler
 app.use((req, res) => {

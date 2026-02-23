@@ -13,8 +13,6 @@ const dashboardController = {
         selectedBranchId
       );
 
-      console.log(result);
-
       res.status(200).json({
         status: true,
         message: "Dashboard Data",

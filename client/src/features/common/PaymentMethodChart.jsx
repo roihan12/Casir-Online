@@ -110,6 +110,9 @@ const PaymentMethodChart = ({ isGlobalView, cabang, paymentMethods }) => {
                     {details.icon}
                   </div>
                   <span className="text-sm font-medium">{method.method}</span>
+                  {method.provider && method.provider !== "N/A" && (
+                     <span className="text-sm font-medium"> - {method.provider}</span>
+                  )}
                 </div>
                 <div className="flex items-center">
                   <span className="text-sm font-medium mr-2">
@@ -125,7 +128,7 @@ const PaymentMethodChart = ({ isGlobalView, cabang, paymentMethods }) => {
                     ) : (
                       <TrendingDown size={14} className="mr-1" />
                     )}
-                    {method.percentageChange}%
+                    {method.percentageChange.toFixed(2)}%
                   </div>
                 </div>
               </div>

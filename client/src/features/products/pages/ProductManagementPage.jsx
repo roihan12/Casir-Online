@@ -27,6 +27,7 @@ import Table from "../../common/Table.jsx";
 import ProductDashboard from "../components/ProductDashboard";
 import ProductImportExport from "../components/ProductImportExport";
 import QuickAddProductModal from "../components/QuickAddProductModal";
+import ImportProdukModal from "../components/ImportProdukModal";
 import {
   useDeleteProdukMaster,
   useProdukMasterDashboard,
@@ -75,6 +76,7 @@ const ProductManagementPage = () => {
   const [categories, setCategories] = useState([]);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Sync cabangFilter for non-admins if it changes in context
   useEffect(() => {
@@ -589,11 +591,20 @@ const ProductManagementPage = () => {
             {canCreate && (
               <>
                 <button
-                  onClick={() => setShowImportExportModal(true)}
+                  onClick={() => setShowImportModal(true)}
                   className="bg-gray-100 text-gray-700 px-2 sm:px-4 py-2 rounded-lg flex items-center justify-center hover:bg-gray-200 text-sm whitespace-nowrap"
+                  title="Import Produk dari Excel"
                 >
                   <Upload className="h-5 w-5 sm:mr-2" />
-                  <span className="hidden sm:inline">Impor/Ekspor</span>
+                  <span className="hidden sm:inline">Import</span>
+                </button>
+                <button
+                  onClick={() => setShowImportExportModal(true)}
+                  className="bg-gray-100 text-gray-700 px-2 sm:px-4 py-2 rounded-lg flex items-center justify-center hover:bg-gray-200 text-sm whitespace-nowrap"
+                  title="Export Data"
+                >
+                  <Download className="h-5 w-5 sm:mr-2" />
+                  <span className="hidden sm:inline">Export</span>
                 </button>
 
                 <button
@@ -983,7 +994,24 @@ const ProductManagementPage = () => {
         productList={productList}
       />
 
+      {/* New Import Modal */}
+      <ImportProdukModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        cabangId={cabangFilter !== "all" ? cabangFilter : selectedCabang?.id}
+        namaCabang={
+          cabangFilter !== "all" && cabangFilter
+            ? cabangList.find((c) => c.id === cabangFilter)?.namaCabang || selectedCabang?.namaCabang
+            : selectedCabang?.namaCabang || ""
+        }
+        onSuccess={() => {
+          setShowImportModal(false);
+          refetch();
+        }}
+      />
+
       {/* Quick Add Modal */}
+
       <QuickAddProductModal
         isOpen={showQuickAddModal}
         onClose={() => setShowQuickAddModal(false)}

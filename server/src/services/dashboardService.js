@@ -55,7 +55,7 @@ class DashboardService {
           return { cabang_id: branchId };
         };
 
-        // Parallel data fetching
+        // Parallel data fetching — semua query diparalelkan untuk performa maksimal
         const [
           salesSummary,
           criticalAlerts,
@@ -67,6 +67,8 @@ class DashboardService {
           transactionCounts,
           categoryDistribution,
           paymentMethods,
+          branchGeoData,
+          stockHealth,
         ] = await Promise.all([
           // Sales Summary with percentage changes
           this.fetchSalesSummary(getWhereClause()),
@@ -94,21 +96,16 @@ class DashboardService {
 
           // Category Distribution
           this.fetchCategoryDistribution(branchId, isSuperAdmin),
-          
+
           // Payment Methods
           this.fetchPaymentMethodAnalytics(branchId, isSuperAdmin),
+
+          // Branch Geographic Data (hanya superadmin)
+          isSuperAdmin ? this.fetchBranchGeoData() : Promise.resolve(null),
+
+          // Stock Health Overview
+          this.fetchStockHealthOverview(branchId, isSuperAdmin),
         ]);
-
-        // Get branch geographic data (for map view)
-        const branchGeoData = isSuperAdmin
-          ? await this.fetchBranchGeoData()
-          : null;
-
-        // Stock health overview
-        const stockHealth = await this.fetchStockHealthOverview(
-          branchId,
-          isSuperAdmin
-        );
 
         // Format the response data to handle BigInt serialization
         return this.formatResponseData({
@@ -167,15 +164,12 @@ class DashboardService {
     // Handle both formatted (roles/cabang) and raw (userRoles/userCabang) user objects
     const roles = user.roles || user.userRoles || [];
     const cabangList = user.cabang || user.userCabang || [];
-    
-    console.log("Roles:", roles);
-    console.log("Cabang List:", cabangList);
 
     // Super admin can see all branches if no specific branch is selected
     const isSuperAdmin = roles.some(
       (r) => r.namaRole === "super_admin" || r.role?.namaRole === "super_admin"
     );
-    
+
     if (isSuperAdmin && (!selectedBranchId || selectedBranchId === "all")) {
       return "all";
     }
@@ -252,55 +246,50 @@ class DashboardService {
 
   // Flexible Sales Summary Calculation with expanded period options
   static async calculateSalesSummary(whereClause, period) {
+    // FIX: Buat `today` sebagai clone dari `now` agar `now` tidak termutasi
     const now = new Date();
-    const today = new Date(now.setHours(0, 0, 0, 0));
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+
+    // Besok sebagai batas atas periode hari ini
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // FIX: Hitung semua periode dari `today` yang sudah bersih (tidak mutasi `now`)
+    const oneWeekAgo = new Date(today);
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+    const twoWeeksAgo = new Date(today);
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+
+    const oneMonthAgo = new Date(today);
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+
+    const twoMonthsAgo = new Date(today);
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+
+    const oneYearAgo = new Date(today);
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+    const twoYearsAgo = new Date(today);
+    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
 
     // Define date ranges for different periods
     const periodFilters = {
-      daily: {
-        startDate: today,
-        endDate: new Date(now.getTime() + 24 * 60 * 60 * 1000),
-      },
-      prevDaily: {
-        startDate: new Date(today.getTime() - 24 * 60 * 60 * 1000),
-        endDate: today,
-      },
-      weekly: {
-        startDate: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000),
-        endDate: new Date(now.getTime() + 24 * 60 * 60 * 1000),
-      },
-      prevWeekly: {
-        startDate: new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000),
-        endDate: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000),
-      },
-      monthly: {
-        startDate: new Date(new Date().setMonth(now.getMonth() - 1)),
-        endDate: new Date(now.getTime() + 24 * 60 * 60 * 1000),
-      },
-      prevMonthly: {
-        startDate: new Date(new Date().setMonth(now.getMonth() - 2)),
-        endDate: new Date(new Date().setMonth(now.getMonth() - 1)),
-      },
-      yearly: {
-        startDate: new Date(new Date().setFullYear(now.getFullYear() - 1)),
-        endDate: new Date(now.getTime() + 24 * 60 * 60 * 1000),
-      },
-      prevYearly: {
-        startDate: new Date(new Date().setFullYear(now.getFullYear() - 2)),
-        endDate: new Date(new Date().setFullYear(now.getFullYear() - 1)),
-      },
+      daily:       { startDate: today,       endDate: tomorrow },
+      prevDaily:   { startDate: new Date(today.getTime() - 24 * 60 * 60 * 1000), endDate: today },
+      weekly:      { startDate: oneWeekAgo,  endDate: tomorrow },
+      prevWeekly:  { startDate: twoWeeksAgo, endDate: oneWeekAgo },
+      monthly:     { startDate: oneMonthAgo,  endDate: tomorrow },
+      prevMonthly: { startDate: twoMonthsAgo, endDate: oneMonthAgo },
+      yearly:      { startDate: oneYearAgo,   endDate: tomorrow },
+      prevYearly:  { startDate: twoYearsAgo,  endDate: oneYearAgo },
     };
 
     // Get date range for selected period
     const { startDate, endDate } = periodFilters[period];
 
-    // Build the branch filter condition
-    let branchCondition = "";
-    if (whereClause.cabang_id) {
-      branchCondition = `AND cabang_id = '${whereClause.cabang_id}'`;
-    }
-
-    // Execute raw SQL query
+    // Execute raw SQL query (menggunakan Prisma.sql untuk keamanan)
     const result = await prisma.$queryRaw`
     SELECT 
       SUM(total) as sum_total,
@@ -312,16 +301,12 @@ class DashboardService {
       AND tanggal >= ${startDate}
       AND tanggal < ${endDate}
       ${
-        branchCondition
+        whereClause.cabang_id
           ? Prisma.sql`AND cabang_id = ${whereClause.cabang_id}`
           : Prisma.empty
       }
   `;
 
-    console.log("DEBUG SQL", period, startDate, endDate, whereClause, result);
-
-    // Format the result to match the original function's return structure
-    // Convert BigInt values to strings
     return {
       _sum: {
         total: result[0]?.sum_total ? Number(result[0].sum_total) : 0,
@@ -452,34 +437,33 @@ class DashboardService {
 
   // Critical Alerts Fetcher
   static async fetchCriticalAlerts(branchId, isSuperAdmin) {
+    const branchFilter =
+      isSuperAdmin && branchId === "all"
+        ? Prisma.empty
+        : Prisma.sql`AND p.cabang_id = ${branchId}`;
+
     const [
       lowStockProducts,
       pendingApprovals,
       expiringStock,
       unreadNotifications,
     ] = await Promise.all([
-      // Low Stock Products
-      prisma.produk.findMany({
-        where: {
-          ...(isSuperAdmin && branchId === "all" ? {} : { cabangId: branchId }),
-          stok: { lte: prisma.produk.fields.minStok },
-        },
-        select: {
-          id: true,
-          stok: true,
-          minStok: true,
-          cabang: {
-            select: {
-              namaCabang: true,
-            },
-          },
-          produkMaster: {
-            select: {
-              namaProduk: true,
-            },
-          },
-        },
-      }),
+      // Low Stock Products — raw SQL untuk field-to-field comparison (stok <= min_stok)
+      prisma.$queryRaw`
+        SELECT
+          p.produk_id   AS id,
+          p.stok,
+          p.min_stok    AS "minStok",
+          c.nama_cabang AS "cabangNama",
+          pm.nama_produk AS "namaProduk"
+        FROM produk p
+        JOIN cabang c ON p.cabang_id = c.cabang_id
+        JOIN produk_master pm ON p.produk_master_id = pm.produk_master_id
+        WHERE p.stok IS NOT NULL
+          AND p.min_stok IS NOT NULL
+          AND p.stok <= p.min_stok
+          ${branchFilter} LIMIT 10
+      `,
 
       // Pending Product Requests
       prisma.produkRequest.count({
@@ -489,32 +473,27 @@ class DashboardService {
         },
       }),
 
-      // Expiring Stock (within 30 days)
-      prisma.inventoryMovement.findMany({
-        where: {
-          ...(isSuperAdmin && branchId === "all" ? {} : { cabangId: branchId }),
-          expiredDate: {
-            lte: new Date(new Date().setDate(new Date().getDate() + 30)),
-            gte: new Date(), // Only future expirations
-          },
-        },
-        select: {
-          produk: {
-            select: {
-              id: true,
-              produkMaster: {
-                select: {
-                  namaProduk: true,
-                },
-              },
-            },
-          },
-          expiredDate: true,
-          batchNumber: true,
-          quantity: true,
-        },
-        distinct: ["produkId", "batchNumber"],
-      }),
+      // Expiring Stock (within 30 days) — raw SQL untuk efisiensi
+      prisma.$queryRaw`
+        SELECT DISTINCT ON (im.produk_id, im.batch_number)
+          im.produk_id    AS "produkId",
+          im.expired_date AS "expiredDate",
+          im.batch_number AS "batchNumber",
+          im.quantity,
+          pm.nama_produk  AS "namaProduk"
+        FROM inventory_movement im
+        JOIN produk p ON im.produk_id = p.produk_id
+        JOIN produk_master pm ON p.produk_master_id = pm.produk_master_id
+        WHERE im.expired_date IS NOT NULL
+          AND im.expired_date >= CURRENT_DATE
+          AND im.expired_date <= CURRENT_DATE + INTERVAL '30 days'
+          ${
+            isSuperAdmin && branchId === "all"
+              ? Prisma.empty
+              : Prisma.sql`AND im.cabang_id = ${branchId}`
+          }
+        ORDER BY im.produk_id, im.batch_number, im.expired_date ASC
+      `,
 
       // Unread high-priority notifications
       prisma.stockNotification.count({
@@ -527,15 +506,22 @@ class DashboardService {
 
     // Process low stock products to include severity indicators
     const lowStockWithSeverity = lowStockProducts.map((product) => {
-      const stockRatio = product.stok / product.minStok;
-      let severity = "high";
+      const stok = Number(product.stok);
+      const minStok = Number(product.minStok);
+      const stockRatio = minStok > 0 ? stok / minStok : 0;
+
+      // FIX: Hapus dead assignment, gunakan langsung kondisi yang benar
+      let severity;
       if (stockRatio >= 0.7) severity = "medium";
       else if (stockRatio >= 0.3) severity = "high";
       else severity = "critical";
 
       return {
-        ...product,
-        id: String(product.id), // Convert ID to String to avoid BigInt issues
+        id: String(product.id),
+        stok,
+        minStok,
+        cabang: { namaCabang: product.cabangNama },
+        produkMaster: { namaProduk: product.namaProduk },
         severity,
       };
     });
@@ -549,12 +535,11 @@ class DashboardService {
       expiringStock: {
         count: expiringStock.length,
         details: expiringStock.map((item) => ({
-          ...item,
-          produk: {
-            ...item.produk,
-            id: String(item.produk.id), // Convert ID to String
-          },
-          quantity: Number(item.quantity), // Convert quantity if it's BigInt
+          produkId: String(item.produkId),
+          namaProduk: item.namaProduk,
+          expiredDate: item.expiredDate,
+          batchNumber: item.batchNumber,
+          quantity: Number(item.quantity),
         })),
       },
       unreadNotifications,
@@ -786,48 +771,37 @@ class DashboardService {
     }));
   }
 
-  // Stock Health Overview
+  // Stock Health Overview — menggunakan raw SQL untuk field-to-field comparison
   static async fetchStockHealthOverview(branchId, isSuperAdmin) {
-    const [totalProducts, lowStock, outOfStock, overstock] = await Promise.all([
-      // Total products
-      prisma.produk.count({
-        where: {
-          ...(isSuperAdmin && branchId === "all" ? {} : { cabangId: branchId }),
-        },
-      }),
+    const branchFilter =
+      isSuperAdmin && branchId === "all"
+        ? Prisma.empty
+        : Prisma.sql`AND cabang_id = ${branchId}`;
 
-      // Low stock
-      prisma.produk.count({
-        where: {
-          ...(isSuperAdmin && branchId === "all" ? {} : { cabangId: branchId }),
-          stok: {
-            lte: prisma.produk.fields.minStok,
-            gt: 0,
-          },
-        },
-      }),
+    const result = await prisma.$queryRaw`
+      SELECT
+        COUNT(*)                                                         AS total,
+        COUNT(*) FILTER (WHERE stok = 0)                                AS out_of_stock,
+        COUNT(*) FILTER (
+          WHERE stok > 0
+            AND min_stok IS NOT NULL
+            AND stok <= min_stok
+        )                                                                AS low_stock,
+        COUNT(*) FILTER (
+          WHERE max_stok IS NOT NULL
+            AND stok IS NOT NULL
+            AND stok >= max_stok
+        )                                                                AS overstock
+      FROM produk
+      WHERE 1=1
+        ${branchFilter}
+    `;
 
-      // Out of stock
-      prisma.produk.count({
-        where: {
-          ...(isSuperAdmin && branchId === "all" ? {} : { cabangId: branchId }),
-          stok: 0,
-        },
-      }),
-
-      // Overstock
-      prisma.produk.count({
-        where: {
-          ...(isSuperAdmin && branchId === "all" ? {} : { cabangId: branchId }),
-          stok: {
-            gte: prisma.produk.fields.maxStok,
-          },
-          maxStok: {
-            not: null,
-          },
-        },
-      }),
-    ]);
+    const row = result[0];
+    const totalProducts = Number(row.total);
+    const outOfStock    = Number(row.out_of_stock);
+    const lowStock      = Number(row.low_stock);
+    const overstock     = Number(row.overstock);
 
     // Calculate health percentages
     const healthyStock = totalProducts - lowStock - outOfStock - overstock;
@@ -958,9 +932,10 @@ class DashboardService {
           !usersByBranch[branchId].users.some((u) => u.id === session.user.id)
         ) {
           usersByBranch[branchId].users.push({
-            id: String(session.user.id), // Convert to String
+            id: String(session.user.id),
             name: session.user.namaLengkap,
-            lastActivity: session.lastActivity.toISOString(),
+            // FIX: lastActivity nullable — gunakan optional chaining
+            lastActivity: session.lastActivity?.toISOString() ?? null,
           });
         }
       });
@@ -1259,11 +1234,13 @@ class DashboardService {
   // Method untuk invalidasi cache saat ada perubahan data
   static async invalidateDashboardCache(userId = null, cabangId = null) {
     if (userId && cabangId) {
+      // Hapus cache spesifik untuk user + branch
       await cacheDelete(
         createCacheKey("comprehensive-dashboard", `${userId}:${cabangId}`)
       );
     } else if (userId) {
-      await cacheDelete(
+      // FIX: Gunakan cacheDeletePattern (bukan cacheDelete) untuk wildcard
+      await cacheDeletePattern(
         createCacheKey("comprehensive-dashboard", `${userId}:*`)
       );
     } else {
