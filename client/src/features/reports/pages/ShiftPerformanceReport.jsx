@@ -108,8 +108,8 @@ const ShiftPerformanceReport = () => {
 
   const statusOptions = [
     { value: "all", label: "Semua Status" },
-    { value: "AKTIF", label: "Aktif" },
-    { value: "SELESAI", label: "Selesai" },
+    { value: "dibuka", label: "Aktif" },
+    { value: "ditutup", label: "Selesai" },
   ];
 
   // Extract data safely from backend response structure

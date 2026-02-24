@@ -114,8 +114,8 @@ const CustomerLoyaltyReport = () => {
   const segmentOptions = [
     { value: "all", label: "Semua Segmen" },
     { value: "VIP", label: "VIP" },
-    { value: "REGULER", label: "Reguler" },
-    { value: "BARU", label: "Baru" },
+    { value: "Retail", label: "Retail" },
+    { value: "Grosir", label: "Grosir" },
   ];
 
   const summaryMetrics = summaryData?.data || {
@@ -149,7 +149,7 @@ const CustomerLoyaltyReport = () => {
               <Button onClick={handleRefreshData} icon={<RefreshCcw size={16} />}>
                 Refresh
               </Button>
-              <ExportDropdown reportType="customer" params={apiParams} disabled={loading} />
+              <ExportDropdown reportType="loyalty" params={apiParams} disabled={loading} />
             </div>
           </div>
 
@@ -203,8 +203,8 @@ const CustomerLoyaltyReport = () => {
           value={loadingSummary ? <LoadingIndicator size="sm" /> : summaryMetrics.totalCustomers}
         />
         <MetricCard
-          title="Customer Aktif"
-          value={loadingSummary ? <LoadingIndicator size="sm" /> : summaryMetrics.activeCustomers}
+          title="Total Poin"
+          value={loadingSummary ? <LoadingIndicator size="sm" /> : summaryMetrics.totalPoints}
         />
         <MetricCard
           title="Customer Baru"
@@ -212,7 +212,7 @@ const CustomerLoyaltyReport = () => {
         />
         <MetricCard
           title="Rata-rata Pembelian"
-          value={loadingSummary ? <LoadingIndicator size="sm" /> : formatCurrency(summaryMetrics.avgSpending)}
+          value={loadingSummary ? <LoadingIndicator size="sm" /> : formatCurrency(summaryMetrics.avgRevenuePerCustomer)}
         />
       </div>
 
@@ -238,7 +238,7 @@ const CustomerLoyaltyReport = () => {
                   <CardContent>
                     <p className="text-sm text-gray-600 mb-1">Customer Lifetime Value</p>
                     <p className="text-2xl font-bold text-green-600">
-                      {formatCurrency(summaryMetrics.lifetimeValue || 0)}
+                      {formatCurrency(summaryMetrics.customerLifetimeValue || 0)}
                     </p>
                   </CardContent>
                 </Card>
@@ -246,7 +246,7 @@ const CustomerLoyaltyReport = () => {
                   <CardContent>
                     <p className="text-sm text-gray-600 mb-1">Repeat Purchase Rate</p>
                     <p className="text-2xl font-bold text-blue-600">
-                      {summaryMetrics.repeatRate?.toFixed(1) || 0}%
+                      {summaryMetrics.repeatPurchaseRate?.toFixed(1) || 0}%
                     </p>
                   </CardContent>
                 </Card>
@@ -282,7 +282,7 @@ const CustomerLoyaltyReport = () => {
                     <BarChart data={topCustomers} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" tickFormatter={(v) => `${(v / 1000000).toFixed(1)}jt`} />
-                      <YAxis type="category" dataKey="nama" width={150} />
+                      <YAxis type="category" dataKey="namaPelanggan" width={150} />
                       <RechartsTooltip formatter={(v) => formatCurrency(v)} />
                       <Bar dataKey="totalBelanja" name="Total Belanja" fill="#8884d8" />
                     </BarChart>
@@ -291,17 +291,18 @@ const CustomerLoyaltyReport = () => {
                 <Divider />
                 <DataTable
                   columns={[
-                    { header: "Rank", cell: (row, idx) => idx + 1, cellClassName: "text-center" },
-                    { header: "Nama Customer", accessor: "nama" },
+                    { header: "Rank", cell: (row, rowIndex) => (rowIndex ?? 0) + 1, cellClassName: "text-center" },
+                    { header: "Nama Customer", accessor: "namaPelanggan" },
+                    { header: "Segmen", accessor: "segmen" },
                     {
                       header: "Total Belanja",
                       cell: (row) => formatCurrency(row.totalBelanja),
                       cellClassName: "text-right",
                     },
-                    { header: "Jumlah Transaksi", accessor: "jumlahTransaksi", cellClassName: "text-right" },
+                    { header: "Jumlah Transaksi", accessor: "totalTransaksi", cellClassName: "text-right" },
                     {
                       header: "Rata-rata",
-                      cell: (row) => formatCurrency(row.rataRata),
+                      cell: (row) => formatCurrency(row.avgTransaksi),
                       cellClassName: "text-right",
                     },
                   ]}
@@ -325,26 +326,26 @@ const CustomerLoyaltyReport = () => {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card className="bg-indigo-50 border border-indigo-200">
                   <CardContent>
-                    <p className="text-sm text-gray-600 mb-1">Total Member</p>
-                    <p className="text-2xl font-bold text-indigo-600">{loyalty.members}</p>
+                    <p className="text-sm text-gray-600 mb-1">Redemption Rate</p>
+                    <p className="text-2xl font-bold text-indigo-600">{loyalty.redemptionRate.toFixed(2)}%</p>
                   </CardContent>
                 </Card>
                 <Card className="bg-green-50 border border-green-200">
                   <CardContent>
-                    <p className="text-sm text-gray-600 mb-1">Member Aktif</p>
-                    <p className="text-2xl font-bold text-green-600">{loyalty.activeMembers}</p>
+                    <p className="text-sm text-gray-600 mb-1">Net Poin</p>
+                    <p className="text-2xl font-bold text-green-600">{loyalty.netPoints}</p>
                   </CardContent>
                 </Card>
                 <Card className="bg-yellow-50 border border-yellow-200">
                   <CardContent>
                     <p className="text-sm text-gray-600 mb-1">Poin Diterbitkan</p>
-                    <p className="text-2xl font-bold text-yellow-600">{loyalty.pointsIssued?.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-yellow-600">{loyalty.totalPointsEarned?.toLocaleString()}</p>
                   </CardContent>
                 </Card>
                 <Card className="bg-red-50 border border-red-200">
                   <CardContent>
                     <p className="text-sm text-gray-600 mb-1">Poin Ditukar</p>
-                    <p className="text-2xl font-bold text-red-600">{loyalty.pointsRedeemed?.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-red-600">{loyalty.totalPointsRedeemed?.toLocaleString()}</p>
                   </CardContent>
                 </Card>
               </div>
@@ -365,13 +366,13 @@ const CustomerLoyaltyReport = () => {
                   <LineChart data={acquisitionTrend}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
-                      dataKey="periode"
-                      tickFormatter={(v) => new Date(v).toLocaleDateString("id-ID", { month: "short", year: "numeric" })}
+                      dataKey="date"
+                      tickFormatter={(v) => new Date(v).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
                     />
                     <YAxis />
-                    <RechartsTooltip />
+                    <RechartsTooltip labelFormatter={(v) => new Date(v).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })} />
                     <Legend />
-                    <Line type="monotone" dataKey="customerBaru" name="Customer Baru" stroke="#8884d8" strokeWidth={2} />
+                    <Line type="monotone" dataKey="count" name="Customer Baru" stroke="#8884d8" strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>

@@ -16,7 +16,7 @@ const dateRangeSchema = z.object({
 // Customer summary validation
 const customerSummarySchema = dateRangeSchema.extend({
   cabangId: z.string().optional(),
-  segmen: z.enum(["reguler", "member", "vip"]).optional(),
+  segmen: z.enum(["Retail", "Grosir", "VIP"]).optional(),
 });
 
 // Top customers validation

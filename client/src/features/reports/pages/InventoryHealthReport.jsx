@@ -91,8 +91,8 @@ const InventoryHealthReport = () => {
 
   const loading = loadingReport || loadingBranch || loadingDistribution || loadingDimension;
 
-  const products = reportData?.data?.products || [];
-  const summary = reportData?.data?.summary || {
+  const products = reportData?.products || reportData?.data?.products || [];
+  const summary = reportData?.summary || reportData?.data?.summary || {
     totalProducts: 0,
     avgHealthScore: 0,
     excellent: 0,
@@ -100,6 +100,7 @@ const InventoryHealthReport = () => {
     fair: 0,
     poor: 0,
   };
+  const paginationInfo = reportData?.pagination || reportData?.data?.pagination;
 
   const branchSummary = branchData?.data || [];
   const distribution = distributionData?.data || [];
@@ -157,16 +158,31 @@ const InventoryHealthReport = () => {
     { value: "Poor", label: "Poor (<50)" },
   ];
 
-  const distributionChartData = distribution.map((item) => ({
-    name: item.healthStatus || item.status,
-    value: item.count || 0,
-    percentage: item.percentage || 0,
-  }));
+  const distributionChartData = distribution.map((item) => {
+    const rawName = item.score_range || item.healthStatus || item.status || "";
+    const nameMatch = rawName.match(/^[A-Za-z]+/);
+    const name = nameMatch ? nameMatch[0] : rawName;
+    return {
+      name,
+      originalName: rawName,
+      value: item.product_count || item.count || 0,
+      avgScore: item.avg_score || 0,
+      percentage: item.percentage || 0,
+    };
+  });
+
+  const totalDistValue = distributionChartData.reduce((acc, curr) => acc + curr.value, 0);
+  if (totalDistValue > 0) {
+    distributionChartData.forEach((item) => {
+      if (!item.percentage) item.percentage = (item.value / totalDistValue) * 100;
+    });
+  }
 
   const dimensionChartData = dimensions.map((item) => ({
     name: item.dimension || item.dimensi,
-    avgScore: item.avgScore || 0,
-    maxScore: item.maxScore || 100,
+    avgScore: Number(item.avg_score || item.avgScore || 0),
+    maxScore: Number(item.max_score || item.maxScore || 100),
+    minScore: Number(item.min_score || 0),
   }));
 
   const getHealthColor = (score) => {
@@ -199,9 +215,10 @@ const InventoryHealthReport = () => {
                 Refresh
               </Button>
               <ExportDropdown
-                reportType="inventory"
+                reportType="health"
                 params={apiParams}
                 disabled={loading}
+                requireDate={false}
               />
             </div>
           </div>
@@ -313,32 +330,32 @@ const InventoryHealthReport = () => {
                       header: "Nama Produk",
                       cell: (row) => (
                         <div>
-                          <div className="font-medium">{row.namaProduk}</div>
+                          <div className="font-medium">{row.nama_produk || row.namaProduk}</div>
                           <div className="text-xs text-gray-500">SKU: {row.sku}</div>
                         </div>
                       ),
                     },
                     {
                       header: "Kategori",
-                      cell: (row) => row.namaKategori || "-",
+                      cell: (row) => row.nama_kategori || row.namaKategori || "-",
                     },
                     {
                       header: "Cabang",
-                      cell: (row) => row.namaCabang || "-",
+                      cell: (row) => row.nama_cabang || row.namaCabang || "-",
                     },
                     {
                       header: "Skor Kesehatan",
                       cell: (row) => {
-                        const status = getHealthStatus(row.overallHealthScore);
+                        const score = Number(row.overall_health_score || row.overallHealthScore || 0);
                         return (
                           <div className="flex items-center">
                             <div
                               className="w-3 h-3 rounded-full mr-2"
                               style={{
-                                backgroundColor: getHealthColor(row.overallHealthScore),
+                                backgroundColor: getHealthColor(score),
                               }}
                             ></div>
-                            <span className="font-medium">{row.overallHealthScore.toFixed(1)}</span>
+                            <span className="font-medium">{score.toFixed(1)}</span>
                           </div>
                         );
                       },
@@ -347,40 +364,41 @@ const InventoryHealthReport = () => {
                     {
                       header: "Status",
                       cell: (row) => {
-                        const status = getHealthStatus(row.overallHealthScore);
-                        return <StatusChip label={status.label} color={status.color} />;
+                        const score = Number(row.overall_health_score || row.overallHealthScore || 0);
+                        const status = getHealthStatus(score);
+                        return <StatusChip label={row.health_status || status.label} color={status.color} />;
                       },
                     },
                     {
                       header: "Stok Level",
-                      cell: (row) => row.stockLevelScore?.toFixed(1) || "-",
+                      cell: (row) => Number(row.stock_level_score || row.stockLevelScore || 0).toFixed(1),
                       cellClassName: "text-right",
                     },
                     {
                       header: "Expiration",
-                      cell: (row) => row.expirationScore?.toFixed(1) || "-",
+                      cell: (row) => Number(row.expiration_score || row.expirationScore || 0).toFixed(1),
                       cellClassName: "text-right",
                     },
                     {
                       header: "Movement",
-                      cell: (row) => row.movementScore?.toFixed(1) || "-",
+                      cell: (row) => Number(row.movement_score || row.movementScore || 0).toFixed(1),
                       cellClassName: "text-right",
                     },
                     {
                       header: "Financial",
-                      cell: (row) => row.financialScore?.toFixed(1) || "-",
+                      cell: (row) => Number(row.financial_score || row.financialScore || 0).toFixed(1),
                       cellClassName: "text-right",
                     },
                   ]}
                   data={products}
                 />
 
-                {reportData?.data?.pagination && (
+                {paginationInfo && (
                   <div className="flex justify-between items-center mt-4">
                     <p className="text-sm text-gray-600">
                       Menampilkan {(page - 1) * limit + 1} -{" "}
-                      {Math.min(page * limit, summary.totalProducts)} dari{" "}
-                      {summary.totalProducts} produk
+                      {Math.min(page * limit, paginationInfo.total || summary.totalProducts)} dari{" "}
+                      {paginationInfo.total || summary.totalProducts} produk
                     </p>
                     <div className="flex space-x-2">
                       <Button
@@ -395,7 +413,7 @@ const InventoryHealthReport = () => {
                       </span>
                       <Button
                         onClick={() => handlePageChange(page + 1)}
-                        disabled={page * limit >= summary.totalProducts}
+                        disabled={page * limit >= (paginationInfo?.total || summary.totalProducts)}
                         variant="outline"
                       >
                         Selanjutnya
@@ -425,17 +443,25 @@ const InventoryHealthReport = () => {
                 columns={[
                   {
                     header: "Cabang",
-                    cell: (row) => row.namaCabang || row.cabang_id || "-",
+                    cell: (row) => row.nama_cabang || row.namaCabang || row.cabang_id || "-",
+                  },
+                  {
+                    header: "Status",
+                    cell: (row) => {
+                      const score = Number(row.avg_overall_health_score || row.avgHealthScore || 0);
+                      const statusObj = getHealthStatus(score);
+                      return <StatusChip label={row.branch_health_status || statusObj.label} color={statusObj.color} />;
+                    },
                   },
                   {
                     header: "Total Produk",
-                    cell: (row) => row.totalProducts?.toLocaleString() || "0",
+                    cell: (row) => (row.total_products || row.totalProducts || 0).toLocaleString(),
                     cellClassName: "text-right",
                   },
                   {
                     header: "Rata-rata Skor",
                     cell: (row) => {
-                      const score = row.avgHealthScore || 0;
+                      const score = Number(row.avg_overall_health_score || row.avgHealthScore || 0);
                       return (
                         <div className="flex items-center justify-end">
                           <div
@@ -449,23 +475,13 @@ const InventoryHealthReport = () => {
                     cellClassName: "text-right",
                   },
                   {
-                    header: "Excellent",
-                    cell: (row) => row.excellent?.toLocaleString() || "0",
-                    cellClassName: "text-right text-green-600",
+                    header: "% Sehat",
+                    cell: (row) => `${Number(row.healthy_products_percentage || 0).toFixed(1)}%`,
+                    cellClassName: "text-right",
                   },
                   {
-                    header: "Good",
-                    cell: (row) => row.good?.toLocaleString() || "0",
-                    cellClassName: "text-right text-green-600",
-                  },
-                  {
-                    header: "Fair",
-                    cell: (row) => row.fair?.toLocaleString() || "0",
-                    cellClassName: "text-right text-yellow-600",
-                  },
-                  {
-                    header: "Poor",
-                    cell: (row) => row.poor?.toLocaleString() || "0",
+                    header: "Perlu Perhatian",
+                    cell: (row) => (row.products_needing_attention || 0).toLocaleString(),
                     cellClassName: "text-right text-red-600",
                   },
                 ]}
@@ -529,7 +545,7 @@ const InventoryHealthReport = () => {
                                 className="w-4 h-4 rounded-full mr-2"
                                 style={{ backgroundColor: color }}
                               ></div>
-                              {row.name}
+                              {row.originalName}
                             </div>
                           );
                         },
@@ -537,6 +553,11 @@ const InventoryHealthReport = () => {
                       {
                         header: "Jumlah Produk",
                         cell: (row) => row.value.toLocaleString(),
+                        cellClassName: "text-right",
+                      },
+                      {
+                        header: "Rata-rata Skor",
+                        cell: (row) => row.avgScore?.toFixed(1) || "-",
                         cellClassName: "text-right",
                       },
                       {
@@ -590,6 +611,11 @@ const InventoryHealthReport = () => {
                     {
                       header: "Dimensi",
                       cell: (row) => row.name,
+                    },
+                    {
+                      header: "Skor Minimum",
+                      cell: (row) => `${row.minScore || 0}/100`,
+                      cellClassName: "text-right",
                     },
                     {
                       header: "Rata-rata Skor",

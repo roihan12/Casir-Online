@@ -15,10 +15,16 @@ class ShiftReportService {
   async getShiftSummary(filters) {
     const { startDate, endDate, cabangId, userId, status } = filters;
 
-    const cacheKey = createCacheKey(
-      "shift:summary",
-      `${cabangId || "all"}:${userId || "all"}:${status || "all"}:${startDate}:${endDate}`
-    );
+
+    const cabangIds = cabangId && cabangId !== "all"
+    ? cabangId.split(",").map((id) => id.trim()).filter(Boolean)
+    : null;
+
+  const cacheKey = createCacheKey(
+    "shift:summary",
+    `${cabangIds ? cabangIds.join("-") : "all"}:${userId || "all"}:${status || "all"}:${startDate}:${endDate}`
+  );
+
 
     return cacheOrFetch(
       cacheKey,
@@ -31,9 +37,15 @@ class ShiftReportService {
           },
         };
 
-        if (cabangId) whereClause.cabangId = cabangId;
-        if (userId) whereClause.userId = userId;
-        if (status) whereClause.status = status;
+       // Support single atau multiple cabangId
+      if (cabangIds) {
+        whereClause.cabangId = cabangIds.length === 1
+          ? cabangIds[0]          // single → string biasa
+          : { in: cabangIds };    // multiple → Prisma `in` operator
+      }
+
+      if (userId) whereClause.userId = userId;
+      if (status) whereClause.status = status;
 
         // Get shift data with transactions
         const shifts = await prisma.shift.findMany({
@@ -64,10 +76,12 @@ class ShiftReportService {
           },
         });
 
+        console.log(shifts);
+
         // Calculate metrics
         const totalShifts = shifts.length;
-        const completedShifts = shifts.filter((s) => s.status === "selesai").length;
-        const activeShifts = shifts.filter((s) => s.status === "aktif").length;
+        const completedShifts = shifts.filter((s) => s.status === "ditutup").length;
+        const activeShifts = shifts.filter((s) => s.status === "dibuka").length;
 
         let totalTransaksi = 0;
         let totalPendapatan = 0;
@@ -92,7 +106,7 @@ class ShiftReportService {
           totalPendapatan += shiftRevenue;
 
           // Calculate cash variance
-          if (shift.status === "selesai") {
+          if (shift.status === "ditutup") {
             const expectedCash = parseFloat(shift.kasAwal) + shiftRevenue;
             const actualCash = parseFloat(shift.kasAkhir || 0);
             totalSelisihKas += actualCash - expectedCash;
@@ -138,7 +152,7 @@ class ShiftReportService {
               totalTransaksi: successTx.length,
               totalPendapatan: revenue,
               selisihKas:
-                shift.status === "selesai"
+                shift.status === "ditutup"
                   ? parseFloat(shift.kasAkhir || 0) -
                     (parseFloat(shift.kasAwal) + revenue)
                   : null,

@@ -192,9 +192,10 @@ const ExpiringProductsReport = () => {
                 Refresh
               </Button>
               <ExportDropdown
-                reportType="inventory"
+                reportType="expiring"
                 params={apiParams}
                 disabled={loading}
+                requireDate={false}
               />
             </div>
           </div>

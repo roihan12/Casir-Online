@@ -2,16 +2,21 @@ const prisma = require("../config/db");
 const redis = require("../config/redis");
 const { startOfDay, endOfDay, parseISO } = require("date-fns");
 
-/**
- * Service for Transaction Detail Reporting
- * Provides comprehensive transaction audit and analysis
- */
+// ─── Helper ────────────────────────────────────────────────────────────────
+const normalizeCabangIds = (cabangId) =>
+  cabangId && cabangId !== "all"
+    ? cabangId.split(",").map((id) => id.trim()).filter(Boolean)
+    : null;
+
+const buildCabangFilter = (cabangIds, field = "cabang_id") => {
+  if (!cabangIds) return {};
+  return {
+    [field]: cabangIds.length === 1 ? cabangIds[0] : { in: cabangIds },
+  };
+};
+// ───────────────────────────────────────────────────────────────────────────
+
 class TransactionReportService {
-  /**
-   * Get detailed transaction list
-   * @param {Object} filters - { startDate, endDate, cabangId, status, metodePembayaran, search }
-   * @returns {Promise<Object>} Transaction list with pagination
-   */
   async getTransactionDetail(filters) {
     const {
       startDate,
@@ -24,15 +29,18 @@ class TransactionReportService {
       limit = 50,
     } = filters;
 
+    const cabangIds = normalizeCabangIds(cabangId);
+    const cabangFilter = buildCabangFilter(cabangIds);
+
     const whereClause = {
       deleted_at: null,
       tanggal: {
         gte: startOfDay(parseISO(startDate)),
         lte: endOfDay(parseISO(endDate)),
       },
+      ...cabangFilter,
     };
 
-    if (cabangId !== "all") whereClause.cabang_id = cabangId;
     if (status) whereClause.status_pembayaran = status;
     if (search) {
       whereClause.OR = [
@@ -45,26 +53,18 @@ class TransactionReportService {
       prisma.transaksi.findMany({
         where: whereClause,
         include: {
-          cabang: {
-            select: { namaCabang: true },
-          },
-          pelanggan: {
-            select: { namaPelanggan: true },
-          },
+          cabang: { select: { namaCabang: true } },
+          pelanggan: { select: { namaPelanggan: true } },
           shift: {
             include: {
-              user: {
-                select: { namaLengkap: true },
-              },
+              user: { select: { namaLengkap: true } },
             },
           },
           pembayaran: true,
           transaksi_detail: {
             include: {
               produk: {
-                include: {
-                  produkMaster: true,
-                },
+                include: { produkMaster: true },
               },
             },
           },
@@ -76,7 +76,6 @@ class TransactionReportService {
       prisma.transaksi.count({ where: whereClause }),
     ]);
 
-    // Filter by payment method if specified
     let filteredTransactions = transactions;
     if (metodePembayaran) {
       filteredTransactions = transactions.filter((tx) =>
@@ -121,13 +120,11 @@ class TransactionReportService {
     };
   }
 
-  /**
-   * Get transaction summary by status
-   * @param {Object} filters - { startDate, endDate, cabangId }
-   * @returns {Promise<Object>} Summary metrics
-   */
   async getTransactionSummary(filters) {
     const { startDate, endDate, cabangId } = filters;
+
+    const cabangIds = normalizeCabangIds(cabangId);
+    const cabangFilter = buildCabangFilter(cabangIds);
 
     const whereClause = {
       deleted_at: null,
@@ -135,9 +132,8 @@ class TransactionReportService {
         gte: startOfDay(parseISO(startDate)),
         lte: endOfDay(parseISO(endDate)),
       },
+      ...cabangFilter,
     };
-
-    if (cabangId) whereClause.cabang_id = cabangId;
 
     const [totalData, successData, voidData, refundData] = await Promise.all([
       prisma.transaksi.aggregate({
@@ -146,21 +142,21 @@ class TransactionReportService {
         _sum: { total: true },
       }),
       prisma.transaksi.aggregate({
-        where: { ...whereClause, status_pembayaran: 'LUNAS' },
+        where: { ...whereClause, status_pembayaran: "LUNAS" },
         _count: { transaksi_id: true },
         _sum: { total: true },
       }),
       prisma.transaksi.count({
-        where: { ...whereClause, status_pembayaran: 'BELUM_LUNAS' },
+        where: { ...whereClause, status_pembayaran: "BELUM_LUNAS" },
       }),
       prisma.transaksi.aggregate({
-        where: { ...whereClause, status_pembayaran: 'DIBATALKAN' },
+        where: { ...whereClause, status_pembayaran: "DIBATALKAN" },
         _count: { transaksi_id: true },
         _sum: { total: true },
       }),
     ]);
 
-    const result = {
+    return {
       total: {
         count: totalData._count.transaksi_id,
         amount: parseFloat(totalData._sum.total || 0),
@@ -178,24 +174,16 @@ class TransactionReportService {
       },
       avgTransactionAmount:
         successData._count.transaksi_id > 0
-          ? parseFloat(successData._sum.total || 0) /
-            successData._count.transaksi_id
+          ? parseFloat(successData._sum.total || 0) / successData._count.transaksi_id
           : 0,
     };
-
-   
- 
-
-    return result;
   }
 
-  /**
-   * Get audit trail for voided/refunded transactions
-   * @param {Object} filters - { startDate, endDate, cabangId }
-   * @returns {Promise<Array>} Audit log
-   */
   async getAuditTrail(filters) {
     const { startDate, endDate, cabangId } = filters;
+
+    const cabangIds = normalizeCabangIds(cabangId);
+    const cabangFilter = buildCabangFilter(cabangIds);
 
     const whereClause = {
       tanggal: {
@@ -205,26 +193,19 @@ class TransactionReportService {
       jenis_transaksi: {
         in: ["RETUR_PENJUALAN", "RETUR_PEMBELIAN"],
       },
+      ...cabangFilter,
     };
-
-    if (cabangId !== "all") whereClause.cabang_id = cabangId;
 
     const transactions = await prisma.transaksi.findMany({
       where: whereClause,
       include: {
-        cabang: {
-          select: { namaCabang: true },
-        },
+        cabang: { select: { namaCabang: true } },
         shift: {
           include: {
-            user: {
-              select: { namaLengkap: true },
-            },
+            user: { select: { namaLengkap: true } },
           },
         },
-        pelanggan: {
-          select: { namaPelanggan: true },
-        },
+        pelanggan: { select: { namaPelanggan: true } },
       },
       orderBy: { updated_at: "desc" },
     });

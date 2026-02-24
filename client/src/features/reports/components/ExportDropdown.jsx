@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
  * Export Dropdown Component
  * Provides export options for reports in Excel, PDF, and CSV formats
  */
-const ExportDropdown = ({ reportType, params, disabled = false }) => {
+const ExportDropdown = ({ reportType, params, disabled = false, requireDate = true }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const exportMutation = useExportReport({
@@ -33,7 +33,7 @@ const ExportDropdown = ({ reportType, params, disabled = false }) => {
   }, []);
 
   const handleExport = (format) => {
-    if (!params.startDate || !params.endDate) {
+    if (requireDate && (!params.startDate || !params.endDate)) {
       toast.error("Silakan pilih periode tanggal terlebih dahulu");
       return;
     }

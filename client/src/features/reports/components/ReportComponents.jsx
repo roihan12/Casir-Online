@@ -106,7 +106,7 @@ export const DataTable = ({ columns, data, className = "" }) => {
                     column.cellClassName || ""
                   }`}
                 >
-                  {column.cell ? column.cell(row) : row[column.accessor]}
+                  {column.cell ? column.cell(row, rowIndex) : row[column.accessor]}
                 </td>
               ))}
             </tr>

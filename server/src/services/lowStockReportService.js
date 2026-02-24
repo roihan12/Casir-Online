@@ -78,7 +78,7 @@ const getLowStockReport = async (filters) => {
   const products = await prisma.$queryRawUnsafe(query, ...params);
 
   const summary = {
-    totalProducts: products.length,
+    totalProducts: total,
     outOfStock: products.filter((p) => p.stok_status === "Habis").length,
     lowStock: products.filter((p) => p.stok_status === "Menipis").length,
     totalItemsBelowMin: products.reduce((sum, p) => sum + Number(p.stok), 0),
@@ -134,6 +134,17 @@ const getLowStockReport = async (filters) => {
 const getLowStockByCategory = async (filters) => {
   const { cabangId } = filters;
 
+  // Build cabang filter
+  let cabangFilter = "";
+  if (cabangId && cabangId !== "all") {
+    const ids = cabangId.split(",").map((id) => `'${id.trim()}'`).filter(Boolean);
+    if (ids.length === 1) {
+      cabangFilter = `AND ps.cabang_id = ${ids[0]}`;
+    } else if (ids.length > 1) {
+      cabangFilter = `AND ps.cabang_id IN (${ids.join(", ")})`;
+    }
+  }
+
   const query = `
     SELECT 
       pm.kategori_id,
@@ -146,15 +157,15 @@ const getLowStockByCategory = async (filters) => {
     FROM vw_produk_stok_menipis ps
     JOIN "produk" p ON p.produk_id = ps.produk_id
     JOIN "produk_master" pm ON pm.produk_master_id = p.produk_master_id
-    LEFT JOIN "kategori" k ON k.kategori_id= pm.kategori_id
+    LEFT JOIN "kategori" k ON k.kategori_id = pm.kategori_id
     WHERE 1=1
-    ${cabangId ? `AND ps.cabang_id = ${cabangId}` : ""}
+    ${cabangFilter}
     GROUP BY pm.kategori_id, k.nama_kategori
     ORDER BY total_value DESC
   `;
 
   const result = await prisma.$queryRawUnsafe(query);
-  return sanitizeBigInt( result);
+  return sanitizeBigInt(result);
 };
 
 module.exports = {

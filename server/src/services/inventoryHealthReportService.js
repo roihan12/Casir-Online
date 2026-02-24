@@ -80,7 +80,7 @@ const getInventoryHealthReport = async (filters) => {
   const products = await prisma.$queryRawUnsafe(query, ...params);
 
   const summary = {
-    totalProducts: products.length,
+    totalProducts: total,
     avgHealthScore: products.length > 0 
       ? products.reduce((sum, p) => sum + Number(p.overall_health_score), 0) / products.length 
       : 0,

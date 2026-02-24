@@ -16,7 +16,7 @@ const dateRangeSchema = z.object({
 // Transaction detail validation
 const transactionDetailSchema = dateRangeSchema.extend({
   cabangId: z.string().optional(),
-  status: z.enum(["lunas", "pending", "void", "refund"]).optional(),
+  status: z.enum(["LUNAS", "BELUM_LUNAS", "VOID", "REFUND"]).optional(),
   metodePembayaran: z.enum(["tunai", "kartu_debit", "kartu_kredit", "qris", "transfer"]).optional(),
   search: z.string().optional(),
   page: z.string().optional().transform((val) => (val ? parseInt(val) : 1)),

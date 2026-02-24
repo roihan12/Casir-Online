@@ -146,9 +146,9 @@ const TransactionDetailReport = () => {
   ];
 
   // Extract data
-  const transactions = detailData?.data?.transactions || [];
+  const transactions = detailData?.data || [];
   const pagination = detailData?.data?.pagination || { total: 0, pages: 1 };
-  const summaryMetrics = summaryData?.data?.summary || {
+  const summaryMetrics = summaryData?.data || {
     totalTransactions: 0,
     totalAmount: 0,
     avgTransaction: 0,
@@ -173,7 +173,7 @@ const TransactionDetailReport = () => {
                 Refresh
               </Button>
               <ExportDropdown
-                reportType="transaction_detail"
+                reportType="transaction-detail"
                 params={summaryParams}
                 disabled={loading}
               />
@@ -276,15 +276,15 @@ const TransactionDetailReport = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
         <MetricCard
           title="Total Transaksi"
-          value={loadingSummary ? <LoadingIndicator size="sm" /> : summaryMetrics.totalTransactions}
+          value={loadingSummary ? <LoadingIndicator size="sm" /> : summaryMetrics.total.count}
         />
         <MetricCard
           title="Total Nilai"
-          value={loadingSummary ? <LoadingIndicator size="sm" /> : formatCurrency(summaryMetrics.totalAmount)}
+          value={loadingSummary ? <LoadingIndicator size="sm" /> : formatCurrency(summaryMetrics.total.amount)}
         />
         <MetricCard
           title="Rata-rata Transaksi"
-          value={loadingSummary ? <LoadingIndicator size="sm" /> : formatCurrency(summaryMetrics.avgTransaction)}
+          value={loadingSummary ? <LoadingIndicator size="sm" /> : formatCurrency(summaryMetrics.avgTransactionAmount)}
         />
       </div>
 
@@ -306,12 +306,12 @@ const TransactionDetailReport = () => {
                       header: "Tanggal",
                       cell: (row) => new Date(row.tanggal).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }),
                     },
-                    { header: "No. Invoice", accessor: "nomorFaktur" },
-                    { header: "Pelanggan", accessor: "namaPelanggan" },
-                    { header: "Cabang", accessor: "namaCabang" },
+                    { header: "No. Invoice", accessor: "nomorTransaksi" },
+                    { header: "Pelanggan", accessor: "pelanggan" },
+                    { header: "Cabang", accessor: "cabang" },
                     {
                       header: "Total",
-                      cell: (row) => formatCurrency(row.totalBayar),
+                      cell: (row) => formatCurrency(row.total),
                       cellClassName: "text-right font-semibold",
                     },
                     { header: "Metode", accessor: "metodePembayaran" },

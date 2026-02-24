@@ -71,14 +71,38 @@ const ProfitLossReport = () => {
   } = useUserBranches("profit-loss");
 
   // API params for detail report
-  const reportParams = useMemo(
-    () => ({
+  const reportParams = useMemo(() => {
+    let startDate = "";
+    let endDate = "";
+
+    if (year) {
+      if (month) {
+        // Specific month in the year
+        const y = parseInt(year);
+        const m = parseInt(month) - 1; // 0-indexed
+        startDate = new Date(y, m, 1);
+        endDate = new Date(y, m + 1, 0); // Last day of the month
+      } else {
+        // Entire year
+        const y = parseInt(year);
+        startDate = new Date(y, 0, 1);
+        endDate = new Date(y, 11, 31);
+      }
+      
+      // format to yyyy-mm-dd
+      const pad = (n) => String(n).padStart(2, "0");
+      startDate = `${startDate.getFullYear()}-${pad(startDate.getMonth() + 1)}-${pad(startDate.getDate())}`;
+      endDate = `${endDate.getFullYear()}-${pad(endDate.getMonth() + 1)}-${pad(endDate.getDate())}`;
+    }
+
+    return {
       cabangId: cabangFilterParam,
       year,
       month: month || undefined,
-    }),
-    [cabangFilterParam, year, month]
-  );
+      startDate,
+      endDate,
+    };
+  }, [cabangFilterParam, year, month]);
 
   // API params for summary comparison
   const summaryParams = useMemo(

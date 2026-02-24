@@ -154,9 +154,10 @@ const LowStockReport = () => {
                 Refresh
               </Button>
               <ExportDropdown
-                reportType="inventory"
+                reportType="low-stock"
                 params={apiParams}
                 disabled={loading}
+                requireDate={false}
               />
             </div>
           </div>

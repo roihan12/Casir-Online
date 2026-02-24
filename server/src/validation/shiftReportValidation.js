@@ -18,7 +18,7 @@ const dateRangeSchema = z.object({
 const shiftSummarySchema = dateRangeSchema.extend({
   cabangId: z.string().optional(),
   userId: z.string().optional(),
-  status: z.enum(["aktif", "selesai", "ditutup"]).optional(),
+  status: z.enum(["dibuka", "ditutup"]).optional(),
 });
 
 // Shift detail validation
