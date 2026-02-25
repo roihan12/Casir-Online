@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purchase Order Template</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 11px;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 10px;
+        }
+        .header h1 {
+            color: #1e3a8a;
+            margin: 0;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 5px 0 0;
+            color: #64748b;
+        }
+        .info-section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        .info-box {
+            width: 48%;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 15px;
+            background-color: #f8fafc;
+        }
+        .info-box h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #1e40af;
+            font-size: 14px;
+            border-bottom: 1px solid #cbd5e1;
+            padding-bottom: 5px;
+        }
+        .info-row {
+            margin-bottom: 5px;
+            display: flex;
+        }
+        .info-label {
+            font-weight: bold;
+            width: 100px;
+            color: #475569;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th {
+            background-color: #3b82f6;
+            color: white;
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #2563eb;
+        }
+        td {
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .total-row {
+            background-color: #eff6ff;
+            font-weight: bold;
+        }
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 100px;
+            color: rgba(203, 213, 225, 0.2);
+            z-index: -1;
+            pointer-events: none;
+        }
+        .footer {
+            margin-top: 50px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .signature-box {
+            width: 200px;
+            text-align: center;
+        }
+        .signature-line {
+            border-bottom: 1px solid #1e293b;
+            margin-top: 60px;
+        }
+        .notes-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fffbeb;
+            border-left: 4px solid #f59e0b;
+        }
+        .empty-row td {
+            height: 25px;
+            border-style: dashed;
+            border-color: #cbd5e1;
+        }
+    </style>
+</head>
+<body>
+    <div class="watermark">TEMPLATE PO</div>
+    
+    <div class="header">
+        <h1>PURCHASE ORDER (PO)</h1>
+        <p>Gunakan dokumen ini sebagai panduan pemesanan barang ke Supplier</p>
+    </div>
+
+    <div class="info-section">
+        <div class="info-box">
+            <h3>Informasi Pemesan</h3>
+            <div class="info-row">
+                <span class="info-label">Cabang:</span>
+                <span><%= cabangName || '.......................................' %></span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Alamat:</span>
+                <span><%= cabangAddress || '.......................................' %></span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Tanggal PO:</span>
+                <span><%= tanggalHariIni %></span>
+            </div>
+        </div>
+        
+        <div class="info-box">
+            <h3>Kepada (Supplier)</h3>
+            <div class="info-row">
+                <span class="info-label">Nama Supplier:</span>
+                <span>.......................................</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Alamat:</span>
+                <span>.......................................</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Telepon/PIC:</span>
+                <span>.......................................</span>
+            </div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th width="5%">No</th>
+                <th width="15%">Kode/SKU</th>
+                <th width="40%">Nama Barang</th>
+                <th width="10%" class="text-center">Qty</th>
+                <th width="15%" class="text-right">Harga Satuan</th>
+                <th width="15%" class="text-right">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% for(let i=1; i<=10; i++) { %>
+            <tr class="empty-row">
+                <td class="text-center"><%= i %></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+            <% } %>
+            <tr class="total-row">
+                <td colspan="5" class="text-right">Subtotal:</td>
+                <td></td>
+            </tr>
+            <tr class="total-row">
+                <td colspan="5" class="text-right">Pajak/Diskon:</td>
+                <td></td>
+            </tr>
+            <tr class="total-row" style="font-size: 14px;">
+                <td colspan="5" class="text-right"><strong>GRAND TOTAL:</strong></td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="notes-section">
+        <strong>Catatan Khusus:</strong><br><br>
+        1. __________________________________________________________________<br><br>
+        2. __________________________________________________________________<br>
+    </div>
+
+    <div class="footer">
+        <div class="signature-box">
+            <p>Disiapkan Oleh,</p>
+            <div class="signature-line"></div>
+            <p>( ................................ )</p>
+        </div>
+        <div class="signature-box">
+            <p>Disetujui Oleh,</p>
+            <div class="signature-line"></div>
+            <p>( ................................ )</p>
+        </div>
+        <div class="signature-box">
+            <p>Diterima Oleh (Supplier),</p>
+            <div class="signature-line"></div>
+            <p>( ................................ )</p>
+        </div>
+    </div>
+</body>
+</html>

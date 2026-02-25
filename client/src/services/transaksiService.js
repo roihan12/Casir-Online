@@ -50,6 +50,34 @@ const transaksiService = {
   emailReceipt: async (id, email) => {
     return api.post(`/transaksi/${id}/receipt/email`, { email });
   },
+
+  // Download PO Template
+  getPOTemplate: async (cabangId) => {
+    return api.get("/transaksi/template/po", {
+      params: cabangId ? { cabangId } : {},
+      responseType: "blob", // Important for receiving binary data
+    });
+  },
+
+  // Download PO from Transaction
+  getPOTransactionPDF: async (id) => {
+    try {
+      const response = await api.get(`/transaksi/${id}/po`, {
+        responseType: 'blob',
+      });
+      
+      // Check if the response is actually JSON (error) despite requesting blob
+      if (response.data && response.data.type === 'application/json') {
+        const text = await response.data.text();
+        const errorData = JSON.parse(text);
+        throw new Error(errorData.message || 'Gagal mengunduh PDF PO');
+      }
+      
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  }
 };
 
 export default transaksiService;

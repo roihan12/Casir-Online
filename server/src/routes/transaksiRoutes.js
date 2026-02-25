@@ -107,4 +107,18 @@ router.get(
   transaksiController.generateReturnPdf
 );
 
+// GET - Download PO Template PDF
+router.get(
+  "/template/po",
+  hasPermission(["transaksi:create"]), // Or just authentication
+  transaksiController.generatePOTemplate
+);
+
+// GET - Download PO from Transaction PDF
+router.get(
+  "/:id/po",
+  hasPermission(["transaksi:read"]),
+  transaksiController.generatePOFromTransaction
+);
+
 module.exports = router;

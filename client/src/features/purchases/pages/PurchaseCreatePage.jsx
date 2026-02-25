@@ -10,12 +10,17 @@ import { useCreateTransaksi } from "../../transactions/hooks/useTransaksiQueries
 import { useCabang } from "../../cabang/hooks/useCabang";
 import Spinner from "../../common/Spinner";
 import { toast } from "react-hot-toast";
+import transaksiService from "../../../services/transaksiService";
+import { Download } from "lucide-react";
 
 // Imported components
 import BranchSelector from "../components/BranchSelector";
 import SupplierSelector from "../components/SupplierSelector";
 import ProductSelector from "../components/ProductSelector";
 import PurchaseItemList from "../components/PurchaseItemList";
+import OcrInvoiceUploader from "../components/OcrInvoiceUploader";
+import OcrMappingModal from "../components/OcrMappingModal";
+import { useMapInvoice } from "../hooks/useOcrMapping";
 
 // Validation schemas
 const purchaseItemSchema = z.object({
@@ -65,6 +70,11 @@ const PurchaseCreate = () => {
   const [searchProductQuery, setSearchProductQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [showProductGrid, setShowProductGrid] = useState(true);
+  const [isDownloadingPO, setIsDownloadingPO] = useState(false);
+  
+  // OCR states
+  const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
+  const [mappedOcrData, setMappedOcrData] = useState(null);
 
   // Update selectingSupplier when supplierId changes
   useEffect(() => {
@@ -88,6 +98,7 @@ const PurchaseCreate = () => {
   });
 
   const createTransaksiMutation = useCreateTransaksi();
+  const mapInvoiceMutation = useMapInvoice();
 
   const { data: supplierList, isLoading: isLoadingSuppliers } = useSupplierList({
     cabangId: selectedCabang?.id !== "global" ? selectedCabang?.id : undefined,
@@ -199,6 +210,96 @@ const PurchaseCreate = () => {
   };
 
   const handleChangeBranch = (branch) => setSelectedCabang(branch);
+
+  const handleDownloadPOTemplate = async () => {
+    try {
+      setIsDownloadingPO(true);
+      const cabangId = selectedCabang?.id !== "global" ? selectedCabang?.id : null;
+      
+      const response = await transaksiService.getPOTemplate(cabangId);
+      
+      // Create a blob from the PDF stream
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create a temporary link to trigger download
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `Template_PO_${supplier?.namaSupplier || 'Draft'}_${new Date().getTime()}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success("Template PO berhasil diunduh");
+    } catch (error) {
+      console.error("Error downloading PO template:", error);
+      toast.error("Gagal mengunduh Template PO");
+    } finally {
+      setIsDownloadingPO(false);
+    }
+  };
+
+  // When AI returns rough OCR data
+  const handleOcrSuccess = async (extractedData) => {
+    try {
+      toast.loading("Memetakan data dengan database... AI sedang mencocokkan produk.", { id: "mapping-toast" });
+      const dataMapping = await mapInvoiceMutation.mutateAsync(extractedData);
+      setMappedOcrData(dataMapping);
+      setIsMappingModalOpen(true);
+      toast.dismiss("mapping-toast");
+    } catch (error) {
+       toast.dismiss("mapping-toast");
+    }
+  };
+
+  // When User completes Map Approval in mapped Modal
+  const handleApproveMapping = (mappedItems, summaryData) => {
+    setIsMappingModalOpen(false);
+
+    // Update Date & Notes
+    if (summaryData.tanggal) {
+      setValue("tanggal", summaryData.tanggal, { shouldValidate: true });
+    }
+    
+    const existingNotes = watch("catatan") || "";
+    const ocrSourceInfo = `Data diekstrak otomatis via AI OCR (Supplier: ${summaryData.rawSupplierName || 'Unknown'}).\n`;
+    setValue("catatan", ocrSourceInfo + existingNotes, { shouldValidate: true });
+
+    // Append mapped items to form
+    const newItems = mappedItems
+      .filter(item => item.status === "MAPPED" && item.mappedProduct)
+      .map(item => {
+        // Need to find related produkSupplier ID
+        const matchedProductSupplier = products.find(p => p.produkMasterId === item.mappedProduct.id);
+
+        return {
+          produkId: item.mappedProduct.id,
+          produkSupplier: {
+            id: matchedProductSupplier?.id || "",
+            hargaBeli: item.rawHargaSatuan || 0,
+            kodeProdukSupplier: item.rawInvoiceName || "",
+            namaProduk: item.mappedProduct.namaProduk,
+          },
+          quantity: item.rawQuantity || 1,
+          hargaSatuan: item.rawHargaSatuan || 0,
+          subtotal: item.rawSubtotal || (item.rawQuantity * item.rawHargaSatuan) || 0,
+          diskon: 0,
+          keterangan: "Mapped via OCR",
+          batchNumber: "",
+          expiredDate: "",
+        };
+      });
+
+    if (newItems.length > 0) {
+      setValue("items", [...watchItems, ...newItems], { shouldValidate: true });
+      toast.success(`${newItems.length} item berhasil disalin dari nota.`);
+    } else {
+      toast.error("Tidak ada item yang berhasil disalin.");
+    }
+  };
 
   const handleAddProduct = (product) => {
     const currentItems = watch("items") || [];
@@ -433,27 +534,47 @@ const PurchaseCreate = () => {
     <div className="pb-8">
       {/* Header */}
       <div className="bg-indigo-600 text-white py-6">
-        <div className="mx-6">
-          <button
-            onClick={() => navigate(`/suppliers/${supplierId}`)}
-            className="flex items-center text-indigo-100 hover:text-white mb-4"
-          >
-            <ArrowLeft size={16} className="mr-1" />
-            <span>Kembali ke Detail Supplier</span>
-          </button>
-          <h1 className="text-2xl font-bold">Tambah Pembelian Baru</h1>
-          <div className="flex items-center mt-2">
-            <Info size={18} className="mr-2" />
-            <span className="text-indigo-100">
-              Supplier: {supplier.namaSupplier}
-              {selectedCabang && selectedCabang.id !== "global" && <> • Cabang: {selectedCabang.namaCabang}</>}
-            </span>
+        <div className="mx-6 flex justify-between items-start">
+          <div>
+            <button
+              onClick={() => navigate(`/suppliers/${supplierId}`)}
+              className="flex items-center text-indigo-100 hover:text-white mb-4"
+            >
+              <ArrowLeft size={16} className="mr-1" />
+              <span>Kembali ke Detail Supplier</span>
+            </button>
+            <h1 className="text-2xl font-bold">Tambah Pembelian Baru</h1>
+            <div className="flex items-center mt-2">
+              <Info size={18} className="mr-2" />
+              <span className="text-indigo-100">
+                Supplier: {supplier.namaSupplier}
+                {selectedCabang && selectedCabang.id !== "global" && <> • Cabang: {selectedCabang.namaCabang}</>}
+              </span>
+            </div>
+          </div>
+          
+          <div className="mt-4 md:mt-0">
+            <button
+              type="button"
+              onClick={handleDownloadPOTemplate}
+              disabled={isDownloadingPO}
+              className="flex items-center space-x-2 bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2 rounded-lg transition text-sm font-medium disabled:opacity-75 disabled:cursor-not-allowed"
+            >
+              {isDownloadingPO ? (
+                <Spinner size="sm" color="white" />
+              ) : (
+                <Download size={16} />
+              )}
+              <span>{isDownloadingPO ? "Mengunduh..." : "Download Template PO"}</span>
+            </button>
           </div>
         </div>
       </div>
 
       {/* Form */}
       <div className="mx-6 mt-6">
+        <OcrInvoiceUploader onExtractSuccess={handleOcrSuccess} />
+        
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
           {/* Purchase Info Section */}
           <div className="bg-white rounded-xl shadow-sm p-6">
@@ -567,6 +688,17 @@ const PurchaseCreate = () => {
           </div>
         </form>
       </div>
+      
+      {/* Modals */}
+      <OcrMappingModal 
+        isOpen={isMappingModalOpen}
+        onClose={() => setIsMappingModalOpen(false)}
+        mappedData={mappedOcrData}
+        products={filteredProducts}
+        onApprove={handleApproveMapping}
+        supplierId={supplierId}
+        cabangId={selectedCabang?.id !== "global" ? selectedCabang?.id : null}
+      />
     </div>
   );
 };

@@ -72,6 +72,7 @@ const kuotaCutiRoutes = require("./routes/kuotaCutiRoutes");
 const penggajianRoutes = require("./routes/penggajianRoutes");
 const importProdukMasterRoutes = require("./routes/importProdukMasterRoutes");
 const importProdukRoutes = require("./routes/importProdukRoutes");
+const ocrRoutes = require("./routes/ocrRoutes");
 
 
 const {
@@ -209,6 +210,7 @@ app.use("/api/kuota-cuti", kuotaCutiRoutes);
 app.use("/api/penggajian", penggajianRoutes);
 app.use("/api/import/produk-master", importProdukMasterRoutes);
 app.use("/api/import/produk", importProdukRoutes);
+app.use("/api/ocr", ocrRoutes);
 
 // 404 handler
 app.use((req, res) => {

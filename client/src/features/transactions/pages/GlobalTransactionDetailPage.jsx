@@ -31,6 +31,7 @@ import {
   getReceiptPreview,
   getReceiptPDF,
 } from "../../../services/receiptService";
+import transaksiService from "../../../services/transaksiService";
 
 // Formatter untuk uang
 const formatCurrency = (amount) => {
@@ -305,13 +306,21 @@ const GlobalTransactionDetail = () => {
   const handleDownloadPdf = async () => {
     try {
       setIsDownloading(true);
-      const pdfBlob = await getReceiptPDF(id);
+      let pdfBlob;
+      let filename = `receipt-${displayData.nomor_transaksi}.pdf`;
+
+      if (displayData.jenis_transaksi === "PEMBELIAN") {
+        pdfBlob = await transaksiService.getPOTransactionPDF(id);
+        filename = `PO-${displayData.nomor_transaksi}.pdf`;
+      } else {
+        pdfBlob = await getReceiptPDF(id);
+      }
       
       // Create download link
       const url = window.URL.createObjectURL(new Blob([pdfBlob]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `receipt-${displayData.nomor_transaksi}.pdf`);
+      link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
       
@@ -319,10 +328,10 @@ const GlobalTransactionDetail = () => {
       link.parentNode.removeChild(link);
       window.URL.revokeObjectURL(url);
       
-      toast.success("Struk berhasil diunduh");
+      toast.success(displayData.jenis_transaksi === "PEMBELIAN" ? "PO berhasil diunduh" : "Struk berhasil diunduh");
     } catch (error) {
       console.error("Failed to download PDF:", error);
-      toast.error("Gagal mengunduh PDF");
+      toast.error(displayData.jenis_transaksi === "PEMBELIAN" ? "Gagal mengunduh PO" : "Gagal mengunduh PDF");
     } finally {
       setIsDownloading(false);
     }

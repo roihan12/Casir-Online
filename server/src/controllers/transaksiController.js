@@ -470,6 +470,169 @@ const generateReturnPdf = async (req, res, next) => {
   }
 };
 
+// Controller untuk generate Template PO
+const generatePOTemplate = async (req, res, next) => {
+  try {
+    const { cabangId } = req.query;
+    let cabangName = '';
+    let cabangAddress = '';
+    
+    // Get cabang info if provided
+    if (cabangId) {
+      const { PrismaClient } = require('@prisma/client');
+      const prisma = new PrismaClient();
+      const cabang = await prisma.cabang.findUnique({
+        where: { id: cabangId }
+      });
+      if (cabang) {
+        cabangName = cabang.namaCabang;
+        cabangAddress = cabang.alamat || '';
+      }
+    }
+
+    const path = require('path');
+    const fs = require('fs');
+    const ejs = require('ejs');
+    const puppeteer = require('puppeteer');
+    
+    const templatePath = path.join(__dirname, "../../templates/po_template.ejs");
+    
+    if (!fs.existsSync(templatePath)) {
+        throw new ResponseError(500, "Template PO tidak ditemukan");
+    }
+
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    const tanggalHariIni = new Date().toLocaleDateString('id-ID', options);
+
+    const html = await ejs.renderFile(templatePath, {
+      cabangName,
+      cabangAddress,
+      tanggalHariIni
+    });
+
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+    
+    try {
+        const page = await browser.newPage();
+        await page.setContent(html);
+        const pdfBuffer = await page.pdf({
+            format: 'A4',
+            printBackground: true,
+            margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' }
+        });
+        
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="Template_PO_${Date.now()}.pdf"`);
+        
+        return res.send(Buffer.from(pdfBuffer));
+    } finally {
+        await browser.close();
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Controller untuk generate PDF PO dari Transaksi
+const generatePOFromTransaction = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    // Validate ID
+    if (!id) {
+       throw new ResponseError(400, "ID Transaksi diperlukan");
+    }
+
+    // Reuse existing service to get details
+    const transaction = await transaksiService.getTransaksiById(id);
+    
+    if (!transaction || transaction.type !== 'PEMBELIAN') {
+      throw new ResponseError(404, "Data transaksi pembelian tidak ditemukan");
+    }
+
+    const path = require('path');
+    const fs = require('fs');
+    const ejs = require('ejs');
+    const puppeteer = require('puppeteer');
+    
+    const templatePath = path.join(__dirname, "../../templates/po_transaction_template.ejs");
+    
+    if (!fs.existsSync(templatePath)) {
+        throw new ResponseError(500, "Template PO Transaksi tidak ditemukan");
+    }
+
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    const tanggalHariIni = new Date(transaction.date).toLocaleDateString('id-ID', options);
+
+    // Map necessary fields
+    const formatCurrency = (val) => {
+      return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0
+      }).format(val || 0);
+    };
+
+    const items = transaction.items.map(item => ({
+        namaProduk: item.name,
+        sku: item.sku || '-',
+        jumlah: item.quantity,
+        hargaSatuan: item.price,
+        subtotal: item.subtotal,
+    }));
+
+    console.log(transaction);
+
+    const html = await ejs.renderFile(templatePath, {
+      cabangName: transaction.branchName || 'Cabang',
+      cabangAddress: transaction.branchAddress || '',
+      tanggalHariIni,
+      supplierName: transaction.supplierInfo?.name || transaction.supplierInfo?.namaSupplier || '',
+      supplierAddress: transaction.supplierInfo?.alamat || '-',
+      supplierPhone: transaction.supplierInfo?.contact || transaction.supplierInfo?.telepon || '-',
+      transaction: {
+         nomor_transaksi: transaction.number,
+         kasir: transaction.cashierName,
+         subtotal: transaction.subtotal,
+         diskon: transaction.discount,
+         pajak: transaction.tax,
+         biaya_tambahan: transaction.additionalFee,
+         total: transaction.total,
+         keterangan: transaction.notes,
+         status_pembayaran: transaction.status,
+      },
+      items,
+      formatCurrency
+    });
+
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+    
+    try {
+        const page = await browser.newPage();
+        await page.setContent(html);
+        const pdfBuffer = await page.pdf({
+            format: 'A4',
+            printBackground: true,
+            margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' }
+        });
+        
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="PO-${transaction.number}.pdf"`);
+        
+        return res.send(Buffer.from(pdfBuffer));
+    } finally {
+        await browser.close();
+    }
+  } catch (error) {
+    next(error);
+  }
+};
 
 module.exports = {
   createTransaksi,
@@ -486,5 +649,7 @@ module.exports = {
   previewPromo,
   previewAllDiscounts,
   generateReturnPdf,
+  generatePOTemplate,
+  generatePOFromTransaction,
 };
 
