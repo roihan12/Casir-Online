@@ -112,6 +112,29 @@ const getJadwal = async (req, res, next) => {
 };
 
 /**
+ * Get current user's schedule (Staff POV)
+ */
+const getMyJadwal = async (req, res, next) => {
+  try {
+    const filters = validate(getJadwalValidation, {
+      userId: req.user.id, // Force filter to logged in user
+      tanggalMulai: req.query.tanggalMulai,
+      tanggalSelesai: req.query.tanggalSelesai,
+    });
+
+    const result = await jadwalService.getJadwal(filters);
+
+    res.status(200).json({
+      success: true,
+      message: "My schedule retrieved successfully",
+      data: result.data, // This will return a list of jadwal exactly matching the logged in user
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Get a single schedule by ID
  */
 const getJadwalById = async (req, res, next) => {
@@ -183,6 +206,7 @@ module.exports = {
   createJadwal,
   generateJadwalBulk,
   getJadwal,
+  getMyJadwal,
   getJadwalById,
   updateJadwal,
   deleteJadwal,

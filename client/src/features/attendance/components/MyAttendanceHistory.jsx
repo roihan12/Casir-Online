@@ -109,6 +109,7 @@ const MyAttendanceHistory = () => {
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case 'hadir': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case 'hadir_terlambat': return 'bg-amber-100 text-amber-700 border-amber-200';
       case 'terlambat': return 'bg-amber-100 text-amber-700 border-amber-200';
       case 'lembur': return 'bg-cyan-100 text-cyan-700 border-cyan-200';
       case 'izin': return 'bg-blue-100 text-blue-700 border-blue-200';
@@ -121,7 +122,7 @@ const MyAttendanceHistory = () => {
 
   const getStatusLabel = (status) => {
     const labels = {
-      hadir: 'Hadir', terlambat: 'Terlambat', lembur: 'Lembur',
+      hadir: 'Hadir', hadir_terlambat: 'Hadir Terlambat', terlambat: 'Terlambat', lembur: 'Lembur',
       izin: 'Izin', sakit: 'Sakit', cuti: 'Cuti', tanpa_keterangan: 'Alpa'
     };
     return labels[status?.toLowerCase()] || status || '-';
@@ -282,8 +283,8 @@ const MyAttendanceHistory = () => {
                     </span>
                     
                     {dayInfo.record && (
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase truncate max-w-[50px] border ${getStatusColor(dayInfo.record.statusKehadiran)}`}>
-                         {getStatusLabel(dayInfo.record.statusKehadiran)}
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase truncate max-w-[50px] border ${getStatusColor(dayInfo.record.status_kehadiran)}`}>
+                         {getStatusLabel(dayInfo.record.status_kehadiran)}
                       </span>
                     )}
                   </div>

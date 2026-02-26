@@ -6,6 +6,7 @@ import ClockOutButton from '../components/ClockOutButton';
 import TeamAttendanceToday from '../components/TeamAttendanceToday';
 import AttendanceMap from '../components/AttendanceMap';
 import MyAttendanceHistory from '../components/MyAttendanceHistory';
+import MyWorkSchedule from '../components/MyWorkSchedule';
 import { getTodayAttendance } from '../services/attendanceService';
 import { useAuth } from '../../../common/hooks/useAuth';
 import { FileText } from 'lucide-react';
@@ -227,35 +228,48 @@ const MyAttendancePage = () => {
         )}
 
         {/* Tab Navigation */}
-        <div className="flex p-1 bg-slate-100/80 backdrop-blur-sm rounded-2xl w-fit mb-8 border border-slate-200/50 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('my')}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
-              activeTab === 'my'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
-            }`}
-          >
-            <User className="w-4 h-4" />
-            Absensi Saya
-          </button>
-          
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
-              activeTab === 'history'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            Riwayat Kehadiran
-          </button>
+        <div className="w-full mb-8">
+          <div className="flex p-1 bg-slate-100/80 backdrop-blur-sm rounded-2xl w-max sm:w-fit border border-slate-200/50 overflow-x-auto no-scrollbar max-w-full">
+            <button
+              onClick={() => setActiveTab('my')}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap shrink-0 ${
+                activeTab === 'my'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+              }`}
+            >
+              <User className="w-4 h-4" />
+              Absensi Saya
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('schedule')}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap shrink-0 ${
+                activeTab === 'schedule'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              Jadwal Kerja Saya
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap shrink-0 ${
+                activeTab === 'history'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              Riwayat Kehadiran
+            </button>
 
           {isAdmin && (
             <button
               onClick={() => setActiveTab('team')}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap shrink-0 ${
                 activeTab === 'team'
                   ? 'bg-white text-blue-600 shadow-sm'
                   : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
@@ -265,12 +279,14 @@ const MyAttendancePage = () => {
               Absensi Tim Hari Ini
             </button>
           )}
+          </div>
         </div>
 
 
         {/* Tab Content */}
-        <div className="mt-2 text-slate-800">
+        <div className="mt-2 text-slate-800 animate-fade-in">
           {activeTab === 'my' && renderMyAttendance()}
+          {activeTab === 'schedule' && <MyWorkSchedule />}
           {activeTab === 'history' && <MyAttendanceHistory />}
           {activeTab === 'team' && isAdmin && <TeamAttendanceToday />}
         </div>

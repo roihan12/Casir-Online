@@ -36,6 +36,9 @@ router.get(
   jadwalController.getJadwal
 );
 
+// GET - Get current user's schedule (Staff POV)
+router.get("/my-schedule", jadwalController.getMyJadwal);
+
 // GET - Get a single schedule by ID
 router.get(
   "/:id",

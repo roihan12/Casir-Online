@@ -14,6 +14,16 @@ const jadwalService = {
   },
 
   /**
+   * Get current user's schedule (Staff POV)
+   * @param {Object} params - Query parameters (tanggalMulai, tanggalSelesai)
+   * @returns {Promise<Object>} - Schedule list
+   */
+  getMyJadwal: async (params = {}) => {
+    const response = await api.get(`${JADWAL_URL}/my-schedule`, { params });
+    return response.data;
+  },
+
+  /**
    * Get a schedule by ID
    * @param {string} id - The schedule ID
    * @returns {Promise<Object>} - Schedule data

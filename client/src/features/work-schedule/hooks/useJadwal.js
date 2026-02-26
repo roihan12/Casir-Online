@@ -7,8 +7,18 @@ export const jadwalKeys = {
   all: ["jadwal"],
   lists: () => [...jadwalKeys.all, "list"],
   list: (filters) => [...jadwalKeys.lists(), { ...filters }],
+  myList: (filters) => [...jadwalKeys.all, "my-list", { ...filters }],
   details: () => [...jadwalKeys.all, "detail"],
   detail: (id) => [...jadwalKeys.details(), id],
+};
+
+// Hook to fetch current user's schedules (Staff POV)
+export const useMyJadwal = (params = {}) => {
+  return useQuery({
+    queryKey: jadwalKeys.myList(params),
+    queryFn: () => jadwalService.getMyJadwal(params),
+    keepPreviousData: true,
+  });
 };
 
 // Hook to fetch schedules
