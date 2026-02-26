@@ -147,7 +147,7 @@ const inventoryService = {
    * @returns {Promise<Object>} Adjustment result
    */
   adjustStock: async (adjustmentData) => {
-    const response = await api.post("/inventory/adjust", adjustmentData);
+    const response = await api.post("/inventory/adjustments", adjustmentData);
     return response.data;
   },
 

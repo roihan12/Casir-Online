@@ -970,7 +970,7 @@ const getLowStockProducts = async (cabangId, period = '30days', page = 1, limit 
   // Get total count of low stock products
   const totalQuery = await prisma.$queryRaw`
     SELECT COUNT(*) as total 
-    FROM get_produk_stok_menipis(${cabangId ? cabangId : null}::TEXT, ${period}::TEXT)`;
+    FROM get_produk_stok_menipis(${cabangId === 'all' ? null : cabangId}::TEXT, ${period}::TEXT)`;
   
   // Get paginated results
   const stockMenipis = await prisma.$queryRaw`
@@ -991,7 +991,7 @@ const getLowStockProducts = async (cabangId, period = '30days', page = 1, limit 
       stok_status,
       updated_at,
       CAST(stok_percentage AS INTEGER) as stok_percentage
-    FROM get_produk_stok_menipis(${cabangId ? cabangId : null}::TEXT, ${period}::TEXT) 
+    FROM get_produk_stok_menipis(${cabangId === 'all' ? null : cabangId}::TEXT, ${period}::TEXT) 
     ORDER BY updated_at DESC 
     LIMIT ${limit} OFFSET ${offset}`;
 

@@ -24,6 +24,7 @@ import SupplierDebt from "./features/suppliers/pages/SupplierDebt";
 import InventoryManagement from "./features/inventory/pages/InventoryManagementPage";
 import InventoryTransfer from "./features/inventory/components/InventoryTransfer";
 import InventoryNotifications from "./features/inventory/components/InventoryNotifications";
+import InventoryProductDetailPage from "./features/inventory/pages/InventoryProductDetailPage";
 // import GlobalPOS from "./features/transactions/pages/GlobalPOSPage";
 import GlobalTransactions from "./features/transactions/pages/GlobalTransactionsPage";
 import GlobalTransactionDetail from "./features/transactions/pages/GlobalTransactionDetailPage";
@@ -406,6 +407,7 @@ function App() {
               }
             >
               <Route index element={<InventoryManagement />} />
+              <Route path="product/:id" element={<InventoryProductDetailPage />} />
               <Route path="transfer" element={<InventoryTransfer />} />
               <Route
                 path="notifications"

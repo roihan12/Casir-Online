@@ -28,6 +28,7 @@ const ConfirmationDialog = ({
   isLoading = false,
   confirmButtonClassName = "bg-red-600 hover:bg-red-700",
   icon: CustomIcon,
+  customContent,
 }) => {
   const Icon = CustomIcon || AlertCircle;
   const modalRef = useRef(null);
@@ -101,12 +102,13 @@ const ConfirmationDialog = ({
               <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
                 <Icon className="h-6 w-6 text-red-600" aria-hidden="true" />
               </div>
-              <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+              <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
                 <h3 className="text-base font-semibold leading-6 text-gray-900">
                   {title}
                 </h3>
-                <div className="mt-2">
+                <div className="mt-2 text-left">
                   <p className="text-sm text-gray-500">{message}</p>
+                  {customContent && <div className="mt-4">{customContent}</div>}
                 </div>
               </div>
             </div>

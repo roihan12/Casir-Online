@@ -11,15 +11,17 @@ import GlobalStatsCard from "../../common/components/GlobalStatsCard";
 import Spinner from "../../../features/common/Spinner";
 import Pagination from "../../../features/common/Pagination";
 import ConfirmationDialog from "../../../features/common/ConfirmationDialog";
-import withCabangData from "../../../features/cabang/hoc/withCabangData";
+
 import { toast } from "react-hot-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { stockAdjustmentSchema } from "../validation/InventoryValidation";
-import useInventoryQueries from "../hooks/useInventoryQueries";
 import useInventoryMutations from "../hooks/useInventoryMutations";
+import { useInventoryAdjustment } from "../hooks/useInventoryAdjustment";
 import { useCabangList } from "../../../features/cabang/hooks/useCabangQueries";
 import useAuthStore from "../../../app/store/useAuthStore";
+import reportService from "../../reports/services/reportService";
+import useInventoryQueries from "../hooks/useInventoryQueries";
 
 // ---------------------------------------------------------------------------
 // Helper utilities
@@ -174,7 +176,7 @@ const InventoryToolbar = ({
   categoryFilter, onCategoryChange,
   statusFilter, onStatusChange,
   batchFilter, onBatchChange,
-  onClearFilters, onRefresh, isLoading,
+  onClearFilters, onRefresh, isLoading, onExport,
   onNavigateTransfer, onNavigateNotifications,
 }) => (
   <div className="mx-4 sm:mx-6 mb-6 flex flex-col gap-3">
@@ -239,7 +241,7 @@ const InventoryToolbar = ({
       <div className="flex gap-2 flex-wrap">
         <ActionButton icon={X} label="Bersihkan" onClick={onClearFilters} />
         <ActionButton icon={RefreshCw} label="Refresh"   onClick={onRefresh} spinning={isLoading} />
-        <ActionButton icon={Download} label="Export" />
+        <ActionButton icon={Download} label="Export" onClick={onExport} />
         <ActionButton icon={ArrowUpDown} label="Transfer Stok" onClick={onNavigateTransfer} variant="outlined" />
         <ActionButton icon={MessageSquare} label="Notifikasi" onClick={onNavigateNotifications} variant="primary" />
       </div>
@@ -365,6 +367,7 @@ const ICON_COLOR = {
 
 const IconButton = ({ icon: Icon, color, title, onClick }) => (
   <button
+    type="button"
     onClick={onClick}
     title={title}
     className={`p-1.5 rounded transition-colors ${ICON_COLOR[color]}`}
@@ -470,8 +473,8 @@ const InventoryManagement = ({ cabangData }) => {
   /* ── Queries ── */
   const { useDashboardData, useLowStockProducts, useStockMovementData, useBranchTransferData } =
     useInventoryQueries();
-  const { useStockAdjustment } = useInventoryMutations();
-  const { mutateAsync: adjustStock, isLoading: isAdjusting } = useStockAdjustment();
+  const { createAdjustment } = useInventoryAdjustment();
+  const isAdjusting = createAdjustment.isLoading;
 
   /* ── Cabang list ── */
   const { data: cabangListData, isLoading: isCabangLoading } = useCabangList();
@@ -506,13 +509,25 @@ const InventoryManagement = ({ cabangData }) => {
   const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardError, refetch: refetchDashboard } =
     useDashboardData(selectedBranchId, selectedPeriod);
 
-  const { data: lowStockData,  isLoading: isLowStockLoading,  error: lowStockError } =
-    useLowStockProducts(selectedBranchId, currentPage, pageSize);
+  const { data: lowStockData,  isLoading: isLowStockLoading,  error: lowStockError, refetch: refetchLowStock } =
+    useLowStockProducts(selectedBranchId, { 
+      page: currentPage, 
+      limit: pageSize,
+      search: searchTerm,
+      status: statusFilter,
+      kategori: categoryFilter,
+      batch: batchFilter
+    });
 
   const { isLoading: isMovementLoading } = useStockMovementData(selectedBranchId, selectedPeriod);
   const { isLoading: isTransferLoading } = useBranchTransferData(selectedBranchId, selectedPeriod);
 
   const isLoading = isDashboardLoading || isLowStockLoading || isMovementLoading || isTransferLoading || isCabangLoading;
+
+  const handleRefresh = useCallback(() => {
+    refetchDashboard();
+    refetchLowStock();
+  }, [refetchDashboard, refetchLowStock]);
 
   /* ── Sync cabang list ── */
   useEffect(() => {
@@ -540,7 +555,7 @@ const InventoryManagement = ({ cabangData }) => {
   }, [dashboardData, lowStockData, selectedBranchId, branches, pageSize]);
 
   /* ── Refetch on branch change ── */
-  useEffect(() => { refetchDashboard(); }, [selectedBranchId]);
+  useEffect(() => { handleRefresh(); }, [selectedBranchId, handleRefresh]);
 
   /* ── Handlers ── */
   const handleSearch = useCallback((e) => {
@@ -551,7 +566,8 @@ const InventoryManagement = ({ cabangData }) => {
   const clearFilters = useCallback(() => {
     setSearchTerm(""); setStatusFilter(""); setCategoryFilter(""); setBatchFilter("");
     setCurrentPage(1);
-  }, []);
+    handleRefresh();
+  }, [handleRefresh]);
 
   const openAdjustModal = useCallback((product) => {
     setSelectedProduct(product);
@@ -571,25 +587,48 @@ const InventoryManagement = ({ cabangData }) => {
 
   const handleAdjustStock = useCallback(async (formData) => {
     if (!selectedProduct) return;
-    await adjustStock({
-      productId:   selectedProduct.id,
-      newStock:    formData.newStock,
-      reason:      formData.reason,
-      notes:       formData.notes,
-      batchNumber: formData.batchNumber,
-      expiryDate:  formData.expiryDate,
+    
+    // The createAdjustment mutation expects:
+    // { produkId, cabangId, quantity, batchNumber, expiredDate, keterangan, referenceType }
+    await createAdjustment.mutateAsync({
+      produkId: selectedProduct.id,
+      cabangId: selectedBranchId === "all" ? selectedProduct.branchId : selectedBranchId,
+      quantity: Number(formData.newStock), 
+      referenceType: "adjustment",
+      keterangan: formData.reason ? `${formData.reason} - ${formData.notes || ''}` : formData.notes || "Penyesuaian stok reguler via dashboard",
+      batchNumber: formData.batchNumber || "",
+      expiredDate: formData.expiryDate || null,
     });
     closeAdjustModal();
-  }, [selectedProduct, adjustStock, closeAdjustModal]);
+  }, [selectedProduct, createAdjustment, closeAdjustModal, selectedBranchId]);
 
   /* ── Client-side filtered rows ── */
-  const filteredInventory = inventory.filter((item) => {
-    if (searchTerm && !item.productName.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        !item.sku.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-    if (statusFilter   && item.status !== statusFilter) return false;
-    if (batchFilter    && !item.batchNumber.toLowerCase().includes(batchFilter.toLowerCase())) return false;
-    return true;
-  });
+  // Server handles the filtering now using useLowStockProducts query params!
+  const filteredInventory = inventory;
+
+  const handleExport = useCallback(async () => {
+    try {
+      const start = new Date();
+      start.setDate(start.getDate() - selectedPeriod);
+      const end = new Date();
+      
+      const pStartDate = start.toISOString().split("T")[0];
+      const pEndDate = end.toISOString().split("T")[0];
+      
+      toast.loading("Memproses ekspor data...", { id: "export-loading" });
+      
+      await reportService.exportReport("low-stock", "csv", {
+        startDate: pStartDate,
+        endDate: pEndDate,
+        cabangId: selectedBranchId === "all" ? undefined : selectedBranchId,
+      });
+
+      toast.success("Data inventori berhasil diekspor", { id: "export-loading" });
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Gagal mengekspor data", { id: "export-loading" });
+    }
+  }, [selectedBranchId, selectedPeriod]);
 
   /* ── Movement stats shorthand ── */
   const mv = dashboardData?.movementData ?? {};
@@ -732,7 +771,8 @@ const InventoryManagement = ({ cabangData }) => {
         categoryFilter={categoryFilter} onCategoryChange={setCategoryFilter}
         statusFilter={statusFilter}     onStatusChange={setStatusFilter}
         batchFilter={batchFilter}       onBatchChange={setBatchFilter}
-        onClearFilters={clearFilters}   onRefresh={refetchDashboard}       isLoading={isLoading}
+        onClearFilters={clearFilters}   onRefresh={handleRefresh}       isLoading={isLoading}
+        onExport={handleExport}
         onNavigateTransfer={()    => navigate("/inventory/transfer")}
         onNavigateNotifications={() => navigate("/inventory/notifications")}
       />
@@ -819,4 +859,4 @@ const InventoryManagement = ({ cabangData }) => {
   );
 };
 
-export default withCabangData(InventoryManagement);
+export default InventoryManagement;

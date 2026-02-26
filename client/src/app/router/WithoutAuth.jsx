@@ -11,7 +11,7 @@ import { useAuth } from "../../features/auth/hooks/useAuth.js";
  * @returns {JSX.Element} React component
  */
 const WithoutAuth = ({ children }) => {
-  const { isAuthenticated, isLoading, getUserRole } = useAuth();
+  const { isAuthenticated, isLoading, getDefaultRedirect } = useAuth();
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -22,21 +22,10 @@ const WithoutAuth = ({ children }) => {
     );
   }
 
-  // If logged in, redirect based on role
+  // If logged in, redirect based on permissions to prevent infinite loops
   if (isAuthenticated) {
-    const userRole = getUserRole();
-
-    if (userRole === "super_admin") {
-      return <Navigate to="/dashboard" replace />;
-    } else if (userRole === "admin_cabang") {
-      return <Navigate to="/dashboard" replace />;
-    } else if (userRole === "kasir") {
-      return <Navigate to="/pos" replace />;
-    } else if (userRole === "gudang" || userRole === "manajer") {
-      return <Navigate to="/dashboard" replace />;
-    } else {
-      return <Navigate to="/" replace />;
-    }
+    const defaultPath = getDefaultRedirect();
+    return <Navigate to={defaultPath} replace />;
   }
 
   // If not logged in, render children (no need to check auth)
