@@ -45,22 +45,23 @@ const MyAttendancePage = () => {
     await fetchAttendance();
   };
 
-  const handleSuccess = (message = 'Operation successful') => {
+  const handleSuccess = useCallback((message = 'Operation successful') => {
     setNotification({ type: 'success', message });
     fetchAttendance();
     setTimeout(() => setNotification(null), 5000);
-  };
+  }, [fetchAttendance]);
 
-  const handleError = (message) => {
+  const handleError = useCallback((message) => {
     setNotification({ type: 'error', message });
     setTimeout(() => setNotification(null), 5000);
-  };
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'my') {
       fetchAttendance();
     }
-  }, [fetchAttendance, activeTab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   const canClockIn = !attendance || !attendance.waktuMasuk;
   const canClockOut = attendance && attendance.waktuMasuk && !attendance.waktuKeluar;

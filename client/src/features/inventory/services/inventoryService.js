@@ -52,11 +52,15 @@ const inventoryService = {
   /**
    * Get low stock products
    * @param {string} cabangId - Branch ID or 'all' for all branches
+   * @param {number} page - Current page
+   * @param {number} limit - Items per page
    * @returns {Promise<Array>} List of low stock products
    */
-  getLowStockProducts: async (cabangId) => {
+  getLowStockProducts: async (cabangId, page = 1, limit = 10) => {
     const params = new URLSearchParams();
     params.append("cabangId", cabangId);
+    if (page) params.append("page", page);
+    if (limit) params.append("limit", limit);
 
     const response = await api.get(`/inventory-dashboard/low-stock?${params}`);
     return response.data;

@@ -32,6 +32,7 @@ import {
 import { useGenerateMovementReport } from "../hooks/useInventoryReports";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
+import useAuthStore from "../../../app/store/useAuthStore";
 
 // Export Button Component
 const ExportButton = ({ queryParams }) => {
@@ -189,7 +190,12 @@ const InventoryMovements = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [selectedBranchId, setSelectedBranchId] = useState("all");
+  const userCabang = useAuthStore((state) => state.getUserCabang());
+  const primaryCabang = useAuthStore((state) => state.getPrimaryCabang());
+  const hasMultipleBranches = userCabang.length > 1;
+  const defaultBranchId = userCabang.length === 1 && primaryCabang ? (primaryCabang.id || primaryCabang.cabangId || primaryCabang.cabang_id) : "all";
+
+  const [selectedBranchId, setSelectedBranchId] = useState(defaultBranchId || "all");
   const [selectedProductId, setSelectedProductId] = useState(
     productIdFromUrl || ""
   );
@@ -312,14 +318,14 @@ const InventoryMovements = () => {
 
   // Clear all filters
   const clearFilters = () => {
-    setSelectedBranchId("all");
+    setSelectedBranchId(hasMultipleBranches ? "all" : defaultBranchId || "all");
     setSelectedProductId("");
     setSelectedMovementType("all");
     setDateRange({ startDate: "", endDate: "" });
     setSearchTerm("");
     setCurrentPage(1);
     reset({
-      cabangId: "all",
+      cabangId: hasMultipleBranches ? "all" : defaultBranchId || "all",
       produkId: "",
       type: "all",
       startDate: undefined,
@@ -408,8 +414,9 @@ const InventoryMovements = () => {
           </div>
 
           <form onSubmit={handleSubmit(onSubmitFilter)}>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div className={`grid grid-cols-1 ${hasMultipleBranches ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4 mb-4`}>
               {/* Branch Selection */}
+              {hasMultipleBranches && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Cabang
@@ -442,6 +449,7 @@ const InventoryMovements = () => {
                   </p>
                 )}
               </div>
+              )}
 
               {/* Movement Type Selection */}
               <div>

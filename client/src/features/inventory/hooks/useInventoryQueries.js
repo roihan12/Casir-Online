@@ -22,12 +22,14 @@ const useInventoryQueries = () => {
   /**
    * Get low stock products
    * @param {string} cabangId - Branch ID or 'all' for all branches
+   * @param {number} page - Current page
+   * @param {number} limit - Items per page
    * @returns {UseQueryResult} Query result
    */
-  const useLowStockProducts = (cabangId) => {
+  const useLowStockProducts = (cabangId, page = 1, limit = 10) => {
     return useQuery({
-      queryKey: ["lowStockProducts", cabangId],
-      queryFn: () => inventoryService.getLowStockProducts(cabangId),
+      queryKey: ["lowStockProducts", cabangId, page, limit],
+      queryFn: () => inventoryService.getLowStockProducts(cabangId, page, limit),
       // Enable the query for any valid cabangId, including 'all'
       enabled: cabangId !== undefined && cabangId !== null,
     });

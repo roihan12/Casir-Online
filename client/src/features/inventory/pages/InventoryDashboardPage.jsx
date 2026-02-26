@@ -37,6 +37,7 @@ import Spinner from "../../../features/common/Spinner.jsx";
 import { useCabangList } from "../../../features/cabang/hooks/useCabangQueries";
 import useInventoryQueries from "../hooks/useInventoryQueries";
 import { useAuth } from "../../auth/hooks/useAuth.js";
+import useAuthStore from "../../../app/store/useAuthStore";
 
 import { MovementTrends, TopProducts } from "../components/StockMovementVisualizations";
 
@@ -457,10 +458,17 @@ const InventoryDashboard = () => {
   const { user } = useAuth();
   const [showAllCategories, setShowAllCategories] = useState(false);
   
+  const userCabang = useAuthStore((state) => state.getUserCabang());
+  const primaryCabang = useAuthStore((state) => state.getPrimaryCabang());
+  const hasMultipleBranches = userCabang.length > 1;
+  const defaultBranchId = userCabang.length === 1 && primaryCabang ? (primaryCabang.id || primaryCabang.cabangId || primaryCabang.cabang_id) : "all";
+  
   // Determine default cabangId based on user role and assigned cabang
   function getDefaultCabangId() {
     if (user?.role === "superadmin" || user?.role === "admin") {
       return "all";
+    } else if (userCabang.length === 1 && defaultBranchId !== "all") {
+      return defaultBranchId;
     } else if (user?.cabangId) {
       return user.cabangId;
     }
@@ -660,9 +668,10 @@ const InventoryDashboard = () => {
 
           <form
             onSubmit={handleSubmit(onSubmitFilter)}
-            className="grid grid-cols-1 md:grid-cols-3 gap-4"
+            className={`grid grid-cols-1 ${hasMultipleBranches ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}
           >
             {/* Branch Selection */}
+            {hasMultipleBranches && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Cabang
@@ -703,6 +712,7 @@ const InventoryDashboard = () => {
                 </p>
               )}
             </div>
+            )}
 
             {/* Period Selection */}
             <div>

@@ -40,7 +40,8 @@ const TeamAttendanceToday = () => {
 
   useEffect(() => {
     fetchTodayData();
-  }, [fetchTodayData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filteredHistory = history.filter(record => 
     record.user?.nama?.toLowerCase().includes(searchTerm.toLowerCase())
