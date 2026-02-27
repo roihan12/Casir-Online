@@ -1,4 +1,5 @@
 const authService = require("../services/authService");
+const userService = require("../services/userService");
 
 const login = async (req, res) => {
   try {
@@ -102,8 +103,63 @@ const getProfile = async (req, res, next) => {
   }
 };
 
+const updateProfile = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const userData = req.body;
+    const auditInfo = {
+      userId: req.user.id,
+      ipAddress: req.ip,
+    };
+
+    const updatedUser = await userService.updateUser(
+      userId,
+      userData,
+      auditInfo,
+      null // no avatar for this route
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      data: { user: updatedUser },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateProfileWithAvatar = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const userData = req.body;
+    const avatar = req.file || null;
+    const auditInfo = {
+      userId: req.user.id,
+      ipAddress: req.ip,
+    };
+
+    const updatedUser = await userService.updateUser(
+      userId,
+      userData,
+      auditInfo,
+      avatar
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile and avatar updated successfully",
+      data: { user: updatedUser },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   login,
   logout,
   getProfile,
+  updateProfile,
+  updateProfileWithAvatar,
 };

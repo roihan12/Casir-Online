@@ -85,7 +85,7 @@ const Header = ({ user, selectedCabang, onSidebarToggle }) => {
                 </div>
                 <div className="px-4 py-2 border-t border-gray-200">
                   <Link
-                    to="/notifications"
+                    to="/inventory/low-stock"
                     className="text-sm text-blue-600 hover:text-blue-800 block text-center"
                     onClick={() => setNotificationsOpen(false)}
                   >

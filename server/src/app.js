@@ -73,6 +73,7 @@ const penggajianRoutes = require("./routes/penggajianRoutes");
 const importProdukMasterRoutes = require("./routes/importProdukMasterRoutes");
 const importProdukRoutes = require("./routes/importProdukRoutes");
 const ocrRoutes = require("./routes/ocrRoutes");
+const userNotificationRoutes = require("./routes/userNotificationRoutes");
 
 
 const {
@@ -170,6 +171,7 @@ app.use("/api/inventory-batch", inventoryBatchRoutes);
 app.use("/api/inventory-report", inventoryReportRoutes);
 app.use("/api/tax", taxRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/user-notifications", userNotificationRoutes);
 app.use("/api/produk-request", produkRequestRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/kasir", kasirRoutes);

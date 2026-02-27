@@ -140,6 +140,7 @@ import CustomerLoyaltyReport from "./features/reports/pages/CustomerLoyaltyRepor
 import LowStockReport from "./features/reports/pages/LowStockReport";
 import PromoDiscountReport from "./features/reports/pages/PromoDiscountReport";
 import TransactionDetailReport from "./features/reports/pages/TransactionDetailReport";
+import NotificationPage from "./features/notifications/pages/NotificationPage";
 
 function App() {
   return (
@@ -683,9 +684,6 @@ function App() {
               <Route index element={<Navigate to="/whatsapp/config" replace />} />
             </Route>
 
-            {/* 404 Not Found */}
-            <Route path="*" element={<NotFoundPage />} />
-            
             {/* Work Schedule */}
             <Route
               path="/attendance/work-schedule"
@@ -697,6 +695,21 @@ function App() {
             >
               <Route index element={<JadwalPage />} />
             </Route>
+
+            {/* General Notifications Page */}
+            <Route
+              path="/notifications"
+              element={
+                <ProtectedRoute>
+                  <DynamicLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<NotificationPage />} />
+            </Route>
+
+            {/* 404 Not Found */}
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </ToastProvider>
       </POSProvider>

@@ -75,8 +75,8 @@ const CabangSwitcher = () => {
           <span className="text-purple-500 font-medium">{getUserInitials()}</span>
         </div>
 
-        <div className="flex flex-col mr-1">
-          <span className="text-sm font-medium">{user?.namaLengkap}</span>
+        <div className="flex flex-col mr-1 min-w-0 max-w-[100px] sm:max-w-xs">
+          <span className="text-xs sm:text-sm font-medium truncate w-full">{user?.namaLengkap}</span>
           {selectedCabang && (
             <div className="flex items-center text-xs text-gray-500">
               {isGlobalView ? (
@@ -86,8 +86,8 @@ const CabangSwitcher = () => {
                 </>
               ) : (
                 <>
-                  <MapPin size={12} className="mr-1" />
-                  <span>{selectedCabang.namaCabang || "Pilih Cabang"}</span>
+                  <MapPin size={12} className="mr-1 flex-shrink-0" />
+                  <span className="truncate w-full">{selectedCabang.namaCabang || "Pilih Cabang"}</span>
                 </>
               )}
             </div>
@@ -99,7 +99,7 @@ const CabangSwitcher = () => {
 
       {/* Dropdown */}
       {showDropdown && (
-        <div className="absolute right-0 top-14 bg-white shadow-lg rounded-lg z-10 w-64 py-2 border">
+        <div className="absolute right-[-10px] sm:right-0 top-14 bg-white shadow-lg rounded-lg z-10 w-64 sm:w-64 py-2 border">
           {/* User Info */}
           <div className="px-4 py-3 border-b">
             <div className="flex items-start">
