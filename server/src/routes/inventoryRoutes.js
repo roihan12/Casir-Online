@@ -39,7 +39,7 @@ router.get(
 // GET - Generate report pergerakan stok (PDF/Excel/CSV)
 router.get(
   "/movements/report",
-  hasPermission(["report:read"]),
+  hasPermission(["laporan:read"]),
   inventoryController.generateMovementReport
 );
 
@@ -76,7 +76,7 @@ router.get(
 // GET - Mendapatkan laporan stok saat ini
 router.get(
   "/report/:cabangId",
-  hasPermission(["report:read"], { checkBranch: true }),
+  hasPermission(["laporan:read"], { checkBranch: true }),
   inventoryController.getCurrentStockReport
 );
 

@@ -147,6 +147,7 @@ const createTransaksiWithPromo = async (data, auditInfo) => {
       throw new ResponseError(400, "Promo codes harus berupa array");
     }
 
+
     // Panggil stored procedure PostgreSQL dengan promo codes dan manual discount
     const result = await prisma.$queryRaw`
       SELECT create_transaksi_with_promo_and_discount(
@@ -180,8 +181,7 @@ const createTransaksiWithPromo = async (data, auditInfo) => {
 
     const transactionResult = result[0].create_transaksi_with_promo_and_discount;
 
-    // Ambil data transaksi lengkap dengan query raw
-    const transactions = await prisma.$queryRaw`
+    const transactions = await prisma.withRls(tx => tx.$queryRaw`
       SELECT
         t.*,
         jsonb_agg(
@@ -260,7 +260,7 @@ const createTransaksiWithPromo = async (data, auditInfo) => {
       LEFT JOIN promo_diskon pr ON tp.promo_id = pr.promo_id
       WHERE t.transaksi_id = ${transactionResult.transaksi_id}::VARCHAR
       GROUP BY t.transaksi_id, pel.pelanggan_id, sup.supplier_id, c.cabang_id, s.shift_id
-    `;
+    `);
 
     const completeTransaction = transactions[0];
 

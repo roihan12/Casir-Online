@@ -187,24 +187,23 @@ const ProfilePage = () => {
   };
 
   const getUserRole = () => {
-    if (!user || !user.userRoles || user.userRoles.length === 0)
+    if (!user || !user.roles || user.roles.length === 0)
       return "Pengguna";
 
-    const role = user.userRoles[0]?.role?.namaRole;
-    if (role === "super_admin") return "Super Admin";
-    if (role === "admin_cabang") return "Admin Cabang";
-    if (role === "kasir") return "Kasir";
+    const role = user.roles[0]?.namaRole;
     return role || "Pengguna";
   };
 
+  
+
   const getCabangName = () => {
-    if (!user || !user.userCabang || user.userCabang.length === 0)
+    if (!user || !user.cabang || user.cabang.length === 0)
       return "Tidak ada cabang";
 
-    const primaryCabang = user.userCabang.find((uc) => uc.isPrimary);
+    const primaryCabang = user.cabang.find((uc) => uc.isPrimary);
     return primaryCabang
-      ? primaryCabang.cabang.namaCabang
-      : user.userCabang[0].cabang.namaCabang;
+      ? primaryCabang.namaCabang
+      : user.cabang[0].namaCabang;
   };
 
   const formatDate = (dateString) => {

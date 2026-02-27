@@ -239,7 +239,7 @@ router.get("/inventory/movement-category", hasPermission(["laporan:read"]), repo
  * @query {string} cabangId - Branch ID (optional)
  * @query {string} kategoriId - Category ID (optional)
  */
-router.get("/inventory/value-category", hasPermission(["report:read"]), reportController.getInventoryValueByCategory);
+router.get("/inventory/value-category", hasPermission(["laporan:read"]), reportController.getInventoryValueByCategory);
 
 /**
  * @route GET /api/reports/inventory/activities

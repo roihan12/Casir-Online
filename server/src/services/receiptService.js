@@ -1,4 +1,5 @@
 const prisma = require("../config/db");
+const { withRls } = require("../config/db");
 const { ResponseError } = require("../error/responseError");
 const fs = require("fs");
 const path = require("path");
@@ -63,7 +64,7 @@ const getOrCreateReceiptConfig = async (cabangId) => {
  */
 const getTransactionDataForReceipt = async (transaksiId) => {
   // Get complete transaction data with all related info using raw query
-  const result = await prisma.$queryRaw`
+  const result = await withRls(tx => tx.$queryRaw`
      SELECT
   t.transaksi_id,
   t.nomor_transaksi,
@@ -124,7 +125,7 @@ LEFT JOIN shift s ON t.shift_id = s.shift_id
 LEFT JOIN kredit_transaksi kt ON t.transaksi_id = kt.transaksi_id
 WHERE t.transaksi_id = ${transaksiId}
 LIMIT 1
-  `;
+  `);
 
   if (!result || result.length === 0) {
     throw new ResponseError(404, "Transaksi tidak ditemukan");
@@ -133,7 +134,7 @@ LIMIT 1
   const transaksi = result[0];
 
   // Get transaction details with products
-  const details = await prisma.$queryRaw`
+  const details = await withRls(tx => tx.$queryRaw`
     SELECT
       td."transaksi_detail_id",
       td.jumlah,
@@ -149,10 +150,10 @@ LIMIT 1
     LEFT JOIN produk prod ON td.produk_id = prod.produk_id
     LEFT JOIN produk_master pm ON prod.produk_master_id = pm.produk_master_id
     WHERE td.transaksi_id = ${transaksiId}
-  `;
+  `);
 
   // Get payments
-  const payments = await prisma.$queryRaw`
+  const payments = await withRls(tx => tx.$queryRaw`
     SELECT
       p."pembayaran_id",
       p.metode_pembayaran,
@@ -165,10 +166,10 @@ LIMIT 1
       p."bukti_bayar_url"
     FROM pembayaran p
     WHERE p.transaksi_id = ${transaksiId}::VARCHAR
-  `;
+  `);
 
   // Get transaction promos
-  const promos = await prisma.$queryRaw`
+  const promos = await withRls(tx => tx.$queryRaw`
     SELECT
       tp.transaksi_id,
       tp.promo_id,
@@ -179,7 +180,7 @@ LIMIT 1
     FROM transaksi_promo tp
     LEFT JOIN promo_diskon pr ON tp.promo_id = pr.promo_id 
     WHERE tp.transaksi_id = ${transaksiId}
-  `;
+  `);
 
   // Build transaksi object from raw query results
   const transaksiObj = {

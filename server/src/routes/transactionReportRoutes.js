@@ -13,7 +13,7 @@ const { hasPermission } = require("../middleware/permissionMiddleware");
 router.get(
   "/detail",
   authenticate,
-  hasPermission(["report:read"]),
+  hasPermission(["laporan:read"]),
   transactionReportController.getTransactionDetail
 );
 
@@ -21,7 +21,7 @@ router.get(
 router.get(
   "/summary",
   authenticate,
-  hasPermission(["report:read"]),
+  hasPermission(["laporan:read"]),
   transactionReportController.getTransactionSummary
 );
 
@@ -29,7 +29,7 @@ router.get(
 router.get(
   "/audit",
   authenticate,
-  hasPermission(["report:read"]),
+  hasPermission(["laporan:read"]),
   transactionReportController.getAuditTrail
 );
 

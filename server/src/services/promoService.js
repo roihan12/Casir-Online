@@ -720,7 +720,7 @@ const getPromoStats = async (id) => {
       }
 
       // Get usage statistics from transaksi_promo
-      const usageStats = await prisma.$queryRaw`
+      const usageStats = await prisma.withRls(tx => tx.$queryRaw`
         SELECT
           COUNT(DISTINCT tp.transaksi_id) as total_transactions,
           COALESCE(SUM(tp.total_diskon), 0) as total_discount_given,
@@ -730,10 +730,10 @@ const getPromoStats = async (id) => {
         LEFT JOIN transaksi t ON tp.transaksi_id = t.transaksi_id
         WHERE tp.promo_id = ${id}::VARCHAR
         AND t.deleted_at IS NULL
-      `;
+      `);
 
       // Get recent transactions using this promo
-      const recentTransactions = await prisma.$queryRaw`
+      const recentTransactions = await prisma.withRls(tx => tx.$queryRaw`
         SELECT
           t.transaksi_id,
           t.nomor_transaksi,
@@ -750,7 +750,7 @@ const getPromoStats = async (id) => {
         AND t.deleted_at IS NULL
         ORDER BY t.tanggal DESC
         LIMIT 10
-      `;
+      `);
 
       const stats = usageStats[0];
 
@@ -857,7 +857,7 @@ const getEligibleProducts = async (promoId) => {
         `;
       } else if (promoData.tipe_scope === "CABANG_SPESIFIK" && promoData.cabang_id) {
         // Products available in specific branch
-        products = await prisma.$queryRaw`
+        products = await prisma.withRls(tx => tx.$queryRaw`
           SELECT DISTINCT
             pm.produk_master_id as id,
             pm.nama_produk as "namaProduk",
@@ -869,7 +869,7 @@ const getEligibleProducts = async (promoId) => {
           LEFT JOIN kategori k ON pm.kategori_id = k.kategori_id
           WHERE p.cabang_id = ${promoData.cabang_id}::VARCHAR
           ORDER BY pm.nama_produk
-        `;
+        `);
       }
 
       return {
@@ -925,13 +925,13 @@ const verifyPromoCode = async (data) => {
 
   // Check per-user usage limit
   if (promoData.max_penggunaan_per_user && pelangganId) {
-    const userUsage = await prisma.$queryRaw`
+    const userUsage = await prisma.withRls(tx => tx.$queryRaw`
       SELECT COUNT(*) as usage_count
       FROM transaksi_promo tp
       INNER JOIN transaksi t ON tp.transaksi_id = t.transaksi_id
       WHERE tp.promo_id = ${promoData.promo_id}::VARCHAR
       AND t.pelanggan_id = ${pelangganId}::VARCHAR
-    `;
+    `);
 
     if (parseInt(userUsage[0].usage_count) >= promoData.max_penggunaan_per_user) {
       throw new ResponseError(400, "Anda telah mencapai batas penggunaan promo ini");

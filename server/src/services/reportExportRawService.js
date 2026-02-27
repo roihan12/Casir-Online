@@ -1,6 +1,5 @@
-const { PrismaClient } = require("@prisma/client");
+const prisma = require("../config/db");
 const { ResponseError } = require("../error/responseError");
-const prisma = new PrismaClient();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -77,7 +76,7 @@ class ReportExportRawService {
     let offset = 0;
     while (true) {
       const queryWithLimit = `${queryStr} LIMIT ${batchSize} OFFSET ${offset}`;
-      const rows = await prisma.$queryRawUnsafe(queryWithLimit);
+      const rows = await prisma.withRls(tx => tx.$queryRawUnsafe(queryWithLimit));
       if (rows.length === 0) break;
 
       for (const row of rows) yield row;

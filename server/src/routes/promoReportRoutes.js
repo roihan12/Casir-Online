@@ -13,7 +13,7 @@ const { hasPermission } = require("../middleware/permissionMiddleware");
 router.get(
   "/summary",
   authenticate,
-  hasPermission(["report:read"]),
+  hasPermission(["laporan:read"]),
   promoReportController.getPromoSummary
 );
 
@@ -21,7 +21,7 @@ router.get(
 router.get(
   "/effectiveness/:promoId",
   authenticate,
-  hasPermission(["report:read"]),
+  hasPermission(["laporan:read"]),
   promoReportController.getPromoEffectiveness
 );
 
@@ -29,7 +29,7 @@ router.get(
 router.get(
   "/discount-breakdown",
   authenticate,
-  hasPermission(["report:read"]),
+  hasPermission(["laporan:read"]),
   promoReportController.getDiscountBreakdown
 );
 

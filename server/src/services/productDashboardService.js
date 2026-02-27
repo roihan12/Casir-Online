@@ -1421,7 +1421,7 @@ class ProductDashboardService {
         // Query using the materialized view with correct template literal syntax
         let result;
         if (cabangId) {
-          result = await prisma.$queryRaw`
+          result = await prisma.withRls(tx => tx.$queryRaw`
             SELECT 
               produk_id,
               nama_produk,
@@ -1432,7 +1432,7 @@ class ProductDashboardService {
             WHERE rank <= ${topProducts}
             AND produk_id IN (SELECT produk_id FROM produk WHERE cabang_id = ${cabangId})
             ORDER BY month, rank
-          `;
+          `);
         } else {
           result = await prisma.$queryRaw`
             SELECT 

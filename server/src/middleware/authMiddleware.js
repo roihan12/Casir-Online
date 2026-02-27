@@ -8,6 +8,7 @@ const {
   calculateTtl,
 } = require("../utils/redisUtils");
 const { formatUserData } = require("../services/authService");
+const { runWithRlsContext } = require("../utils/rlsContext");
 
 const authenticate = async (req, res, next) => {
   try {
@@ -68,7 +69,14 @@ const authenticate = async (req, res, next) => {
         // Update last activity di database (bisa dijadikan operasi background)
         updateLastActivity(decoded.sessionId);
 
-        return next();
+        // Set RLS context dan lanjut ke next middleware
+        const cabangIds = (cachedUser.cabang || cachedUser.userCabang || []).map(
+          (uc) => uc.cabangId || uc.id
+        );
+        return runWithRlsContext(
+          { userId: decoded.userId, cabangIds },
+          () => next()
+        );
       }
     }
 
@@ -195,7 +203,11 @@ const authenticate = async (req, res, next) => {
 
     await cacheSet(userKey, userData, 86400); // 1 hari
 
-    next();
+    // Set RLS context dan lanjut ke next middleware
+    const cabangIds = (userData.cabang || userData.userCabang || []).map(
+      (uc) => uc.cabangId || uc.id
+    );
+    runWithRlsContext({ userId: user.id, cabangIds }, () => next());
   } catch (error) {
     // Clear cookies on error
     res.clearCookie("auth_token", { path: "/" });

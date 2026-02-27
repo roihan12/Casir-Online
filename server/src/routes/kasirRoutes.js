@@ -94,6 +94,6 @@ router.post("/receipts/print/:id", hasPermission(["transaksi:read"]), KasirContr
 router.get("/receipts/config", hasPermission(["settings:read"]), KasirController.getReceiptConfig);
 
 // Reports
-router.get("/reports/daily", hasPermission(["report:read"]), KasirController.getDailySummary);
+router.get("/reports/daily", hasPermission(["laporan:read"]), KasirController.getDailySummary);
 
 module.exports = router;

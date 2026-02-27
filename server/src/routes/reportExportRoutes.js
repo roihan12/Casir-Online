@@ -17,7 +17,7 @@ router.use(authenticate);
  */
 router.get(
   "/:reportType",
-  hasPermission(["report:read", "laporan:read"]),
+  hasPermission(["laporan:read"]),
   reportExportController.exportReportUnified,
   reportExportController.exportBranchReport
 );

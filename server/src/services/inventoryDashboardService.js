@@ -505,7 +505,7 @@ const calculateDashboardData = async (cabangId, period = 30) => {
         })
         .then(async (result) => {
           // We also need to calculate the total value
-          const valueResult = await prisma.$queryRaw`
+          const valueResult = await prisma.withRls(tx => tx.$queryRaw`
           SELECT CAST(SUM(stok * harga_beli) AS FLOAT) as total_value
           FROM produk
           WHERE status = 'tersedia'
@@ -514,7 +514,7 @@ const calculateDashboardData = async (cabangId, period = 30) => {
               ? prisma.sql`AND cabang_id = ${cabangId}`
               : prisma.sql``
           }
-        `;
+        `);
 
           return {
             totalStok: result._sum.stok || 0,
@@ -750,14 +750,14 @@ const calculateDashboardData2 = async (cabangId, period = 30) => {
   });
 
   // 2. Stok rendah - Fix for prisma.raw issue
-  const lowStockCount = await prisma.$queryRaw`
+  const lowStockCount = await prisma.withRls(tx => tx.$queryRaw`
     SELECT COUNT(*) as count 
     FROM produk 
     WHERE cabang_id = ${cabangId} 
     AND status = 'tersedia' 
     AND stok <= min_stok 
     AND stok > 0
-  `;
+  `);
 
   // 3. Habis stok
   const outOfStockCount = await prisma.produk.count({
@@ -791,12 +791,12 @@ const calculateDashboardData2 = async (cabangId, period = 30) => {
   const expiringCount = expiringProducts.length;
 
   // 5. Nilai inventori
-  const inventoryValue = await prisma.$queryRaw`
+  const inventoryValue = await prisma.withRls(tx => tx.$queryRaw`
     SELECT SUM(harga_beli * stok) as total_value
     FROM produk
     WHERE cabang_id = ${cabangId}
     AND status = 'tersedia'
-  `;
+  `);
 
   // 6. Pergerakan stok 30 hari terakhir
   const stockMovements = await prisma.inventoryMovement.count({
@@ -1362,12 +1362,12 @@ const getStockValue = async (cabangId) => {
   });
 
   // Calculate total value (hargaBeli * stok)
-  const totalValue = await prisma.$queryRaw`
+  const totalValue = await prisma.withRls(tx => tx.$queryRaw`
     SELECT SUM(harga_beli * stok) as total_value
     FROM produk
     WHERE cabang_id = ${cabangId}
     AND status = 'tersedia'
-  `;
+  `);
 
   return {
     totalProducts: inventoryValue._count.id,

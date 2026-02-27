@@ -290,7 +290,7 @@ class DashboardService {
     const { startDate, endDate } = periodFilters[period];
 
     // Execute raw SQL query (menggunakan Prisma.sql untuk keamanan)
-    const result = await prisma.$queryRaw`
+    const result = await prisma.withRls(tx => tx.$queryRaw`
     SELECT 
       SUM(total) as sum_total,
       SUM(diskon) as sum_diskon,
@@ -305,7 +305,7 @@ class DashboardService {
           ? Prisma.sql`AND cabang_id = ${whereClause.cabang_id}`
           : Prisma.empty
       }
-  `;
+  `);
 
     return {
       _sum: {
@@ -346,7 +346,7 @@ class DashboardService {
       }),
 
       // Hourly breakdown for today
-      prisma.$queryRaw`
+      prisma.withRls(tx => tx.$queryRaw`
         SELECT EXTRACT(HOUR FROM tanggal) as hour, COUNT(*) as count
         FROM transaksi
         WHERE jenis_transaksi = 'PENJUALAN'
@@ -359,7 +359,7 @@ class DashboardService {
         }
         GROUP BY EXTRACT(HOUR FROM tanggal)
         ORDER BY hour
-      `,
+      `),
     ]);
 
     // Calculate hourly rate (average transactions per hour for today)
@@ -449,7 +449,7 @@ class DashboardService {
       unreadNotifications,
     ] = await Promise.all([
       // Low Stock Products — raw SQL untuk field-to-field comparison (stok <= min_stok)
-      prisma.$queryRaw`
+      prisma.withRls(tx => tx.$queryRaw`
         SELECT
           p.produk_id   AS id,
           p.stok,
@@ -463,7 +463,7 @@ class DashboardService {
           AND p.min_stok IS NOT NULL
           AND p.stok <= p.min_stok
           ${branchFilter} LIMIT 10
-      `,
+      `),
 
       // Pending Product Requests
       prisma.produkRequest.count({
@@ -474,7 +474,7 @@ class DashboardService {
       }),
 
       // Expiring Stock (within 30 days) — raw SQL untuk efisiensi
-      prisma.$queryRaw`
+      prisma.withRls(tx => tx.$queryRaw`
         SELECT DISTINCT ON (im.produk_id, im.batch_number)
           im.produk_id    AS "produkId",
           im.expired_date AS "expiredDate",
@@ -493,7 +493,7 @@ class DashboardService {
               : Prisma.sql`AND im.cabang_id = ${branchId}`
           }
         ORDER BY im.produk_id, im.batch_number, im.expired_date ASC
-      `,
+      `),
 
       // Unread high-priority notifications
       prisma.stockNotification.count({
@@ -735,7 +735,7 @@ class DashboardService {
 
   // Category Distribution Fetcher
   static async fetchCategoryDistribution(branchId, isSuperAdmin) {
-    const categoryData = await prisma.$queryRaw`
+    const categoryData = await prisma.withRls(tx => tx.$queryRaw`
       SELECT 
         k.nama_kategori as category,
         SUM(td.subtotal) as total
@@ -756,7 +756,7 @@ class DashboardService {
       }
       GROUP BY k.nama_kategori
       ORDER BY total DESC
-    `;
+    `);
 
     // Calculate total for percentage calculation and handle BigInt
     const total = categoryData.reduce(
@@ -778,7 +778,7 @@ class DashboardService {
         ? Prisma.empty
         : Prisma.sql`AND cabang_id = ${branchId}`;
 
-    const result = await prisma.$queryRaw`
+    const result = await prisma.withRls(tx => tx.$queryRaw`
       SELECT
         COUNT(*)                                                         AS total,
         COUNT(*) FILTER (WHERE stok = 0)                                AS out_of_stock,
@@ -795,7 +795,7 @@ class DashboardService {
       FROM produk
       WHERE 1=1
         ${branchFilter}
-    `;
+    `);
 
     const row = result[0];
     const totalProducts = Number(row.total);
@@ -1011,7 +1011,7 @@ class DashboardService {
     // Get payment methods breakdown by branch (only if superadmin and viewing all branches)
     let branchPaymentMethods = [];
     if (isSuperAdmin && branchId === "all") {
-      branchPaymentMethods = await prisma.$queryRaw`
+      branchPaymentMethods = await prisma.withRls(tx => tx.$queryRaw`
       SELECT 
         c.cabang_id,
         c.nama_cabang as cabang_name,
@@ -1029,7 +1029,7 @@ class DashboardService {
         )}
       GROUP BY c.cabang_id, c.nama_cabang, p.metode_pembayaran, p.provider
       ORDER BY c.nama_cabang, total_amount DESC
-    `;
+    `);
     }
 
     // Calculate trends (compare with previous 30 days)
@@ -1170,7 +1170,7 @@ class DashboardService {
       : Prisma.empty;
 
     // Use raw query to get daily aggregated totals
-    const dailyData = await prisma.$queryRaw`
+    const dailyData = await prisma.withRls(tx => tx.$queryRaw`
       SELECT 
         DATE(tanggal) as date,
         SUM(total) as total
@@ -1181,7 +1181,7 @@ class DashboardService {
         ${branchCondition}
       GROUP BY DATE(tanggal)
       ORDER BY date ASC
-    `;
+    `);
 
     // Format data for frontend charts, handling BigInt
     const formattedData = dailyData.map((item) => ({

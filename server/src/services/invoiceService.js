@@ -1,5 +1,4 @@
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+const prisma = require("../config/db");
 const { logger } = require("../utils/logger");
 const { createAuditLog } = require("../utils/auditLog");
 
@@ -69,7 +68,7 @@ const getInvoiceList = async (filters = {}) => {
       ${whereClause}
     `;
 
-    const countResult = await prisma.$queryRawUnsafe(countQuery, ...params);
+    const countResult = await prisma.withRls(tx => tx.$queryRawUnsafe(countQuery, ...params));
     const total = parseInt(countResult[0].total);
 
     // Get invoices with pagination
@@ -102,7 +101,7 @@ const getInvoiceList = async (filters = {}) => {
     `;
 
     params.push(parseInt(limit), offset);
-    const invoices = await prisma.$queryRawUnsafe(selectQuery, ...params);
+    const invoices = await prisma.withRls(tx => tx.$queryRawUnsafe(selectQuery, ...params));
 
     return {
       data: invoices,
@@ -159,7 +158,7 @@ const getInvoiceById = async (id) => {
       WHERE i.id = $1
     `;
 
-    const result = await prisma.$queryRawUnsafe(query, id);
+    const result = await prisma.withRls(tx => tx.$queryRawUnsafe(query, id));
 
     if (!result || result.length === 0) {
       return null;
@@ -214,7 +213,7 @@ const getInvoiceWithDetails = async (id) => {
       WHERE i.id = $1::uuid
     `;
 
-    const invoiceResult = await prisma.$queryRawUnsafe(invoiceQuery, id);
+    const invoiceResult = await prisma.withRls(tx => tx.$queryRawUnsafe(invoiceQuery, id));
 
     if (!invoiceResult || invoiceResult.length === 0) {
       return null;
@@ -240,7 +239,7 @@ const getInvoiceWithDetails = async (id) => {
       WHERE td.transaksi_id = $1
     `;
 
-    const items = await prisma.$queryRawUnsafe(detailsQuery, invoice.transaksi_id);
+    const items = await prisma.withRls(tx => tx.$queryRawUnsafe(detailsQuery, invoice.transaksi_id));
 
     // Get payments
     const paymentsQuery = `
@@ -256,7 +255,7 @@ const getInvoiceWithDetails = async (id) => {
       WHERE transaksi_id = $1 AND status = 'SUKSES'
     `;
 
-    const payments = await prisma.$queryRawUnsafe(paymentsQuery, invoice.transaksi_id);
+    const payments = await prisma.withRls(tx => tx.$queryRawUnsafe(paymentsQuery, invoice.transaksi_id));
 
     return {
       ...invoice,
@@ -295,7 +294,7 @@ const getTransactionById = async (transaksiId) => {
       WHERE t.transaksi_id = $1::varchar
     `;
 
-    const result = await prisma.$queryRawUnsafe(query, transaksiId);
+    const result = await prisma.withRls(tx => tx.$queryRawUnsafe(query, transaksiId));
 
     if (!result || result.length === 0) {
       return null;

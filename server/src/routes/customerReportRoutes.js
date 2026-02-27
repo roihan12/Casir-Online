@@ -13,7 +13,7 @@ const { hasPermission } = require("../middleware/permissionMiddleware");
 router.get(
   "/summary",
   authenticate,
-  hasPermission(["report:read"]),
+  hasPermission(["laporan:read"]),
   customerReportController.getCustomerSummary
 );
 
@@ -21,7 +21,7 @@ router.get(
 router.get(
   "/top",
   authenticate,
-  hasPermission(["report:read"]),
+  hasPermission(["laporan:read"]),
   customerReportController.getTopCustomers
 );
 
@@ -29,7 +29,7 @@ router.get(
 router.get(
   "/loyalty",
   authenticate,
-  hasPermission(["report:read"]),
+  hasPermission(["laporan:read"]),
   customerReportController.getLoyaltyReport
 );
 
@@ -37,7 +37,7 @@ router.get(
 router.get(
   "/acquisition",
   authenticate,
-  hasPermission(["report:read"]),
+  hasPermission(["laporan:read"]),
   customerReportController.getCustomerAcquisition
 );
 
