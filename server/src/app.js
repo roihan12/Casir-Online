@@ -74,6 +74,11 @@ const importProdukMasterRoutes = require("./routes/importProdukMasterRoutes");
 const importProdukRoutes = require("./routes/importProdukRoutes");
 const ocrRoutes = require("./routes/ocrRoutes");
 const userNotificationRoutes = require("./routes/userNotificationRoutes");
+const catalogRoutes = require("./routes/catalogRoutes");
+const checkoutRoutes = require("./routes/checkoutRoutes");
+const paymentWebhookRoutes = require("./routes/paymentWebhookRoutes");
+const driverRoutes = require("./routes/driverRoutes");
+const deliveryRoutes = require("./routes/deliveryRoutes");
 
 
 const {
@@ -82,10 +87,14 @@ const {
 const {
   setupKreditNotifikasiScheduler,
 } = require("./schedulers/kreditNotifikasiScheduler");
+const {
+  setupOrderExpiryScheduler,
+} = require("./schedulers/orderExpiryScheduler");
 
 if (process.env.ENABLE_SCHEDULERS === "true") {
   setupNotificationScheduler();
   setupKreditNotifikasiScheduler();
+  setupOrderExpiryScheduler();
 }
 
 let corsOptions = {
@@ -213,6 +222,15 @@ app.use("/api/penggajian", penggajianRoutes);
 app.use("/api/import/produk-master", importProdukMasterRoutes);
 app.use("/api/import/produk", importProdukRoutes);
 app.use("/api/ocr", ocrRoutes);
+
+// Public routes (no auth required)
+app.use("/api/catalog", catalogRoutes);
+app.use("/api/checkout", checkoutRoutes);
+app.use("/api/payment/webhook", paymentWebhookRoutes);
+
+// Authenticated routes for driver & delivery
+app.use("/api/drivers", driverRoutes);
+app.use("/api/delivery", deliveryRoutes);
 
 // 404 handler
 app.use((req, res) => {

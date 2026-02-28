@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import posService, { searchHistoryService } from "@services/posService";
+import kasirService from "@services/kasirService";
 import toast from "react-hot-toast";
 import { useState, useEffect } from "react";
 
@@ -65,6 +66,13 @@ export const useProductSearch = (branchId, query, options = {}) => {
     enabled: !!branchId && query.length > 1, // Hanya jalankan jika query lebih dari 1 karakter
     staleTime: 60 * 1000, // 1 menit
     ...options,
+  });
+};
+
+// Hook untuk mendapatkan produk berdasarkan kode (barcode/sku)
+export const useProductByCode = () => {
+  return useMutation({
+    mutationFn: ({ code, cabangId }) => kasirService.getProductByCode(code, cabangId),
   });
 };
 

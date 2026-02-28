@@ -15,7 +15,8 @@ import {
   X,
   Plus,
   ChevronDown,
-  ShoppingCart
+  ShoppingCart,
+  Camera
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../features/auth/hooks/useAuth.js";
@@ -32,8 +33,10 @@ import {
   usePopularProducts,
   useProductSearch,
   useSearchHistory,
+  useProductByCode,
 } from "../../transactions/hooks/usePosQueries";
 import useKeyboardShortcuts from "@common/hooks/useKeyboardShortcuts";
+import useBarcodeScanner from "../../products/hooks/useBarcodeScanner";
 import useFrequentProducts from "../../products/hooks/useFrequentProducts"
 import useModalManager from "@common/hooks/useModalManager";
 import useKeyboardManager from "@common/hooks/useKeyboardManager";
@@ -51,6 +54,7 @@ import { getReceiptData } from "@/services/receiptService";
 import KeyboardShortcutsHelp from "../components/modals/KeyboardShortcutsHelp";
 import PaymentModal from "../components/payment/PaymentModal";
 import LoyaltyRedeemModal from "../components/loyalty/LoyaltyRedeemModal";
+import CameraScannerModal from "../../../common/components/modals/CameraScannerModal";
 
 // Color mapping for categories
 const categoryColors = [
@@ -152,6 +156,9 @@ const POSPage = () => {
   const debouncedProductSearch = useDebounce(productSearch, 500);
   const [filteredProducts, setFilteredProducts] = useState([]);
 
+  // State for camera scanner
+  const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
+
   // Hook untuk search history
   const { searchHistory, addToHistory, clearHistory } = useSearchHistory(
     currentBranch?.id
@@ -206,6 +213,8 @@ const POSPage = () => {
 
   const { createQrisTransaction, isLoading: isProcessingQris } =
     useQrisTransaction();
+
+  const productByCodeMutation = useProductByCode();
 
   // Derived data
   const categories = categoriesData || [];
@@ -519,6 +528,37 @@ const POSPage = () => {
 
     setCart(updatedCart);
   };
+
+  // Handle barcode scan
+  const handleBarcodeScan = useCallback(async (barcode) => {
+    if (!currentBranchId) {
+      toast.error("Silakan pilih cabang terlebih dahulu", { icon: "⚠️" });
+      setShowBranchSelector(true);
+      return;
+    }
+
+    try {
+      // Find product by barcode via API
+      const response = await productByCodeMutation.mutateAsync({
+        code: barcode,
+        cabangId: currentBranchId,
+      });
+
+      if (response?.data) {
+        addToCart(response.data);
+      } else {
+        toast.error(`Produk dengan barcode ${barcode} tidak ditemukan`, { icon: "❌" });
+      }
+    } catch (error) {
+      console.error("Barcode scan error:", error);
+      toast.error(`Produk dengan barcode ${barcode} tidak ditemukan`, { icon: "❌" });
+    }
+  }, [currentBranchId, productByCodeMutation, addToCart]);
+
+  const { isScanning, toggleScanner, scannerEnabled } = useBarcodeScanner({
+    onScan: handleBarcodeScan,
+    enabled: true,
+  });
 
   // Search customers handled by React Query hook
   const searchCustomers = (query) => {
@@ -1177,6 +1217,15 @@ const POSPage = () => {
                  <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">{user?.roles[0]?.namaRole || "Operator"}</p>
               </div>
 
+              {/* Mobile Camera Scanner Button */}
+              <button 
+                 className="md:hidden p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-100 transition-colors"
+                 onClick={() => setIsCameraScannerOpen(true)}
+                 title="Scan Kamera"
+              >
+                 <Camera size={20} />
+              </button>
+
               {/* Mobile Branch Selector Button */}
               <button 
                  className="md:hidden p-2 text-gray-500 bg-gray-50 rounded-lg border border-gray-100"
@@ -1192,6 +1241,13 @@ const POSPage = () => {
                   title="Fullscreen [F11]"
                 >
                   {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+                </button>
+                <button
+                  className="hidden md:block p-2.5 text-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all shadow-none hover:shadow-sm"
+                  onClick={() => setIsCameraScannerOpen(true)}
+                  title="Scan via Kamera"
+                >
+                  <Camera size={20} />
                 </button>
                 <button
                   className="hidden md:block p-2.5 text-gray-500 hover:text-indigo-600 hover:bg-white rounded-lg transition-all shadow-none hover:shadow-sm"
@@ -1546,6 +1602,12 @@ const POSPage = () => {
           toast.success(`🎁 Reward "${reward.rewardName}" berhasil ditukar!`);
           setShowLoyaltyModal(false);
         }}
+      />
+
+      <CameraScannerModal
+        isOpen={isCameraScannerOpen}
+        onClose={() => setIsCameraScannerOpen(false)}
+        onScan={handleBarcodeScan}
       />
     </div>
   );

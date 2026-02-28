@@ -22,6 +22,7 @@ model Cabang {
   absensiPegawai       AbsensiPegawai[]
   BotConfig            BotConfig[]
   discount_config      discount_config[]
+  driver               driver[]
   hutang               Hutang[]
   InventoryMovement    InventoryMovement[]
   Invoice              Invoice[]
@@ -187,6 +188,9 @@ model UserCabang {
   cabang    Cabang   @relation(fields: [cabangId], references: [id])
   user      User     @relation(fields: [userId], references: [id])
 
+  @@index([cabangId], map: "idx_user_cabang_cabang_id")
+  @@index([userId, cabangId], map: "idx_user_cabang_composite")
+  @@index([userId], map: "idx_user_cabang_user_id")
   @@map("user_cabang")
 }
 
@@ -257,6 +261,8 @@ model UserRole {
   role        Role     @relation(fields: [roleId], references: [id])
   user        User     @relation(fields: [userId], references: [id])
 
+  @@index([roleId], map: "idx_user_roles_role_id")
+  @@index([userId], map: "idx_user_roles_user_id")
   @@map("user_roles")
 }
 
@@ -271,6 +277,7 @@ model UserSession {
   createdAt    DateTime  @default(now()) @map("created_at")
   user         User      @relation(fields: [userId], references: [id])
 
+  @@index([expiredAt], map: "idx_user_session_expired_at")
   @@map("user_session")
 }
 
@@ -779,91 +786,134 @@ model StockTransferDetail {
 }
 
 model Transaksi {
-  transaksi_id          String                @id @default(uuid()) @db.VarChar(36)
-  cabang_id             String?               @db.VarChar(36)
-  nomor_transaksi       String                @unique @db.VarChar(50)
-  tanggal               DateTime
-  pelanggan_id          String?               @db.VarChar(36)
-  supplier_id           String?               @db.VarChar(36)
-  shift_id              String?               @db.VarChar(36)
-  promo_id              String?               @db.VarChar(36)
-  subtotal              Decimal               @db.Decimal(15, 2)
-  diskon                Decimal               @db.Decimal(15, 2)
-  pajak                 Decimal               @db.Decimal(15, 2)
-  biaya_tambahan        Decimal               @db.Decimal(15, 2)
-  total                 Decimal               @db.Decimal(15, 2)
-  keterangan            String?
-  deleted_at            DateTime?             @db.Timestamp(6)
-  created_at            DateTime              @default(now()) @db.Timestamp(6)
-  updated_at            DateTime              @updatedAt @db.Timestamp(6)
-  tanggal_lunas         DateTime?             @default(now()) @db.Timestamp(6)
-  jenis_transaksi       String                @db.VarChar
-  campaignId            String?               @map("campaign_id")
-  created_by            String?               @map("created_by") @db.VarChar(36)
-  created_by_user_Id    String?               @map("created_by_user_id") @db.VarChar(36)
-  deleted_by            String?               @map("deleted_by") @db.VarChar(36)
-  deleted_by_user_Id    String?               @map("deleted_by_user_id") @db.VarChar(36)
-  updated_by            String?               @map("updated_by") @db.VarChar(36)
-  updated_by_user_Id    String?               @map("updated_by_user_id") @db.VarChar(36)
-  status_pembayaran     String                @db.VarChar(50)
-  diskon_member         Decimal?              @default(0) @db.Decimal(15, 2)
-  diskon_manual_persen  Decimal?              @db.Decimal(5, 2)
-  diskon_manual_nominal Decimal?              @default(0) @db.Decimal(15, 2)
-  diskon_manual_alasan  String?               @db.VarChar(255)
-  total_diskon_final    Decimal?              @default(0) @db.Decimal(15, 2)
-  loyalty_reward_id     String?               @db.VarChar(36)
-  loyalty_discount      Decimal?              @default(0) @db.Decimal(15, 2)
-  points_earned         Int?                  @default(0)
-  points_redeemed       Int?                  @default(0)
-  BotOrder              BotOrder[]
-  discount_log          discount_log[]
-  hutang                Hutang[]              @relation("HutangTransaksi")
-  invoice               Invoice?
-  kreditTransaksi       KreditTransaksi[]     @relation("KreditTransaksi")
-  LoyaltyPointHistory   LoyaltyPointHistory[]
-  pembayaran            Pembayaran[]
-  cabang                Cabang?               @relation(fields: [cabang_id], references: [id])
-  campaign              MarketingCampaign?    @relation("CampaignTransaksi", fields: [campaignId], references: [id])
-  createdByUser         User?                 @relation("TransaksiCreatedByUserId", fields: [created_by_user_Id], references: [id])
-  deletedByUser         User?                 @relation("TransaksiDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
-  loyalty_reward        loyalty_reward?       @relation(fields: [loyalty_reward_id], references: [loyalty_reward_id], onDelete: NoAction, onUpdate: NoAction)
-  pelanggan             Pelanggan?            @relation(fields: [pelanggan_id], references: [id])
-  promo                 PromoDiskon?          @relation(fields: [promo_id], references: [id])
-  shift                 Shift?                @relation(fields: [shift_id], references: [id])
-  supplier              Supplier?             @relation(fields: [supplier_id], references: [id])
-  updatedByUser         User?                 @relation("TransaksiUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
-  transaksi_detail      TransaksiDetail[]
-  transaksiPromo        TransaksiPromo[]
-  voucherUsage          VoucherUsage[]
+  transaksi_id           String                @id @default(uuid()) @db.VarChar(36)
+  cabang_id              String?               @db.VarChar(36)
+  nomor_transaksi        String                @unique @db.VarChar(50)
+  tanggal                DateTime
+  pelanggan_id           String?               @db.VarChar(36)
+  supplier_id            String?               @db.VarChar(36)
+  shift_id               String?               @db.VarChar(36)
+  promo_id               String?               @db.VarChar(36)
+  subtotal               Decimal               @db.Decimal(15, 2)
+  diskon                 Decimal               @db.Decimal(15, 2)
+  pajak                  Decimal               @db.Decimal(15, 2)
+  biaya_tambahan         Decimal               @db.Decimal(15, 2)
+  total                  Decimal               @db.Decimal(15, 2)
+  keterangan             String?
+  deleted_at             DateTime?             @db.Timestamp(6)
+  created_at             DateTime              @default(now()) @db.Timestamp(6)
+  updated_at             DateTime              @updatedAt @db.Timestamp(6)
+  tanggal_lunas          DateTime?             @default(now()) @db.Timestamp(6)
+  jenis_transaksi        String                @db.VarChar
+  campaignId             String?               @map("campaign_id")
+  created_by             String?               @map("created_by") @db.VarChar(36)
+  created_by_user_Id     String?               @map("created_by_user_id") @db.VarChar(36)
+  deleted_by             String?               @map("deleted_by") @db.VarChar(36)
+  deleted_by_user_Id     String?               @map("deleted_by_user_id") @db.VarChar(36)
+  updated_by             String?               @map("updated_by") @db.VarChar(36)
+  updated_by_user_Id     String?               @map("updated_by_user_id") @db.VarChar(36)
+  status_pembayaran      String                @db.VarChar(50)
+  diskon_member          Decimal?              @default(0) @db.Decimal(15, 2)
+  diskon_manual_persen   Decimal?              @db.Decimal(5, 2)
+  diskon_manual_nominal  Decimal?              @default(0) @db.Decimal(15, 2)
+  diskon_manual_alasan   String?               @db.VarChar(255)
+  total_diskon_final     Decimal?              @default(0) @db.Decimal(15, 2)
+  loyalty_reward_id      String?               @db.VarChar(36)
+  loyalty_discount       Decimal?              @default(0) @db.Decimal(15, 2)
+  points_earned          Int?                  @default(0)
+  points_redeemed        Int?                  @default(0)
+  order_source           String?               @default("POS") @db.VarChar(20)
+  order_type             String?               @default("PICKUP") @db.VarChar(20)
+  order_status           String?               @default("COMPLETED") @db.VarChar(20)
+  customer_address       String?
+  customer_notes         String?
+  customer_email         String?               @db.VarChar(255)
+  delivery_status        String?               @db.VarChar(20)
+  delivery_driver_id     String?               @db.VarChar(36)
+  delivery_fee           Decimal?              @default(0) @db.Decimal(15, 2)
+  delivery_notes         String?
+  delivery_sent_at       DateTime?             @db.Timestamp(6)
+  delivery_completed_at  DateTime?             @db.Timestamp(6)
+  order_expired_at       DateTime?             @db.Timestamp(6)
+  order_cancelled_reason String?
+  confirmed_at           DateTime?             @db.Timestamp(6)
+  confirmed_by           String?               @db.VarChar(36)
+  BotOrder               BotOrder[]
+  delivery_tracking      delivery_tracking[]
+  discount_log           discount_log[]
+  hutang                 Hutang[]              @relation("HutangTransaksi")
+  invoice                Invoice?
+  kreditTransaksi        KreditTransaksi[]     @relation("KreditTransaksi")
+  LoyaltyPointHistory    LoyaltyPointHistory[]
+  order_cancellation     order_cancellation[]
+  pembayaran             Pembayaran[]
+  driver                 driver?               @relation(fields: [delivery_driver_id], references: [driver_id], onUpdate: NoAction, map: "fk_transaksi_delivery_driver")
+  cabang                 Cabang?               @relation(fields: [cabang_id], references: [id])
+  campaign               MarketingCampaign?    @relation("CampaignTransaksi", fields: [campaignId], references: [id])
+  createdByUser          User?                 @relation("TransaksiCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  deletedByUser          User?                 @relation("TransaksiDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+  loyalty_reward         loyalty_reward?       @relation(fields: [loyalty_reward_id], references: [loyalty_reward_id], onDelete: NoAction, onUpdate: NoAction)
+  pelanggan              Pelanggan?            @relation(fields: [pelanggan_id], references: [id])
+  promo                  PromoDiskon?          @relation(fields: [promo_id], references: [id])
+  shift                  Shift?                @relation(fields: [shift_id], references: [id])
+  supplier               Supplier?             @relation(fields: [supplier_id], references: [id])
+  updatedByUser          User?                 @relation("TransaksiUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  transaksi_detail       TransaksiDetail[]
+  transaksiPromo         TransaksiPromo[]
+  voucherUsage           VoucherUsage[]
 
+  @@index([cabang_id, order_source, created_at(sort: Desc)], map: "idx_transaksi_cabang_source_date")
+  @@index([cabang_id, jenis_transaksi, status_pembayaran, tanggal(sort: Desc)], map: "idx_transaksi_dashboard_filter")
+  @@index([order_source], map: "idx_transaksi_order_source")
+  @@index([order_status], map: "idx_transaksi_order_status")
+  @@index([order_type], map: "idx_transaksi_order_type")
+  @@index([jenis_transaksi, status_pembayaran, tanggal(sort: Desc)], map: "idx_transaksi_sales_date")
+  @@index([order_source, order_status, created_at(sort: Desc)], map: "idx_transaksi_source_status_date")
   @@map("transaksi")
 }
 
 model Pembayaran {
-  pembayaran_id      String                   @id @default(uuid()) @db.VarChar(36)
-  transaksi_id       String                   @db.VarChar(36)
-  provider           String?                  @db.VarChar(50)
-  nomor_referensi    String?                  @db.VarChar(100)
-  jumlah_bayar       Decimal                  @db.Decimal(15, 2)
-  jumlah_kembali     Decimal                  @db.Decimal(15, 2)
-  tanggal_pembayaran DateTime
-  bukti_bayar_url    String?                  @db.VarChar(255)
-  status             StatusPembayaranProvider
-  keterangan         String?
-  created_at         DateTime                 @default(now()) @db.Timestamp(6)
-  updated_at         DateTime                 @updatedAt @db.Timestamp(6)
-  created_by         String?                  @map("created_by") @db.VarChar(36)
-  created_by_user_Id String?                  @map("created_by_user_id") @db.VarChar(36)
-  deleted_by         String?                  @map("deleted_by") @db.VarChar(36)
-  deleted_by_user_Id String?                  @map("deleted_by_user_id") @db.VarChar(36)
-  updated_by         String?                  @map("updated_by") @db.VarChar(36)
-  updated_by_user_Id String?                  @map("updated_by_user_id") @db.VarChar(36)
-  metode_pembayaran  String                   @db.VarChar(50)
-  createdByUser      User?                    @relation("PembayaranCreatedByUserId", fields: [created_by_user_Id], references: [id])
-  deletedByUser      User?                    @relation("PembayaranDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
-  transaksi          Transaksi                @relation(fields: [transaksi_id], references: [transaksi_id])
-  updatedByUser      User?                    @relation("PembayaranUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
+  pembayaran_id       String                   @id @default(uuid()) @db.VarChar(36)
+  transaksi_id        String                   @db.VarChar(36)
+  provider            String?                  @db.VarChar(50)
+  nomor_referensi     String?                  @db.VarChar(100)
+  jumlah_bayar        Decimal                  @db.Decimal(15, 2)
+  jumlah_kembali      Decimal                  @db.Decimal(15, 2)
+  tanggal_pembayaran  DateTime
+  bukti_bayar_url     String?                  @db.VarChar(255)
+  status              StatusPembayaranProvider
+  keterangan          String?
+  created_at          DateTime                 @default(now()) @db.Timestamp(6)
+  updated_at          DateTime                 @updatedAt @db.Timestamp(6)
+  created_by          String?                  @map("created_by") @db.VarChar(36)
+  created_by_user_Id  String?                  @map("created_by_user_id") @db.VarChar(36)
+  deleted_by          String?                  @map("deleted_by") @db.VarChar(36)
+  deleted_by_user_Id  String?                  @map("deleted_by_user_id") @db.VarChar(36)
+  updated_by          String?                  @map("updated_by") @db.VarChar(36)
+  updated_by_user_Id  String?                  @map("updated_by_user_id") @db.VarChar(36)
+  metode_pembayaran   String                   @db.VarChar(50)
+  payment_channel     String?                  @default("MANUAL") @db.VarChar(50)
+  payment_reference   String?                  @unique @db.VarChar(255)
+  payment_external_id String?                  @db.VarChar(255)
+  fee_amount          Decimal?                 @default(0) @db.Decimal(15, 2)
+  fee_percentage      Decimal?                 @default(0) @db.Decimal(5, 2)
+  settlement_time     DateTime?                @db.Timestamp(6)
+  settlement_amount   Decimal?                 @db.Decimal(15, 2)
+  raw_response        Json?
+  callback_url        String?
+  redirect_url        String?
+  paid_at             DateTime?                @db.Timestamp(6)
+  expired_at          DateTime?                @db.Timestamp(6)
+  refund_amount       Decimal?                 @default(0) @db.Decimal(15, 2)
+  refund_at           DateTime?                @db.Timestamp(6)
+  refund_reason       String?
+  createdByUser       User?                    @relation("PembayaranCreatedByUserId", fields: [created_by_user_Id], references: [id])
+  deletedByUser       User?                    @relation("PembayaranDeletedByUserId", fields: [deleted_by_user_Id], references: [id])
+  transaksi           Transaksi                @relation(fields: [transaksi_id], references: [transaksi_id])
+  updatedByUser       User?                    @relation("PembayaranUpdatedByUserId", fields: [updated_by_user_Id], references: [id])
 
+  @@index([metode_pembayaran, transaksi_id], map: "idx_pembayaran_metode_transaksi")
+  @@index([payment_channel], map: "idx_pembayaran_payment_channel")
   @@map("pembayaran")
 }
 
@@ -891,6 +941,7 @@ model TransaksiDetail {
   produk              Produk         @relation(fields: [produk_id], references: [id])
   transaksi           Transaksi      @relation(fields: [transaksi_id], references: [transaksi_id])
 
+  @@index([produk_id, transaksi_id], map: "idx_transaksi_detail_produk_id")
   @@map("transaksi_detail")
 }
 
@@ -1882,7 +1933,7 @@ model v_loyalty_config {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model gaji_pegawai {
-  gaji_id      String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  gaji_id      String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   user_id      String   @unique(map: "gaji_pegawai_user_unique") @db.VarChar(200)
   gaji_pokok   Decimal  @db.Decimal(15, 2)
   tarif_lembur Decimal  @default(0) @db.Decimal(15, 2)
@@ -1897,7 +1948,7 @@ model gaji_pegawai {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model hari_libur {
-  libur_id     String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  libur_id     String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   tanggal      DateTime @unique(map: "hari_libur_tanggal_unique") @db.Date
   nama         String   @db.VarChar(100)
   is_recurring Boolean  @default(false)
@@ -1905,7 +1956,7 @@ model hari_libur {
 }
 
 model izin_cuti {
-  izin_id                          String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  izin_id                          String          @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   user_id                          String          @db.VarChar(200)
   cabang_id                        String          @db.VarChar(100)
   tipe_izin                        TipeIzin
@@ -1931,7 +1982,7 @@ model izin_cuti {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model komponen_gaji {
-  komponen_id       String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  komponen_id       String              @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   nama              String              @db.VarChar(100)
   tipe              TipeKomponen
   nilai             Decimal             @default(0) @db.Decimal(15, 2)
@@ -1948,7 +1999,7 @@ model komponen_gaji {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model koreksi_absensi {
-  koreksi_id                             String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  koreksi_id                             String           @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   absensi_id                             String           @db.VarChar
   user_id                                String           @db.VarChar(200)
   alasan                                 String
@@ -1972,7 +2023,7 @@ model koreksi_absensi {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model kuota_cuti {
-  kuota_id      String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  kuota_id      String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   user_id       String   @db.VarChar(200)
   tahun         Int
   kuota_tahunan Int      @default(12)
@@ -1988,7 +2039,7 @@ model kuota_cuti {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model notifikasi {
-  notif_id   String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  notif_id   String         @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   user_id    String         @db.VarChar(100)
   tipe       TipeNotifikasi
   judul      String         @db.VarChar(200)
@@ -2004,7 +2055,7 @@ model notifikasi {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model rekap_absensi_harian {
-  rekap_id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  rekap_id        String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   cabang_id       String   @db.VarChar(100)
   tanggal         DateTime @db.Date
   total_karyawan  Int      @default(0)
@@ -2023,7 +2074,7 @@ model rekap_absensi_harian {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model riwayat_gaji_pegawai {
-  riwayat_id     String    @id(map: "riwayat_gaji_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  riwayat_id     String    @id(map: "riwayat_gaji_pkey") @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   user_id        String    @db.VarChar(150)
   gaji_pokok     Decimal   @db.Decimal(15, 2)
   tarif_lembur   Decimal   @default(0) @db.Decimal(15, 2)
@@ -2038,7 +2089,7 @@ model riwayat_gaji_pegawai {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model slip_gaji {
-  slip_id               String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  slip_id               String             @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   user_id               String             @db.VarChar(100)
   cabang_id             String             @db.VarChar(100)
   periode               String             @db.VarChar(7)
@@ -2076,7 +2127,7 @@ model slip_gaji {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model slip_gaji_detail {
-  detail_id     String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  detail_id     String        @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   slip_gaji_id  String        @db.Uuid
   komponen_id   String        @db.Uuid
   nama          String        @db.VarChar(100)
@@ -2089,7 +2140,7 @@ model slip_gaji_detail {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model tunjangan_pegawai {
-  tunjangan_id   String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tunjangan_id   String        @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   user_id        String        @db.VarChar(150)
   komponen_id    String        @db.Uuid
   nilai_override Decimal?      @db.Decimal(15, 2)
@@ -2105,7 +2156,7 @@ model tunjangan_pegawai {
 }
 
 model master_shift {
-  id                 String        @id @default(dbgenerated("uuid_generate_v4()")) @map("master_shift_id") @db.Uuid
+  id                 String        @id @default(dbgenerated("extensions.uuid_generate_v4()")) @map("master_shift_id") @db.Uuid
   namaShift          String        @map("nama_shift") @db.VarChar(50)
   jamMasuk           String        @map("jam_masuk") @db.VarChar(5)
   jamKeluar          String        @map("jam_keluar") @db.VarChar(5)
@@ -2125,7 +2176,7 @@ model master_shift {
 }
 
 model regu {
-  id          String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id          String        @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   nama_regu   String        @db.VarChar(255)
   cabang_id   String        @db.VarChar(100)
   created_by  String?       @db.VarChar(100)
@@ -2138,7 +2189,7 @@ model regu {
 }
 
 model regu_member {
-  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id         String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   regu_id    String    @db.Uuid
   user_id    String    @db.VarChar(100)
   joined_at  DateTime? @default(now()) @db.Timestamp(6)
@@ -2147,6 +2198,101 @@ model regu_member {
   user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_regu_member_user")
 
   @@unique([regu_id, user_id], map: "unique_regu_user")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model delivery_tracking {
+  tracking_id    String    @id @default(dbgenerated("gen_random_uuid()")) @db.VarChar(36)
+  transaksi_id   String    @db.VarChar(36)
+  driver_id      String?   @db.VarChar(36)
+  status         String    @db.VarChar(20)
+  latitude       Decimal?  @db.Decimal(10, 8)
+  longitude      Decimal?  @db.Decimal(11, 8)
+  address        String?
+  notes          String?
+  photo_url      String?
+  signature_data String?
+  customer_name  String?   @db.VarChar(100)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_by     String?   @db.VarChar(36)
+  driver         driver?   @relation(fields: [driver_id], references: [driver_id], onUpdate: NoAction, map: "fk_delivery_tracking_driver")
+  transaksi      Transaksi @relation(fields: [transaksi_id], references: [transaksi_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_delivery_tracking_transaksi")
+
+  @@index([transaksi_id, created_at(sort: Desc)], map: "idx_delivery_tracking_transaksi")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model driver {
+  driver_id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.VarChar(36)
+  cabang_id             String              @db.VarChar(36)
+  nama                  String              @db.VarChar(100)
+  no_hp                 String              @db.VarChar(20)
+  email                 String?             @db.VarChar(255)
+  foto_url              String?
+  jenis_kendaraan       String?             @db.VarChar(50)
+  plat_kendaraan        String?             @db.VarChar(20)
+  status                String              @default("ACTIVE") @db.VarChar(20)
+  current_latitude      Decimal?            @db.Decimal(10, 8)
+  current_longitude     Decimal?            @db.Decimal(11, 8)
+  last_seen_at          DateTime?           @db.Timestamp(6)
+  total_deliveries      Int?                @default(0)
+  successful_deliveries Int?                @default(0)
+  failed_deliveries     Int?                @default(0)
+  average_rating        Decimal?            @db.Decimal(3, 2)
+  total_ratings         Int?                @default(0)
+  max_delivery_distance Int?
+  is_available          Boolean?            @default(true)
+  created_at            DateTime?           @default(now()) @db.Timestamp(6)
+  updated_at            DateTime?           @default(now()) @db.Timestamp(6)
+  delivery_tracking     delivery_tracking[]
+  cabang                Cabang              @relation(fields: [cabang_id], references: [id], onUpdate: NoAction, map: "fk_driver_cabang")
+  transaksi             Transaksi[]
+
+  @@index([cabang_id], map: "idx_driver_cabang")
+  @@index([status], map: "idx_driver_status")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model order_cancellation {
+  cancellation_id     String    @id @default(dbgenerated("gen_random_uuid()")) @db.VarChar(36)
+  transaksi_id        String    @db.VarChar(36)
+  cancelled_by        String?   @db.VarChar(36)
+  cancellation_reason String?   @db.VarChar(255)
+  cancellation_notes  String?
+  cancelled_at        DateTime? @default(now()) @db.Timestamp(6)
+  refund_amount       Decimal?  @db.Decimal(15, 2)
+  refund_method       String?   @db.VarChar(50)
+  refund_reference    String?   @db.VarChar(255)
+  refunded_at         DateTime? @db.Timestamp(6)
+  transaksi           Transaksi @relation(fields: [transaksi_id], references: [transaksi_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_cancellation_transaksi")
+
+  @@index([cancelled_at(sort: Desc)], map: "idx_cancellation_date")
+  @@index([transaksi_id], map: "idx_cancellation_transaksi")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model payment_webhook_log {
+  webhook_id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.VarChar(36)
+  payment_reference String    @db.VarChar(255)
+  webhook_source    String    @db.VarChar(50)
+  event_type        String?   @db.VarChar(100)
+  request_method    String?   @db.VarChar(10)
+  request_url       String?
+  request_headers   Json?
+  request_body      Json
+  request_ip        String?   @db.VarChar(45)
+  response_status   Int?
+  response_body     Json?
+  processed         Boolean?  @default(false)
+  processed_at      DateTime? @db.Timestamp(6)
+  processing_error  String?
+  retry_count       Int?      @default(0)
+  created_at        DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([payment_reference], map: "idx_webhook_payment_reference")
+  @@index([webhook_source, created_at], map: "idx_webhook_source")
 }
 
 enum PermissionAction {
@@ -2541,6 +2687,8 @@ enum TipeJadwal {
   reguler
   libur
   wfh
+  cuti
+  izin
 }
 
 enum TipeKomponen {

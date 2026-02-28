@@ -142,6 +142,13 @@ import PromoDiscountReport from "./features/reports/pages/PromoDiscountReport";
 import TransactionDetailReport from "./features/reports/pages/TransactionDetailReport";
 import NotificationPage from "./features/notifications/pages/NotificationPage";
 
+import CatalogPage from "./features/catalog/pages/CatalogPage";
+import ProductDetailPage from "./features/catalog/pages/ProductDetailPage";
+import CheckoutPage from "./features/catalog/pages/CheckoutPage";
+import OrderStatusPage from "./features/catalog/pages/OrderStatusPage";
+import DeliveryDashboardPage from "./features/delivery/pages/DeliveryDashboardPage";
+import DriverManagementPage from "./features/delivery/pages/DriverManagementPage";
+
 function App() {
   return (
     <CabangProvider>
@@ -170,6 +177,21 @@ function App() {
           />
 
           <Routes>
+            {/* E-Catalog Public Routes */}
+            <Route path="/catalog/:cabangId" element={<CatalogPage />} />
+            <Route
+              path="/catalog/:cabangId/product/:produkId"
+              element={<ProductDetailPage />}
+            />
+            <Route
+              path="/catalog/:cabangId/checkout"
+              element={<CheckoutPage />}
+            />
+            <Route
+              path="/catalog/:cabangId/order/:transaksiId"
+              element={<OrderStatusPage />}
+            />
+
             {/* Public Routes */}
             <Route
               path="/login"
@@ -706,6 +728,19 @@ function App() {
               }
             >
               <Route index element={<NotificationPage />} />
+            </Route>
+
+            {/* Delivery & Driver Management */}
+            <Route
+              path="/delivery"
+              element={
+                <ProtectedRoute>
+                  <DynamicLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<DeliveryDashboardPage />} />
+              <Route path="drivers" element={<DriverManagementPage />} />
             </Route>
 
             {/* 404 Not Found */}

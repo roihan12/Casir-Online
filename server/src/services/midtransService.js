@@ -7,11 +7,15 @@ require("dotenv").config();
 const MIDTRANS_SERVER_KEY = process.env.MIDTRANS_SERVER_KEY;
 const MIDTRANS_CLIENT_KEY = process.env.MIDTRANS_CLIENT_KEY;
 const MIDTRANS_IS_PRODUCTION = process.env.MIDTRANS_IS_PRODUCTION === "true";
-const BASE_URL = "https://api.sandbox.midtrans.com";
+const BASE_URL = MIDTRANS_IS_PRODUCTION
+  ? "https://api.midtrans.com"
+  : "https://api.sandbox.midtrans.com";
+const SNAP_URL = MIDTRANS_IS_PRODUCTION
+  ? "https://app.midtrans.com/snap/v1"
+  : "https://app.sandbox.midtrans.com/snap/v1";
 
 // Base64 encode the server key for authorization
 const getAuthHeader = () => {
-  console.log(MIDTRANS_SERVER_KEY);
   const encodedKey = Buffer.from(`${MIDTRANS_SERVER_KEY}:`).toString("base64");
   return `${encodedKey}`;
 };
@@ -309,8 +313,105 @@ const handleNotification = async (notification) => {
   }
 };
 
+// Generate Payment Link via Midtrans Snap
+// Returns a redirect URL where customers can choose payment method
+const generatePaymentLink = async (params) => {
+  try {
+    const {
+      transaction_id,
+      gross_amount,
+      customer_name,
+      customer_email,
+      customer_phone,
+      order_items = [],
+      expiry_duration = 30, // Minutes
+      callbacks = {},
+    } = params;
+
+    // Ensure all prices are integers
+    const normalizedItems =
+      order_items.length > 0
+        ? order_items.map((item) => ({
+            ...item,
+            price: Math.round(item.price),
+          }))
+        : [
+            {
+              id: "payment",
+              price: Math.round(gross_amount),
+              quantity: 1,
+              name:
+                "Pembayaran order " +
+                transaction_id.substring(0, 8).toUpperCase(),
+            },
+          ];
+
+    const calculatedGross = normalizedItems.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+
+    const payload = {
+      transaction_details: {
+        order_id: transaction_id,
+        gross_amount: calculatedGross,
+      },
+      item_details: normalizedItems,
+      customer_details: {
+        first_name: customer_name || "Customer",
+        email: customer_email || undefined,
+        phone: customer_phone || undefined,
+      },
+      expiry: {
+        unit: "minute",
+        duration: expiry_duration,
+      },
+    };
+
+    // Add callbacks if provided
+    if (callbacks.finish || callbacks.unfinish || callbacks.error) {
+      payload.callbacks = {};
+      if (callbacks.finish) payload.callbacks.finish = callbacks.finish;
+      if (callbacks.unfinish) payload.callbacks.unfinish = callbacks.unfinish;
+      if (callbacks.error) payload.callbacks.error = callbacks.error;
+    }
+
+    const response = await axios({
+      method: "post",
+      url: `${SNAP_URL}/transactions`,
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: `Basic ${getAuthHeader()}`,
+      },
+      data: payload,
+    });
+
+    if (response.status === 201 && response.data) {
+      return {
+        token: response.data.token,
+        redirect_url: response.data.redirect_url,
+        order_id: transaction_id,
+      };
+    } else {
+      throw new Error("Failed to generate payment link");
+    }
+  } catch (error) {
+    console.error(
+      "Midtrans Payment Link error:",
+      error.response ? error.response.data : error.message
+    );
+    throw new ResponseError(
+      error.response?.status || 500,
+      error.response?.data?.error_messages?.[0] ||
+        "Failed to generate payment link"
+    );
+  }
+};
+
 module.exports = {
   generateQRIS,
+  generatePaymentLink,
   getTransactionStatus,
   cancelTransaction,
   handleNotification,
