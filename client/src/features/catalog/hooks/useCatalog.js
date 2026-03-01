@@ -4,6 +4,14 @@ import checkoutClientService from "../../../services/checkoutClientService";
 
 // === Catalog Hooks ===
 
+export const useActiveBranches = () => {
+  return useQuery({
+    queryKey: ["active-branches"],
+    queryFn: () => catalogService.getActiveBranches(),
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
 export const useCatalogProducts = (cabangId, params = {}) => {
   return useQuery({
     queryKey: ["catalog-products", cabangId, params],

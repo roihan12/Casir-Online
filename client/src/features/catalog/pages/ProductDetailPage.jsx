@@ -12,12 +12,14 @@ import { useProductDetail } from "../hooks/useCatalog";
 import { useCart } from "../hooks/useCart";
 import { CURRENCY_FORMATTER } from "../../../config";
 import { useState } from "react";
+import toast from "react-hot-toast";
 
 const ProductDetailPage = () => {
   const { cabangId, produkId } = useParams();
   const navigate = useNavigate();
   const cart = useCart(cabangId);
   const [quantity, setQuantity] = useState(1);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   const { data: productData, isLoading } = useProductDetail(cabangId, produkId);
   const product = productData?.data || null;
@@ -25,11 +27,21 @@ const ProductDetailPage = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 animate-pulse">
-        <div className="aspect-square bg-slate-200" />
-        <div className="p-4 space-y-3">
-          <div className="h-6 bg-slate-200 rounded w-3/4" />
-          <div className="h-8 bg-slate-200 rounded w-1/2" />
-          <div className="h-20 bg-slate-200 rounded" />
+        <div className="sticky top-0 z-40 bg-white border-b border-slate-200 p-4">
+          <div className="h-5 bg-slate-200 rounded w-1/4"></div>
+        </div>
+        <div className="max-w-3xl mx-auto">
+          <div className="aspect-square bg-slate-200 w-full" />
+          <div className="p-4 md:p-6 space-y-4">
+             <div className="h-6 bg-slate-200 rounded-full w-1/4" />
+             <div className="h-8 bg-slate-200 rounded w-3/4" />
+             <div className="h-10 bg-slate-200 rounded w-1/2" />
+             <div className="h-24 bg-slate-200 rounded-xl w-full mt-6" />
+             <div className="grid grid-cols-2 gap-3 mt-4">
+                <div className="h-16 bg-slate-200 rounded-xl w-full" />
+                <div className="h-16 bg-slate-200 rounded-xl w-full" />
+             </div>
+          </div>
         </div>
       </div>
     );
@@ -43,12 +55,12 @@ const ProductDetailPage = () => {
           <h2 className="text-xl font-semibold text-slate-600">
             Produk tidak ditemukan
           </h2>
-          <Link
-            to={`/catalog/${cabangId}`}
+          <button
+            onClick={() => navigate(-1)}
             className="mt-4 inline-block text-indigo-600 hover:text-indigo-700 font-medium"
           >
-            ← Kembali ke katalog
-          </Link>
+            ← Kembali
+          </button>
         </div>
       </div>
     );
@@ -57,19 +69,18 @@ const ProductDetailPage = () => {
   const inCart = cart.items.find((i) => i.produk_id === product.produk_id);
 
   const handleAddToCart = () => {
-    for (let i = 0; i < quantity; i++) {
-      cart.addItem(product);
-    }
+    cart.addItem(product, quantity);
+    toast.success(`${quantity} ${product.nama_produk} ditambahkan ke keranjang`);
     setQuantity(1);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-slate-50">
       {/* Back Navigation */}
-      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
+      <div className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <button
-            onClick={() => navigate(`/catalog/${cabangId}`)}
+            onClick={() => navigate(-1)}
             className="flex items-center gap-2 text-slate-600 hover:text-slate-800 transition-colors"
           >
             <FiArrowLeft className="w-5 h-5" />
@@ -90,17 +101,42 @@ const ProductDetailPage = () => {
       </div>
 
       <div className="max-w-3xl mx-auto">
-        {/* Product Image */}
-        <div className="aspect-square bg-white relative overflow-hidden">
-          {product.images?.length > 0 ? (
-            <img
-              src={product.images[0].file_path}
-              alt={product.nama_produk}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-50">
-              <FiPackage className="w-24 h-24 text-slate-300" />
+        {/* Product Image & Thumbnail Carousel */}
+        <div className="bg-white relative overflow-hidden">
+          <div className="aspect-square bg-slate-50 relative">
+            {product.images?.length > 0 ? (
+              <img
+                src={product.images[activeImageIndex].file_path}
+                alt={product.nama_produk}
+                className="w-full h-full object-cover transition-opacity duration-300"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-slate-100">
+                <FiPackage className="w-24 h-24 text-slate-300" />
+              </div>
+            )}
+          </div>
+
+          {/* Thumbnails */}
+          {product.images?.length > 1 && (
+            <div className="flex gap-2 p-3 overflow-x-auto scrollbar-hide bg-white border-b border-slate-100">
+              {product.images.map((img, index) => (
+                <button
+                  key={img.id || index}
+                  onClick={() => setActiveImageIndex(index)}
+                  className={`w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all ${
+                    activeImageIndex === index
+                      ? "border-indigo-500 opacity-100"
+                      : "border-transparent opacity-60 hover:opacity-100"
+                  }`}
+                >
+                  <img
+                    src={img.file_path}
+                    alt={`${product.nama_produk} thumbnail ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+              ))}
             </div>
           )}
         </div>
@@ -118,7 +154,7 @@ const ProductDetailPage = () => {
             {product.nama_produk}
           </h1>
 
-          <p className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+          <p className="text-3xl font-bold text-indigo-600">
             {CURRENCY_FORMATTER.format(product.harga_jual)}
           </p>
 
@@ -207,10 +243,10 @@ const ProductDetailPage = () => {
           <button
             onClick={handleAddToCart}
             disabled={product.stok <= 0}
-            className={`flex-1 py-3 rounded-xl font-semibold text-sm transition-all ${
+            className={`flex-1 py-3 rounded-xl font-semibold text-sm transition-colors ${
               product.stok <= 0
                 ? "bg-slate-200 text-slate-400 cursor-not-allowed"
-                : "bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:shadow-lg hover:shadow-indigo-200"
+                : "bg-indigo-600 text-white hover:bg-indigo-700"
             }`}
           >
             {product.stok <= 0

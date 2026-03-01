@@ -82,8 +82,15 @@ const OrderStatusPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <FiLoader className="w-8 h-8 text-indigo-400 animate-spin" />
+      <div className="min-h-screen bg-slate-50 pb-16 animate-pulse">
+        <div className="bg-white border-b border-slate-200 sticky top-0 z-40 p-4">
+          <div className="h-6 bg-slate-200 rounded w-1/3"></div>
+        </div>
+        <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 h-40"></div>
+          <div className="bg-white rounded-2xl p-4 border border-slate-200 h-64"></div>
+          <div className="bg-white rounded-2xl p-4 border border-slate-200 h-32"></div>
+        </div>
       </div>
     );
   }
@@ -112,9 +119,9 @@ const OrderStatusPage = () => {
   const payment = order.pembayaran?.[0];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pb-16">
+    <div className="min-h-screen bg-slate-50 pb-16">
       {/* Header */}
-      <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40">
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate(`/catalog/${cabangId}`)}
@@ -128,7 +135,7 @@ const OrderStatusPage = () => {
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         {/* Status Card */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm text-center">
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm text-center">
           <div
             className={`inline-flex items-center justify-center w-16 h-16 rounded-full ${statusInfo.color} mb-4`}
           >
@@ -148,13 +155,59 @@ const OrderStatusPage = () => {
           </button>
         </div>
 
+        {/* Horizontal Progress Bar */}
+        {order.order_status !== "CANCELLED" && (
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+            <div className="relative flex justify-between">
+              {/* Backing Line */}
+              <div className="absolute top-1/2 left-0 right-0 h-1 bg-slate-100 -translate-y-1/2 rounded z-0"></div>
+              
+              {/* Progress Line */}
+              <div 
+                className="absolute top-1/2 left-0 h-1 bg-indigo-500 -translate-y-1/2 rounded z-0 transition-all duration-500"
+                style={{
+                  width: 
+                    order.order_status === "PENDING" ? "0%" :
+                    order.order_status === "CONFIRMED" ? "50%" :
+                    order.order_status === "COMPLETED" ? "100%" : "0%"
+                }}
+              ></div>
+
+              {/* Steps (Menunggu -> Dipesan -> Selesai) */}
+              {[
+                { status: "PENDING", label: "Menunggu" },
+                { status: "CONFIRMED", label: "Diproses" },
+                { status: "COMPLETED", label: "Selesai" }
+              ].map((step, idx) => {
+                const isPassed = 
+                  order.order_status === "COMPLETED" || 
+                  (order.order_status === "CONFIRMED" && idx <= 1) ||
+                  (order.order_status === "PENDING" && idx === 0);
+                
+                return (
+                  <div key={idx} className="relative z-10 flex flex-col items-center">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                      isPassed ? "bg-indigo-500 border-indigo-500 text-white" : "bg-white border-slate-300 text-slate-300"
+                    }`}>
+                      {isPassed && <FiCheckCircle className="w-4 h-4" />}
+                    </div>
+                    <span className={`text-xs mt-2 font-medium ${isPassed ? "text-indigo-700" : "text-slate-400"}`}>
+                      {step.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Payment URL (if pending) */}
         {order.order_status === "PENDING" && payment?.payment_url && (
           <a
             href={payment.payment_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="block w-full py-3.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-center font-bold rounded-xl hover:shadow-lg hover:shadow-indigo-200 transition-all"
+            className="block w-full py-3.5 bg-indigo-600 text-white text-center font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
           >
             <FiCreditCard className="inline w-5 h-5 mr-2" />
             Bayar Sekarang
@@ -173,7 +226,7 @@ const OrderStatusPage = () => {
         )}
 
         {/* Order Detail */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
           <h3 className="font-semibold text-slate-800 mb-3">Detail Pesanan</h3>
           <div className="space-y-2">
             {order.items.map((item, i) => (
@@ -234,7 +287,7 @@ const OrderStatusPage = () => {
 
         {/* Delivery Info */}
         {order.order_type === "DELIVERY" && (
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-3">
+          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-3">
             <h3 className="font-semibold text-slate-800">
               <FiTruck className="inline w-4 h-4 mr-1" />
               Info Pengiriman
@@ -278,7 +331,7 @@ const OrderStatusPage = () => {
 
         {/* Delivery Tracking Timeline */}
         {tracking.length > 0 && (
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
             <h3 className="font-semibold text-slate-800 mb-3">
               Tracking Pengiriman
             </h3>
@@ -318,7 +371,7 @@ const OrderStatusPage = () => {
 
         {/* Store Info */}
         {order.cabang && (
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
             <h3 className="font-semibold text-slate-800 mb-2">Info Toko</h3>
             <p className="text-sm text-slate-700">{order.cabang.nama}</p>
             <p className="text-xs text-slate-500">{order.cabang.alamat}</p>

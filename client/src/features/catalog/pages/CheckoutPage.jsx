@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,6 +20,7 @@ import {
 import { useCart } from "../hooks/useCart";
 import { useCreateOrder, useVerifyPromo } from "../hooks/useCatalog";
 import { CURRENCY_FORMATTER } from "../../../config";
+import catalogService from "../../../services/catalogService";
 import toast from "react-hot-toast";
 
 // Zod schema for checkout validation
@@ -92,6 +93,13 @@ const CheckoutPage = () => {
   const [promoCode, setPromoCode] = useState("");
   const [promoResult, setPromoResult] = useState(null);
   const [promoError, setPromoError] = useState("");
+  const [deliveryFeeData, setDeliveryFeeData] = useState(null);
+  const [taxData, setTaxData] = useState(null);
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [geoError, setGeoError] = useState("");
+  const [customerCoords, setCustomerCoords] = useState(null);
+
+  const BIAYA_TAMBAHAN = 1000;
 
   const {
     register,
@@ -132,22 +140,77 @@ const CheckoutPage = () => {
     ];
   };
 
-  const discount = promoResult?.data?.nilai_diskon || 0;
-  const total = Math.max(0, cart.subtotal - discount);
+  const discount = promoResult?.data?.discount || 0;
+  const deliveryFee = deliveryFeeData?.delivery_fee || 0;
+  const taxAmount = taxData?.tax_amount || 0;
+  const total = Math.max(0, cart.subtotal - discount + (orderType === "DELIVERY" ? deliveryFee : 0) + taxAmount + BIAYA_TAMBAHAN);
+
+  // Request geolocation when DELIVERY is selected
+  useEffect(() => {
+    if (orderType === "DELIVERY" && !customerCoords) {
+      setGeoLoading(true);
+      setGeoError("");
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setCustomerCoords({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            });
+            setGeoLoading(false);
+          },
+          (err) => {
+            setGeoError("Tidak bisa mendapatkan lokasi. Ongkir menggunakan tarif flat.");
+            setGeoLoading(false);
+          },
+          { enableHighAccuracy: true, timeout: 10000 }
+        );
+      } else {
+        setGeoError("Browser tidak mendukung Geolocation.");
+        setGeoLoading(false);
+      }
+    }
+  }, [orderType, customerCoords]);
+
+  // Fetch delivery fee when coords available
+  useEffect(() => {
+    if (orderType === "DELIVERY" && customerCoords) {
+      catalogService
+        .calculateDeliveryFee(cabangId, customerCoords)
+        .then((res) => setDeliveryFeeData(res.data))
+        .catch(() => setDeliveryFeeData({ delivery_fee: 3000, is_deliverable: true }));
+    } else {
+      setDeliveryFeeData(null);
+    }
+  }, [orderType, customerCoords, cabangId]);
+
+  // Fetch tax preview
+  useEffect(() => {
+    const subtotalAfterDiskon = Math.max(0, cart.subtotal - discount);
+    if (cart.subtotal > 0) {
+      catalogService
+        .getTaxPreview(cabangId, { subtotal: subtotalAfterDiskon })
+        .then((res) => setTaxData(res.data))
+        .catch(() => setTaxData(null));
+    }
+  }, [cart.subtotal, discount, cabangId]);
 
   const handleVerifyPromo = async () => {
     if (!promoCode.trim()) return;
     setPromoError("");
     setPromoResult(null);
 
+
     try {
       const result = await verifyPromo.mutateAsync({
-        kode_promo: promoCode,
-        total_belanja: cart.subtotal,
+        kodePromo: promoCode,
+        subtotal: cart.subtotal,
         items: cart.items.map((i) => ({
-          produk_id: i.produk_id,
-          jumlah: i.jumlah,
+          produkId: i.produk_id,
+          produkMasterId: i.produk_master_id,
+          quantity: i.jumlah,
           harga: i.harga,
+          total: i.harga * i.jumlah,
         })),
       });
       setPromoResult(result);
@@ -180,6 +243,8 @@ const CheckoutPage = () => {
           catatan: i.catatan || null,
         })),
         promo_codes: promoResult?.data?.valid ? [promoCode] : [],
+        customer_lat: customerCoords?.latitude || null,
+        customer_lng: customerCoords?.longitude || null,
       };
 
       const result = await createOrder.mutateAsync(orderData);
@@ -227,9 +292,9 @@ const CheckoutPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pb-32">
+    <div className="min-h-screen bg-slate-50 pb-32">
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
+      <div className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate(`/catalog/${cabangId}`)}
@@ -246,7 +311,7 @@ const CheckoutPage = () => {
         className="max-w-2xl mx-auto px-4 py-6 space-y-6"
       >
         {/* Order Summary */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
           <h2 className="font-semibold text-slate-800 mb-3">
             Ringkasan Pesanan ({cart.totalItems} item)
           </h2>
@@ -264,8 +329,44 @@ const CheckoutPage = () => {
           </div>
         </div>
 
+        {/* Promo Code - Moved Up */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-3">
+          <h2 className="font-semibold text-slate-800 flex items-center">
+            <FiTag className="w-4 h-4 mr-1.5" />
+            Kode Promo
+          </h2>
+          <div className="flex gap-2">
+            <input
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+              className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all"
+              placeholder="Masukkan kode promo"
+            />
+            <button
+              type="button"
+              onClick={handleVerifyPromo}
+              disabled={!promoCode.trim() || verifyPromo.isPending}
+              className="px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+            >
+              {verifyPromo.isPending ? "..." : "Gunakan"}
+            </button>
+          </div>
+          {promoResult?.data?.valid && (
+            <div className="bg-emerald-50 text-emerald-700 text-sm p-3 rounded-xl flex items-center gap-2 border border-emerald-100">
+              <FiTag className="w-4 h-4" />
+              Diskon {CURRENCY_FORMATTER.format(promoResult.data.discount)} diterapkan!
+            </div>
+          )}
+          {promoError && (
+            <div className="bg-rose-50 text-rose-600 text-sm p-3 rounded-xl flex items-center gap-2 border border-rose-100">
+              <FiAlertCircle className="w-4 h-4" />
+              {promoError}
+            </div>
+          )}
+        </div>
+
         {/* Customer Info */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-4">
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-4">
           <h2 className="font-semibold text-slate-800">Informasi Customer</h2>
 
           <div>
@@ -317,7 +418,7 @@ const CheckoutPage = () => {
         </div>
 
         {/* Order Type */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-4">
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-4">
           <h2 className="font-semibold text-slate-800">Tipe Order</h2>
           <div className="grid grid-cols-2 gap-3">
             <label
@@ -371,7 +472,7 @@ const CheckoutPage = () => {
                 {...register("customer_address")}
                 rows={3}
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all resize-none"
-                placeholder="Masukkan alamat lengkap..."
+                placeholder="Contoh: Jl. Sudirman No 12, RT/RW, Patokan depan apotek..."
               />
               {errors.customer_address && (
                 <p className="text-xs text-rose-500 mt-1">
@@ -383,7 +484,7 @@ const CheckoutPage = () => {
         </div>
 
         {/* Payment Method */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-4">
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-4">
           <h2 className="font-semibold text-slate-800">Metode Pembayaran</h2>
           <div className="space-y-2">
             {getAvailablePayments().map((pm) => (
@@ -421,45 +522,8 @@ const CheckoutPage = () => {
           )}
         </div>
 
-        {/* Promo Code */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-3">
-          <h2 className="font-semibold text-slate-800">
-            <FiTag className="inline w-4 h-4 mr-1" />
-            Kode Promo
-          </h2>
-          <div className="flex gap-2">
-            <input
-              value={promoCode}
-              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-              className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all"
-              placeholder="Masukkan kode promo"
-            />
-            <button
-              type="button"
-              onClick={handleVerifyPromo}
-              disabled={!promoCode.trim() || verifyPromo.isPending}
-              className="px-4 py-2.5 bg-indigo-500 text-white text-sm font-medium rounded-xl hover:bg-indigo-600 disabled:opacity-50 transition-all"
-            >
-              {verifyPromo.isPending ? "..." : "Gunakan"}
-            </button>
-          </div>
-          {promoResult?.data?.valid && (
-            <div className="bg-emerald-50 text-emerald-700 text-sm p-3 rounded-xl flex items-center gap-2">
-              <FiTag className="w-4 h-4" />
-              Diskon {CURRENCY_FORMATTER.format(promoResult.data.nilai_diskon)}{" "}
-              diterapkan!
-            </div>
-          )}
-          {promoError && (
-            <div className="bg-rose-50 text-rose-600 text-sm p-3 rounded-xl flex items-center gap-2">
-              <FiAlertCircle className="w-4 h-4" />
-              {promoError}
-            </div>
-          )}
-        </div>
-
         {/* Notes */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
           <label className="block text-sm font-medium text-slate-700 mb-1">
             Catatan (opsional)
           </label>
@@ -473,25 +537,66 @@ const CheckoutPage = () => {
       </form>
 
       {/* Bottom Pay Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 p-4 z-40">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 z-40 shadow-sm">
         <div className="max-w-2xl mx-auto">
-          <div className="flex justify-between items-center mb-3">
-            <div>
-              <p className="text-sm text-slate-500">Subtotal</p>
-              {discount > 0 && (
-                <p className="text-xs text-emerald-600">
-                  Diskon - {CURRENCY_FORMATTER.format(discount)}
-                </p>
-              )}
+          {/* Full Price Breakdown */}
+          <div className="space-y-1.5 mb-3 text-sm">
+            <div className="flex justify-between text-slate-500">
+              <span>Subtotal</span>
+              <span>{CURRENCY_FORMATTER.format(cart.subtotal)}</span>
             </div>
-            <p className="text-xl font-bold text-slate-800">
-              {CURRENCY_FORMATTER.format(total)}
-            </p>
+            {discount > 0 && (
+              <div className="flex justify-between text-emerald-600">
+                <span>Diskon Promo</span>
+                <span>- {CURRENCY_FORMATTER.format(discount)}</span>
+              </div>
+            )}
+            {orderType === "DELIVERY" && (
+              <div className="flex justify-between text-slate-500">
+                <span>
+                  Ongkos Kirim
+                  {deliveryFeeData?.distance_km != null && (
+                    <span className="text-xs text-slate-400 ml-1">
+                      ({deliveryFeeData.distance_km} km)
+                    </span>
+                  )}
+                </span>
+                <span>{CURRENCY_FORMATTER.format(deliveryFee)}</span>
+              </div>
+            )}
+            {taxData?.is_tax_enabled && taxAmount > 0 && (
+              <div className="flex justify-between text-slate-500">
+                <span>{taxData.tax_name} ({taxData.tax_percentage}%)</span>
+                <span>{CURRENCY_FORMATTER.format(taxAmount)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-slate-500">
+              <span>Biaya Layanan</span>
+              <span>{CURRENCY_FORMATTER.format(BIAYA_TAMBAHAN)}</span>
+            </div>
+            <div className="border-t border-dashed border-slate-200 pt-2 flex justify-between font-bold text-slate-800 text-base">
+              <span>Total</span>
+              <span>{CURRENCY_FORMATTER.format(total)}</span>
+            </div>
           </div>
+
+          {/* Delivery warning */}
+          {orderType === "DELIVERY" && deliveryFeeData && !deliveryFeeData.is_deliverable && (
+            <div className="bg-rose-50 text-rose-600 text-xs p-2.5 rounded-xl mb-3 flex items-center gap-2 border border-rose-100">
+              <FiAlertCircle className="w-4 h-4 flex-shrink-0" />
+              Lokasi Anda di luar jangkauan delivery (maks {deliveryFeeData.max_radius} km)
+            </div>
+          )}
+          {geoError && orderType === "DELIVERY" && (
+            <div className="bg-amber-50 text-amber-600 text-xs p-2.5 rounded-xl mb-3 border border-amber-100">
+              {geoError}
+            </div>
+          )}
+
           <button
             onClick={handleSubmit(onSubmit)}
-            disabled={createOrder.isPending}
-            className="w-full py-3.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-indigo-200 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+            disabled={createOrder.isPending || (orderType === "DELIVERY" && deliveryFeeData && !deliveryFeeData.is_deliverable)}
+            className="w-full py-3.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2 shadow-sm"
           >
             {createOrder.isPending ? (
               <>
@@ -499,7 +604,7 @@ const CheckoutPage = () => {
                 Memproses...
               </>
             ) : (
-              "Buat Pesanan"
+              `Bayar ${CURRENCY_FORMATTER.format(total)}`
             )}
           </button>
         </div>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   FiSearch,
@@ -21,11 +21,30 @@ import {
 } from "../hooks/useCatalog";
 import { useCart } from "../hooks/useCart";
 import { CURRENCY_FORMATTER } from "../../../config";
+import toast from "react-hot-toast";
+
+// Custom hook for debounce
+const useDebounce = (value, delay) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+};
 
 const CatalogPage = () => {
   const { cabangId } = useParams();
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebounce(searchInput, 500);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [sortBy, setSortBy] = useState("terbaru");
   const [page, setPage] = useState(1);
@@ -36,7 +55,7 @@ const CatalogPage = () => {
   // Fetch data
   const { data: productsData, isLoading: loadingProducts } =
     useCatalogProducts(cabangId, {
-      search,
+      search: debouncedSearch,
       kategoriId: selectedCategory,
       sortBy,
       page,
@@ -57,13 +76,13 @@ const CatalogPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-xl md:text-2xl font-bold text-slate-800">
                 {cabang.nama || "Katalog"}
               </h1>
               {cabang.alamat && (
@@ -75,7 +94,7 @@ const CatalogPage = () => {
             </div>
             <button
               onClick={() => setShowCart(true)}
-              className="relative p-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-200 transition-all"
+              className="relative p-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
             >
               <FiShoppingCart className="w-5 h-5" />
               {cart.totalItems > 0 && (
@@ -93,9 +112,9 @@ const CatalogPage = () => {
               <input
                 type="text"
                 placeholder="Cari produk..."
-                value={search}
+                value={searchInput}
                 onChange={(e) => {
-                  setSearch(e.target.value);
+                  setSearchInput(e.target.value);
                   setPage(1);
                 }}
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border-0 rounded-xl text-sm focus:ring-2 focus:ring-indigo-300 focus:bg-white transition-all"
@@ -113,9 +132,9 @@ const CatalogPage = () => {
               setSelectedCategory("");
               setPage(1);
             }}
-            className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+            className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
               !selectedCategory
-                ? "bg-indigo-500 text-white shadow-md shadow-indigo-200"
+                ? "bg-indigo-600 text-white"
                 : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
             }`}
           >
@@ -128,9 +147,9 @@ const CatalogPage = () => {
                 setSelectedCategory(cat.id);
                 setPage(1);
               }}
-              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                 selectedCategory === cat.id
-                  ? "bg-indigo-500 text-white shadow-md shadow-indigo-200"
+                  ? "bg-indigo-600 text-white"
                   : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
               }`}
             >
@@ -192,10 +211,10 @@ const CatalogPage = () => {
                 return (
                   <div
                     key={product.produk_id}
-                    className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:shadow-indigo-100 transition-all group cursor-pointer border border-slate-100"
+                    className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow group cursor-pointer border border-slate-200"
                   >
                     <div
-                      className="aspect-square bg-gradient-to-br from-slate-100 to-slate-50 relative overflow-hidden"
+                      className="aspect-square bg-slate-100 relative overflow-hidden"
                       onClick={() =>
                         navigate(
                           `/catalog/${cabangId}/product/${product.produk_id}`
@@ -233,14 +252,15 @@ const CatalogPage = () => {
                         onClick={(e) => {
                           e.stopPropagation();
                           cart.addItem(product);
+                          toast.success(`${product.nama_produk} ditambahkan ke keranjang`);
                         }}
                         disabled={product.stok <= 0}
-                        className={`mt-2 w-full py-2 rounded-xl text-sm font-medium transition-all ${
+                        className={`mt-2 w-full py-2 rounded-xl text-sm font-medium transition-colors ${
                           product.stok <= 0
                             ? "bg-slate-100 text-slate-400 cursor-not-allowed"
                             : inCart
                               ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                              : "bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:shadow-md hover:shadow-indigo-200"
+                              : "bg-indigo-600 text-white hover:bg-indigo-700"
                         }`}
                       >
                         {product.stok <= 0
@@ -392,7 +412,7 @@ const CatalogPage = () => {
                     setShowCart(false);
                     navigate(`/catalog/${cabangId}/checkout`);
                   }}
-                  className="w-full py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-indigo-200 transition-all"
+                  className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors"
                 >
                   Checkout
                 </button>
@@ -407,7 +427,7 @@ const CatalogPage = () => {
         <div className="fixed bottom-4 left-4 right-4 md:hidden z-30">
           <button
             onClick={() => setShowCart(true)}
-            className="w-full py-3.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold rounded-2xl shadow-xl shadow-indigo-200 flex items-center justify-between px-5"
+            className="w-full py-3.5 bg-indigo-600 text-white font-semibold rounded-2xl shadow-lg flex items-center justify-between px-5 hover:bg-indigo-700 transition-colors"
           >
             <span className="flex items-center gap-2">
               <FiShoppingCart className="w-5 h-5" />

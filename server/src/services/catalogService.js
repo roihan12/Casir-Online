@@ -1,5 +1,7 @@
 const { basePrisma } = require("../config/db");
 const prisma = require("../config/db");
+const { haversineDistance, calculateDeliveryFee } = require("../utils/haversine");
+const taxService = require("./taxService");
 const { ResponseError } = require("../error/responseError");
 const {
   cacheOrFetch,
@@ -400,9 +402,98 @@ const getCabangInfo = async (cabangId) => {
   };
 };
 
+/**
+ * Get all active branches for store finder
+ * GET /api/catalog/active
+ */
+const getActiveBranches = async () => {
+  const branches = await prisma.cabang.findMany({
+    where: {
+      status: "aktif",
+      deletedAt: null,
+    },
+    select: {
+      id: true,
+      namaCabang: true,
+      alamat: true,
+      telepon: true,
+    },
+    orderBy: {
+      namaCabang: "asc",
+    },
+  });
+
+  return branches.map((b) => ({
+    id: b.id,
+    nama: b.namaCabang,
+    alamat: b.alamat,
+    telepon: b.telepon,
+  }));
+};
+
+/**
+ * Calculate delivery fee preview
+ * POST /api/catalog/:cabangId/delivery-fee
+ */
+const calculateDeliveryFeePreview = async (cabangId, customerLat, customerLng) => {
+  const cabang = await prisma.cabang.findFirst({
+    where: { id: cabangId, status: "aktif" },
+    select: { latitude: true, longitude: true, namaCabang: true },
+  });
+
+  if (!cabang) {
+    throw new Error("Cabang tidak ditemukan");
+  }
+
+  if (!cabang.latitude || !cabang.longitude) {
+    // Fallback flat rate if branch has no GPS
+    return {
+      distance_km: null,
+      delivery_fee: 3000,
+      is_deliverable: true,
+      max_radius: 15,
+      note: "Koordinat cabang belum tersedia, menggunakan tarif flat.",
+    };
+  }
+
+  const distanceKm = haversineDistance(
+    Number(cabang.latitude), Number(cabang.longitude),
+    Number(customerLat), Number(customerLng)
+  );
+
+  const result = calculateDeliveryFee(distanceKm);
+
+  return {
+    distance_km: distanceKm,
+    delivery_fee: result.fee,
+    is_deliverable: result.isDeliverable,
+    max_radius: result.maxRadius,
+  };
+};
+
+/**
+ * Get tax preview for a branch
+ * GET /api/catalog/:cabangId/tax-preview
+ */
+const getTaxPreview = async (cabangId, subtotal) => {
+  const taxConfig = await taxService.getTaxConfig(cabangId);
+  const taxAmount = await taxService.calculateTax(subtotal, cabangId);
+
+  return {
+    is_tax_enabled: taxConfig.is_tax_enabled,
+    tax_name: taxConfig.tax_name || "PPN",
+    tax_percentage: taxConfig.tax_percentage || 0,
+    tax_amount: taxAmount,
+    is_tax_included: taxConfig.is_tax_included,
+  };
+};
+
 module.exports = {
+  getActiveBranches,
   getCatalogProducts,
   getProductDetail,
   getCatalogCategories,
   getCabangInfo,
+  calculateDeliveryFeePreview,
+  getTaxPreview,
 };

@@ -18,6 +18,12 @@ const publicApi = axios.create({
 
 // Catalog Service — public endpoints
 const catalogService = {
+  // Get all active branches with catalogs globally
+  getActiveBranches: async () => {
+    const response = await publicApi.get("/catalog/active");
+    return response.data;
+  },
+
   // Get products for a branch catalog
   getProducts: async (cabangId, params = {}) => {
     const query = new URLSearchParams();
@@ -66,6 +72,24 @@ const catalogService = {
   getEligiblePromos: async (cabangId, data) => {
     const response = await publicApi.post(
       `/catalog/${cabangId}/eligible-promos`,
+      data
+    );
+    return response.data;
+  },
+
+  // Calculate delivery fee preview
+  calculateDeliveryFee: async (cabangId, data) => {
+    const response = await publicApi.post(
+      `/catalog/${cabangId}/delivery-fee`,
+      data
+    );
+    return response.data;
+  },
+
+  // Get tax preview
+  getTaxPreview: async (cabangId, data) => {
+    const response = await publicApi.post(
+      `/catalog/${cabangId}/tax-preview`,
       data
     );
     return response.data;

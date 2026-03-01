@@ -48,13 +48,13 @@ export const useCart = (cabangId) => {
   }, [items, cabangId]);
 
   const addItem = useCallback(
-    (product) => {
+    (product, quantity = 1) => {
       setItems((prev) => {
         const existing = prev.find((i) => i.produk_id === product.produk_id);
         if (existing) {
           return prev.map((i) =>
             i.produk_id === product.produk_id
-              ? { ...i, jumlah: i.jumlah + 1 }
+              ? { ...i, jumlah: i.jumlah + quantity }
               : i
           );
         }
@@ -63,9 +63,10 @@ export const useCart = (cabangId) => {
           {
             produk_id: product.produk_id,
             nama_produk: product.nama_produk,
+            produk_master_id: product.produk_master_id,
             harga: product.harga_jual,
             image: product.images?.[0]?.file_path || null,
-            jumlah: 1,
+            jumlah: quantity,
             stok: product.stok,
             catatan: "",
           },

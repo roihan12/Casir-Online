@@ -3,6 +3,8 @@ const { basePrisma } = require("../config/db");
 const { ResponseError } = require("../error/responseError");
 const midtransService = require("./midtransService");
 const promoService = require("./promoService");
+const taxService = require("./taxService");
+const { haversineDistance, calculateDeliveryFee } = require("../utils/haversine");
 
 /**
  * Helper: Run checkout operations with RLS context
@@ -70,6 +72,8 @@ const createOnlineOrder = async (data) => {
     customer_notes,
     items,
     promo_codes = [],
+    customer_lat,
+    customer_lng,
   } = data;
 
   // 1. Verify branch exists
@@ -150,27 +154,29 @@ const createOnlineOrder = async (data) => {
       const cartItems = items.map((item) => {
         const product = products.find((p) => p.id === item.produk_id);
         return {
-          produk_id: item.produk_id,
-          jumlah: item.jumlah,
+          produkId: item.produk_id,
+          produkMasterId: product.produkMasterId,
+          quantity: item.jumlah,
           harga: Number(product.hargaJual),
+          total: Number(product.hargaJual) * item.jumlah,
         };
       });
 
       for (const code of promo_codes) {
         try {
           const result = await promoService.verifyPromoCode({
-            kode_promo: code,
-            cabang_id,
-            total_belanja: cartTotal,
-            pelanggan_id: matchedPelangganId,
+            kodePromo: code,
+            cabangId: cabang_id,
+            subtotal: cartTotal,
+            pelangganId: matchedPelangganId,
             items: cartItems,
           });
           if (result && result.valid) {
-            promoDiscount += Number(result.nilai_diskon || 0);
+            promoDiscount += Number(result.discount || 0);
             validatedPromos.push({
-              promo_id: result.promo_id,
+              promo_id: result.promo?.id,
               kode_promo: code,
-              nilai_diskon: Number(result.nilai_diskon || 0),
+              nilai_diskon: Number(result.discount || 0),
             });
           }
         } catch (promoErr) {
@@ -203,10 +209,38 @@ const createOnlineOrder = async (data) => {
     };
   });
 
-  const deliveryFee = 0; // Can be calculated based on distance later
-  const pajak = 0; // Can apply tax config later
+  // Calculate delivery fee (GPS-based)
+  let deliveryFee = 0;
+  let deliveryDistanceKm = 0;
+  if (order_type === "DELIVERY" && customer_lat && customer_lng && cabang.latitude && cabang.longitude) {
+    deliveryDistanceKm = haversineDistance(
+      Number(cabang.latitude), Number(cabang.longitude),
+      Number(customer_lat), Number(customer_lng)
+    );
+    const deliveryResult = calculateDeliveryFee(deliveryDistanceKm);
+    if (!deliveryResult.isDeliverable) {
+      throw new ResponseError(400, `Jarak pengiriman terlalu jauh (${deliveryDistanceKm} km). Maksimal ${deliveryResult.maxRadius} km.`);
+    }
+    deliveryFee = deliveryResult.fee;
+  } else if (order_type === "DELIVERY") {
+    // Fallback: flat rate if no GPS
+    deliveryFee = 3000;
+  }
+
+  // Calculate tax from branch config
   const diskon = promoDiscount;
-  const total = subtotal - diskon + pajak + deliveryFee;
+  const subtotalAfterDiskon = subtotal - diskon;
+  let pajak = 0;
+  try {
+    pajak = await taxService.calculateTax(subtotalAfterDiskon, cabang_id);
+  } catch (taxErr) {
+    console.warn("Tax calculation failed, using 0:", taxErr.message);
+  }
+
+  // Biaya tambahan (flat packaging fee)
+  const biayaTambahan = 1000;
+
+  const total = subtotalAfterDiskon + pajak + deliveryFee + biayaTambahan;
 
   // 6. Determine order status based on payment method
   const isImmediateConfirm =
@@ -234,7 +268,7 @@ const createOnlineOrder = async (data) => {
         subtotal,
         diskon,
         pajak,
-        biaya_tambahan: 0,
+        biaya_tambahan: biayaTambahan,
         delivery_fee: deliveryFee,
         total,
         customer_address: customer_address || null,
@@ -271,10 +305,10 @@ const createOnlineOrder = async (data) => {
     for (const promo of validatedPromos) {
       await tx.transaksiPromo.create({
         data: {
-          transaksi_id: transaksi.transaksi_id,
-          promo_id: promo.promo_id,
-          total_diskon: promo.nilai_diskon,
-          is_applied: true,
+          transaksi: { connect: { transaksi_id: transaksi.transaksi_id } },
+          promo: { connect: { id: promo.promo_id } },
+          totalDiskon: promo.nilai_diskon,
+          isApplied: true,
         },
       });
     }

@@ -70,7 +70,7 @@ const updatePromoSchema = Joi.object({
 const verifyPromoSchema = Joi.object({
   kodePromo: Joi.string().max(50).required(),
   subtotal: Joi.number().precision(2).min(0).required(),
-  cabangId: Joi.string().uuid().required(),
+  cabangId: Joi.string().required(),
   items: Joi.array().items(
     Joi.object({
       produkId: Joi.string().uuid().required(),
@@ -87,7 +87,7 @@ const verifyPromoSchema = Joi.object({
 // Verify multiple promos schema
 const verifyMultiplePromosSchema = Joi.object({
   promoCodes: Joi.array().items(Joi.string().max(50)).min(1).required(),
-  cabangId: Joi.string().uuid().required(),
+  cabangId: Joi.string().required(),
   subtotal: Joi.number().precision(2).min(0).required(),
   items: Joi.array().items(
     Joi.object({
@@ -105,7 +105,7 @@ const verifyMultiplePromosSchema = Joi.object({
 // Calculate preview schema
 const calculatePreviewSchema = Joi.object({
   promoCodes: Joi.array().items(Joi.string().max(50)).min(1).required(),
-  cabangId: Joi.string().uuid().required(),
+  cabangId: Joi.string().required(),
   subtotal: Joi.number().precision(2).min(0).required(),
   items: Joi.array().items(
     Joi.object({

@@ -62,6 +62,18 @@ const checkoutValidation = Joi.object({
     .items(Joi.string().max(50))
     .optional()
     .default([]),
+
+  // Customer GPS coordinates for delivery fee calculation
+  customer_lat: Joi.number().min(-90).max(90).when("order_type", {
+    is: "DELIVERY",
+    then: Joi.optional().allow(null),
+    otherwise: Joi.optional().allow(null),
+  }),
+  customer_lng: Joi.number().min(-180).max(180).when("order_type", {
+    is: "DELIVERY",
+    then: Joi.optional().allow(null),
+    otherwise: Joi.optional().allow(null),
+  }),
 })
   .custom((value, helpers) => {
     // COD only valid for DELIVERY

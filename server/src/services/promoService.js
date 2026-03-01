@@ -1078,7 +1078,7 @@ const getEligiblePromos = async (cabangId, cartData = {}) => {
         AND (p.cabang_id = ${cabangId}::VARCHAR OR p.cabang_id IS NULL OR p.tipe_scope = 'GLOBAL')
         AND (p.tanggal_mulai IS NULL OR p.tanggal_mulai <= CURRENT_DATE)
         AND (p.tanggal_berakhir IS NULL OR p.tanggal_berakhir >= CURRENT_DATE)
-        AND (p.min_pembelian IS NULL OR p.min_pembelial <= ${subtotal}::NUMERIC)
+        AND (p.min_pembelian IS NULL OR p.min_pembelian <= ${subtotal}::NUMERIC)
         AND (p.max_penggunaan_total IS NULL OR p.current_usage < p.max_penggunaan_total)
         ORDER BY p.created_at DESC
       `;

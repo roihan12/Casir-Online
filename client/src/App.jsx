@@ -146,6 +146,7 @@ import CatalogPage from "./features/catalog/pages/CatalogPage";
 import ProductDetailPage from "./features/catalog/pages/ProductDetailPage";
 import CheckoutPage from "./features/catalog/pages/CheckoutPage";
 import OrderStatusPage from "./features/catalog/pages/OrderStatusPage";
+import StoreFinderPage from "./features/catalog/pages/StoreFinderPage";
 import DeliveryDashboardPage from "./features/delivery/pages/DeliveryDashboardPage";
 import DriverManagementPage from "./features/delivery/pages/DriverManagementPage";
 
@@ -178,6 +179,7 @@ function App() {
 
           <Routes>
             {/* E-Catalog Public Routes */}
+            <Route path="/catalog" element={<StoreFinderPage />} />
             <Route path="/catalog/:cabangId" element={<CatalogPage />} />
             <Route
               path="/catalog/:cabangId/product/:produkId"
