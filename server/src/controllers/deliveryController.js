@@ -6,6 +6,7 @@ const {
   paymentReceivedValidation,
   failedDeliveryValidation,
   getDeliveryOrdersValidation,
+  driverLocationValidation,
 } = require("../validation/deliveryValidation");
 
 /**
@@ -13,7 +14,7 @@ const {
  */
 const getDeliveryOrders = async (req, res, next) => {
   try {
-    const cabangId = req.user?.cabangId || req.query.cabangId;
+    const cabangId = req.user?.cabangId || req.user?.cabang?.[0]?.cabangId || req.user?.cabang?.[0]?.id || req.query.cabangId;
     if (!cabangId) {
       return res
         .status(400)
@@ -172,6 +173,30 @@ const getDeliveryTracking = async (req, res, next) => {
   }
 };
 
+/**
+ * Driver: Add live location to tracking
+ */
+const addDeliveryLocation = async (req, res, next) => {
+  try {
+    const data = validate(driverLocationValidation, {
+      transaksiId: req.params.id,
+      ...req.body,
+    });
+
+    const result = await deliveryService.addDeliveryLocation(
+      data.transaksiId,
+      data
+    );
+
+    res.status(200).json({
+      status: true,
+      message: result.message,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getDeliveryOrders,
   assignDriver,
@@ -180,4 +205,5 @@ module.exports = {
   markDeliveryFailed,
   getDriverActiveDeliveries,
   getDeliveryTracking,
+  addDeliveryLocation,
 };

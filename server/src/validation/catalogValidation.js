@@ -61,6 +61,11 @@ const getEligiblePromosValidation = Joi.object({
     .optional(),
 });
 
+const trackOrderValidation = Joi.object({
+  cabangId: Joi.string().required(),
+  identifier: Joi.string().required().min(3), // phone number or order number
+});
+
 module.exports = {
   getCatalogProductsValidation,
   getCatalogCategoriesValidation,
@@ -68,4 +73,5 @@ module.exports = {
   getCabangInfoValidation,
   verifyPromoValidation,
   getEligiblePromosValidation,
+  trackOrderValidation,
 };

@@ -27,6 +27,7 @@ import InventoryNotifications from "./features/inventory/components/InventoryNot
 import InventoryProductDetailPage from "./features/inventory/pages/InventoryProductDetailPage";
 // import GlobalPOS from "./features/transactions/pages/GlobalPOSPage";
 import GlobalTransactions from "./features/transactions/pages/GlobalTransactionsPage";
+import AdminOnlineOrdersPage from "./features/transactions/pages/AdminOnlineOrdersPage";
 import GlobalTransactionDetail from "./features/transactions/pages/GlobalTransactionDetailPage";
 import GlobalReturns from "./features/transactions/pages/GlobalReturnsPage";
 import GlobalReturnDetail from "./features/transactions/pages/GlobalReturnDetailPage";
@@ -147,6 +148,7 @@ import ProductDetailPage from "./features/catalog/pages/ProductDetailPage";
 import CheckoutPage from "./features/catalog/pages/CheckoutPage";
 import OrderStatusPage from "./features/catalog/pages/OrderStatusPage";
 import StoreFinderPage from "./features/catalog/pages/StoreFinderPage";
+import TrackOrderPage from "./features/catalog/pages/TrackOrderPage";
 import DeliveryDashboardPage from "./features/delivery/pages/DeliveryDashboardPage";
 import DriverManagementPage from "./features/delivery/pages/DriverManagementPage";
 
@@ -192,6 +194,10 @@ function App() {
             <Route
               path="/catalog/:cabangId/order/:transaksiId"
               element={<OrderStatusPage />}
+            />
+            <Route
+              path="/catalog/:cabangId/track"
+              element={<TrackOrderPage />}
             />
 
             {/* Public Routes */}
@@ -467,6 +473,7 @@ function App() {
               }
             >
               <Route index element={<GlobalTransactions />} />
+              <Route path="online-orders" element={<AdminOnlineOrdersPage />} />
               <Route path=":id" element={<GlobalTransactionDetail />} />
             </Route>
             

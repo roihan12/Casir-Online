@@ -2,6 +2,7 @@ const prisma = require("../config/db");
 const midtransService = require("../services/midtransService");
 const { ResponseError } = require("../error/responseError");
 const { logger } = require("../utils/logger");
+const orderNotification = require("../services/orderNotificationService");
 
 /**
  * Handle Midtrans webhook notification
@@ -170,17 +171,11 @@ const handlePaymentSuccess = async (transaksi, paymentData) => {
     }
   });
 
-  // Send notifications (non-blocking)
-  try {
-    // TODO: Integrate with notificationService for WA notifications
-    // notificationService.notifyPaymentSuccess(transaksi.transaksi_id);
-    // notificationService.notifyNewOnlineOrder(transaksi.cabang_id, transaksi.transaksi_id);
-    logger.info("Payment success notification pending", {
-      transaksi_id: transaksi.transaksi_id,
-    });
-  } catch (err) {
-    logger.error("Notification send error:", err.message);
-  }
+  // Send WA notifications (non-blocking)
+  orderNotification.sendPaymentSuccessNotification(transaksi.transaksi_id).catch(() => {});
+  logger.info("Payment success, WA notification sent", {
+    transaksi_id: transaksi.transaksi_id,
+  });
 };
 
 /**
@@ -221,6 +216,9 @@ const handlePaymentFailed = async (transaksi, paymentData) => {
       },
     });
   });
+
+  // Send WA cancellation notification (non-blocking)
+  orderNotification.sendOrderStatusUpdate(transaksi.transaksi_id, "CANCELLED").catch(() => {});
 };
 
 module.exports = {

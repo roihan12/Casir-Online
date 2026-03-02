@@ -339,6 +339,8 @@ const getTransaksiList = async (filters) => {
     cabang_id,
     jenis_transaksi,
     status_pembayaran,
+    order_source,
+    order_status,
     pelanggan_id,
     supplier_id,
     user_id,
@@ -354,7 +356,7 @@ const getTransaksiList = async (filters) => {
     "transaksi-list",
     `cabang:${cabang_id || "-"}-jenis:${jenis_transaksi || "-"}-status:${
       status_pembayaran || "-"
-    }-pelanggan:${pelanggan_id || "-"}-supplier:${supplier_id || "-"}-user:${
+    }-source:${order_source || "-"}-orderStatus:${order_status || "-"}-pelanggan:${pelanggan_id || "-"}-supplier:${supplier_id || "-"}-user:${
       user_id || "-"
     }-start:${tanggal_mulai || "-"}-end:${tanggal_akhir || "-"}-search:${
       search || "-"
@@ -378,6 +380,8 @@ const getTransaksiList = async (filters) => {
         }
       }
       if (status_pembayaran) where.status_pembayaran = status_pembayaran;
+      if (order_source) where.order_source = order_source;
+      if (order_status) where.order_status = order_status;
       if (pelanggan_id) where.pelanggan_id = pelanggan_id;
       if (supplier_id) where.supplier_id = supplier_id;
       if (user_id) where.user_id = user_id;
@@ -1174,12 +1178,8 @@ const invalidateRelatedCache = async (transaksi) => {
 
 // Tambahkan fungsi untuk invalidasi cache transaksi
 const invalidateTransaksiCache = async (transaksiId = null) => {
-  if (transaksiId) {
-    await cacheDelete(createCacheKey("transaksi", transaksiId));
-  } else {
-    await cacheDeletePattern("transaksi:*");
-    await cacheDeletePattern("transaksi-list:*");
-  }
+  await cacheDeletePattern("transaksi:*");
+  await cacheDeletePattern("transaksi-list:*");
 
   // Invalidasi cache laporan terkait
   await cacheDeletePattern("sales-report:*");
@@ -1544,6 +1544,44 @@ const createKreditTransaction = async (data, auditInfo) => {
   }
 };
 
+// Service untuk update status order online oleh Admin
+const updateOnlineOrderStatus = async (transaksiId, data, auditInfo) => {
+  const { order_status } = data;
+
+  const transaksi = await prisma.transaksi.findUnique({
+    where: { transaksi_id: transaksiId },
+  });
+
+  if (!transaksi) {
+    throw new ResponseError(404, "Transaksi tidak ditemukan");
+  }
+
+  if (transaksi.order_source !== "ECATALOG") {
+    throw new ResponseError(400, "Hanya transaksi ECATALOG yang dapat diupdate statusnya dari menu ini");
+  }
+
+  const updatedTransaksi = await prisma.transaksi.update({
+    where: { transaksi_id: transaksiId },
+    data: {
+      order_status,
+      updated_at: new Date(),
+      updated_by: auditInfo.userId,
+      confirmed_at: new Date(),
+      confirmed_by: auditInfo.userId,
+
+    },
+  });
+
+  // Invalidasi cache
+  invalidateTransaksiCache(transaksiId);
+
+  // Send Notification (non-blocking)
+  const orderNotification = require("./orderNotificationService");
+  orderNotification.sendOrderStatusUpdate(transaksiId, order_status).catch(() => {});
+
+  return updatedTransaksi;
+};
+
 module.exports = {
   createTransaksi,
   createTransaksiWithPromo,
@@ -1559,4 +1597,5 @@ module.exports = {
   previewPromo,
   previewAllDiscounts,
   invalidateTransaksiCache,
+  updateOnlineOrderStatus,
 };

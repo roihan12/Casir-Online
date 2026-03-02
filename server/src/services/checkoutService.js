@@ -5,6 +5,7 @@ const midtransService = require("./midtransService");
 const promoService = require("./promoService");
 const taxService = require("./taxService");
 const { haversineDistance, calculateDeliveryFee } = require("../utils/haversine");
+const orderNotification = require("./orderNotificationService");
 
 /**
  * Helper: Run checkout operations with RLS context
@@ -53,7 +54,7 @@ const generateOnlineTransaksiNumber = async (cabangId, tx = null) => {
   });
 
   const sequence = String(count + 1).padStart(4, "0");
-  return `OL-${dateStr}-${sequence}`;
+  return `OL-${cabangId}-${dateStr}-${sequence}`;
 };
 
 /**
@@ -436,6 +437,11 @@ const createOnlineOrder = async (data) => {
     ).toISOString();
   }
 
+  // 9. Send WhatsApp notifications (non-blocking)
+  const notifData = { ...response, cabang_id };
+  orderNotification.sendOrderConfirmation(notifData, cabang).catch(() => {});
+  orderNotification.sendOrderNotificationToAdmin(notifData, cabang).catch(() => {});
+
   return response;
 };
 
@@ -656,6 +662,9 @@ const cancelOrder = async (transaksiId, alasan, cabangId) => {
       }
     }
   });
+
+  // Send cancellation WA notification (non-blocking)
+  orderNotification.sendOrderStatusUpdate(transaksiId, "CANCELLED").catch(() => {});
 
   return { success: true, message: "Order berhasil dibatalkan" };
 };

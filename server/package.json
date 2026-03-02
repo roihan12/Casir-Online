@@ -8,7 +8,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "seed": "node prisma/seed.js"
+    "seed": "node prisma/seed.js",
+    "test": "vitest"
   },
   "keywords": [],
   "author": "",
@@ -53,6 +54,10 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "nodemon": "^3.1.9"
+    "@testcontainers/postgresql": "^11.12.0",
+    "nodemon": "^3.1.9",
+    "pg": "^8.19.0",
+    "supertest": "^7.2.2",
+    "vitest": "^4.0.18"
   }
 }

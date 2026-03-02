@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   FiTruck,
   FiPackage,
@@ -12,6 +12,7 @@ import {
   FiFilter,
   FiDollarSign,
   FiAlertTriangle,
+  FiNavigation,
 } from "react-icons/fi";
 import {
   useDeliveryOrders,
@@ -20,15 +21,79 @@ import {
   useUpdateDeliveryStatus,
   useMarkPaymentReceived,
   useMarkDeliveryFailed,
+  useAddDeliveryLocation,
 } from "../hooks/useDelivery";
 import { CURRENCY_FORMATTER } from "../../../config";
 import toast from "react-hot-toast";
+import { useAuth } from "@features/auth";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+
+// Fix leaflet icon issue in React
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+});
 
 const DeliveryDashboardPage = () => {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [page, setPage] = useState(1);
   const [assignModal, setAssignModal] = useState(null);
   const [selectedDriverId, setSelectedDriverId] = useState("");
+  const [activeTracking, setActiveTracking] = useState({}); // { [transaksiId]: boolean }
+  const { getUserCabang } = useAuth();
+  const addLocation = useAddDeliveryLocation();
+
+  // Geolocation tracking interval
+  useEffect(() => {
+    const trackedIds = Object.keys(activeTracking).filter((id) => activeTracking[id]);
+    if (trackedIds.length === 0) return;
+
+    const intervalId = setInterval(() => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            trackedIds.forEach((id) => {
+              addLocation.mutate({ transaksiId: id, latitude, longitude });
+            });
+          },
+          (error) => console.error("Error getting location:", error)
+        );
+      }
+    }, 60000); // 1 menit
+
+    return () => clearInterval(intervalId);
+  }, [activeTracking]);
+
+  const toggleTracking = (transaksiId) => {
+    setActiveTracking((prev) => {
+      const isTracking = !prev[transaksiId];
+      if (isTracking) {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              addLocation.mutate({
+                transaksiId,
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+              });
+            },
+            (error) => toast.error("Gagal mendapat lokasi: " + error.message)
+          );
+        } else {
+          toast.error("Geolocation tidak didukung browser ini");
+        }
+        toast.success("Live tracking (1 menit) diaktifkan");
+      } else {
+        toast.success("Live tracking dimatikan");
+      }
+      return { ...prev, [transaksiId]: isTracking };
+    });
+  };
 
   const { data: ordersData, isLoading, refetch } = useDeliveryOrders({
     status: statusFilter,
@@ -46,9 +111,10 @@ const DeliveryDashboardPage = () => {
 
   // Fetch available drivers when assign modal opens
   const { data: driversData } = useAvailableDrivers(
-    assignModal ? undefined : null
+    assignModal ? getUserCabang()[0]?.cabangId : null
   );
   const availableDrivers = driversData?.data || [];
+
 
   const handleAssign = async () => {
     if (!selectedDriverId || !assignModal) return;
@@ -267,6 +333,38 @@ const DeliveryDashboardPage = () => {
                 </div>
               )}
 
+              {/* Map View */}
+              {(() => {
+                const latestLocation = order.tracking?.slice().reverse().find(t => t.latitude && t.longitude);
+                if (order.delivery_status === "PICKED_UP" && latestLocation) {
+                  return (
+                    <div className="bg-white rounded-xl mb-3 overflow-hidden border border-slate-200 shadow-sm">
+                      <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-700 flex items-center gap-1"><FiMapPin className="text-rose-500" /> Lokasi Driver Terakhir</span>
+                        <span className="text-[10px] text-slate-500">{new Date(latestLocation.created_at).toLocaleTimeString("id-ID")}</span>
+                      </div>
+                      <div className="w-full h-32 relative z-0 isolate">
+                        <MapContainer 
+                          center={[latestLocation.latitude, latestLocation.longitude]} 
+                          zoom={15} 
+                          scrollWheelZoom={false}
+                          style={{ height: "100%", width: "100%", zIndex: 0 }}
+                          dragging={false}
+                          zoomControl={false}
+                        >
+                          <TileLayer
+                            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                          />
+                          <Marker position={[latestLocation.latitude, latestLocation.longitude]} />
+                        </MapContainer>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
               {/* Actions */}
               <div className="flex flex-wrap gap-2">
                 {/* Assign driver (CONFIRMED, no driver) */}
@@ -294,14 +392,27 @@ const DeliveryDashboardPage = () => {
 
                 {/* Delivered (PICKED_UP) */}
                 {order.delivery_status === "PICKED_UP" && (
-                  <button
-                    onClick={() =>
-                      handleStatusUpdate(order.transaksi_id, "DELIVERED")
-                    }
-                    className="px-3 py-1.5 text-xs font-medium bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors flex items-center gap-1"
-                  >
-                    <FiCheck className="w-3 h-3" /> Terkirim
-                  </button>
+                  <>
+                    <button
+                      onClick={() => toggleTracking(order.transaksi_id)}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
+                        activeTracking[order.transaksi_id]
+                          ? "bg-rose-500 text-white hover:bg-rose-600 shadow-[0_0_10px_rgba(244,63,94,0.5)] animate-pulse"
+                          : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+                      }`}
+                    >
+                      <FiNavigation className="w-3 h-3" /> 
+                      {activeTracking[order.transaksi_id] ? "Memancarkan Lokasi" : "Mulai Live Tracking"}
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleStatusUpdate(order.transaksi_id, "DELIVERED")
+                      }
+                      className="px-3 py-1.5 text-xs font-medium bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors flex items-center gap-1"
+                    >
+                      <FiCheck className="w-3 h-3" /> Terkirim
+                    </button>
+                  </>
                 )}
 
                 {/* COD Payment (unpaid & delivered or picked_up) */}

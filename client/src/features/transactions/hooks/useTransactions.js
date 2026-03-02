@@ -14,6 +14,8 @@ export const useTransactionsList = (filters = {}, page = 0, rowsPerPage = 10) =>
         cabangId: filters.cabangId !== 'all' ? filters.cabangId : undefined,
         jenisTransaksi: filters.jenisTransaksi !== 'all' ? filters.jenisTransaksi : undefined,
         statusPembayaran: filters.statusPembayaran !== 'all' ? filters.statusPembayaran : undefined,
+        order_source: filters.order_source || undefined,
+        order_status: filters.order_status !== 'all' ? filters.order_status : undefined,
         search: filters.search || undefined,
         page: page + 1,
         limit: rowsPerPage,
@@ -142,6 +144,24 @@ export const useCreateQrisPayment = () => {
       // Invalidate related queries to trigger refetch
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['transaction', data.transaksi_id] });
+    },
+  });
+};
+
+/**
+ * Hook untuk update status online order
+ */
+export const useUpdateOnlineOrderStatus = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, data }) => {
+      const response = await api.put(`/transaksi/online/${id}/status`, data);
+      return response.data;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["transaction", variables.id] });
     },
   });
 };

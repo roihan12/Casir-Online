@@ -77,6 +77,11 @@ const transaksiService = {
     } catch (error) {
       throw error;
     }
+  },
+
+  // Update online order status (Admin)
+  updateOnlineOrderStatus: async (id, statusData) => {
+    return api.put(`/transaksi/online/${id}/status`, statusData);
   }
 };
 

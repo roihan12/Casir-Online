@@ -114,3 +114,10 @@ export const useMarkDeliveryFailed = () => {
     },
   });
 };
+
+export const useAddDeliveryLocation = () => {
+  return useMutation({
+    mutationFn: ({ transaksiId, latitude, longitude }) =>
+      deliveryClientService.addDeliveryLocation(transaksiId, { latitude, longitude })
+  });
+};

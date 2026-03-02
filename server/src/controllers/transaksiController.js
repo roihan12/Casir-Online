@@ -9,6 +9,7 @@ const {
   getTransaksiListValidation,
   createKreditTransaksiValidation,
   previewDiscountValidation,
+  updateOnlineOrderStatusValidation,
 } = require("../validation/transaksiValidation");
 
 // Controller untuk membuat transaksi baru
@@ -634,6 +635,35 @@ const generatePOFromTransaction = async (req, res, next) => {
   }
 };
 
+// Controller untuk update status order online oleh Admin
+const updateOnlineOrderStatus = async (req, res, next) => {
+  try {
+    const transaksiId = req.params.id;
+    const request = validate(updateOnlineOrderStatusValidation, req.body);
+    
+    // Ensure the params ID matches the body ID
+    if (transaksiId !== request.transaksi_id) {
+       throw new ResponseError(400, "ID Transaksi pada URL dan Body tidak cocok");
+    }
+
+    const auditInfo = {
+      userId: req.user.id,
+      ipAddress: req.ip || req.socket.remoteAddress,
+      userName: req.user.username,
+    };
+
+    const result = await transaksiService.updateOnlineOrderStatus(transaksiId, request, auditInfo);
+
+    res.status(200).json({
+      status: true,
+      message: `Status order online berhasil diupdate menjadi ${request.order_status}`,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createTransaksi,
   createTransaksiWithPromo,
@@ -651,5 +681,6 @@ module.exports = {
   generateReturnPdf,
   generatePOTemplate,
   generatePOFromTransaction,
+  updateOnlineOrderStatus,
 };
 

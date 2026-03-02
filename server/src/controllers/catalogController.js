@@ -8,6 +8,7 @@ const {
   getCabangInfoValidation,
   verifyPromoValidation,
   getEligiblePromosValidation,
+  trackOrderValidation,
 } = require("../validation/catalogValidation");
 
 /**
@@ -235,6 +236,35 @@ const getTaxPreview = async (req, res, next) => {
   }
 };
 
+/**
+ * Track an order by phone number or transaction number
+ * GET /api/catalog/:cabangId/track
+ */
+const trackOrder = async (req, res, next) => {
+  try {
+    const { cabangId } = req.params;
+    const { identifier } = req.query;
+
+    const queryInfo = validate(trackOrderValidation, {
+      cabangId,
+      identifier,
+    });
+
+    const result = await catalogService.trackOrder(
+      queryInfo.cabangId,
+      queryInfo.identifier
+    );
+
+    res.status(200).json({
+      status: true,
+      message: "Order found",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getActiveBranches,
   getCatalogProducts,
@@ -245,4 +275,5 @@ module.exports = {
   getEligiblePromos,
   calculateDeliveryFeePreview,
   getTaxPreview,
+  trackOrder,
 };

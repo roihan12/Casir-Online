@@ -59,6 +59,9 @@ const getDeliveryOrders = async (cabangId, filters = {}) => {
             },
           },
         },
+        delivery_tracking: {
+          orderBy: { created_at: "asc" },
+        },
       },
     }),
     prisma.transaksi.count({ where }),
@@ -92,6 +95,12 @@ const getDeliveryOrders = async (cabangId, filters = {}) => {
         total: Number(d.total),
       })),
       items_count: o.transaksi_detail.reduce((s, d) => s + d.jumlah, 0),
+      tracking: o.delivery_tracking.map(t => ({
+        status: t.status,
+        latitude: t.latitude ? Number(t.latitude) : null,
+        longitude: t.longitude ? Number(t.longitude) : null,
+        created_at: t.created_at,
+      }))
     })),
     pagination: {
       page,
@@ -466,6 +475,49 @@ const getDeliveryTracking = async (transaksiId) => {
   }));
 };
 
+/**
+ * Driver: Save live location
+ */
+const addDeliveryLocation = async (transaksiId, data) => {
+  const { latitude, longitude } = data;
+
+  const transaksi = await prisma.transaksi.findFirst({
+    where: {
+      transaksi_id: transaksiId,
+      order_source: "ECATALOG",
+      order_type: "DELIVERY",
+    },
+  });
+
+  if (!transaksi) {
+    throw new ResponseError(404, "Order delivery tidak ditemukan");
+  }
+
+  if (transaksi.order_status === "CANCELLED" || transaksi.order_status === "COMPLETED") {
+    throw new ResponseError(400, "Order sudah selesai/batal, tidak bisa update lokasi");
+  }
+
+  if (transaksi.delivery_status !== "PICKED_UP") {
+    throw new ResponseError(400, "Live tracking hanya tersedia saat status Dalam Perjalanan (PICKED_UP)");
+  }
+
+  await prisma.delivery_tracking.create({
+    data: {
+      transaksi_id: transaksiId,
+      driver_id: transaksi.delivery_driver_id,
+      status: "LIVE_LOCATION",
+      latitude: latitude,
+      longitude: longitude,
+      notes: "Update lokasi driver otomatis",
+    },
+  });
+
+  return {
+    success: true,
+    message: "Lokasi berhasil disimpan",
+  };
+};
+
 module.exports = {
   getDeliveryOrders,
   assignDriver,
@@ -474,4 +526,5 @@ module.exports = {
   markDeliveryFailed,
   getDriverActiveDeliveries,
   getDeliveryTracking,
+  addDeliveryLocation,
 };

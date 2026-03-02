@@ -85,6 +85,11 @@ const deliveryClientService = {
     const response = await api.get(`/delivery/driver/${driverId}/active`);
     return response.data;
   },
+
+  addDeliveryLocation: async (transaksiId, data) => {
+    const response = await api.post(`/delivery/orders/${transaksiId}/location`, data);
+    return response.data;
+  }
 };
 
 export default deliveryClientService;

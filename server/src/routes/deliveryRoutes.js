@@ -36,4 +36,10 @@ router.get(
   deliveryController.getDriverActiveDeliveries
 );
 
+// Driver: push live location
+router.post(
+  "/orders/:id/location",
+  deliveryController.addDeliveryLocation
+);
+
 module.exports = router;

@@ -31,4 +31,7 @@ router.post("/:cabangId/delivery-fee", catalogController.calculateDeliveryFeePre
 // Get tax preview
 router.post("/:cabangId/tax-preview", catalogController.getTaxPreview);
 
+// Track order by identifier (phone or order number)
+router.get("/:cabangId/track", catalogController.trackOrder);
+
 module.exports = router;

@@ -13,6 +13,9 @@ import {
   FiCreditCard,
   FiLoader,
 } from "react-icons/fi";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
 import { useOrderStatus, useCancelOrder, useDeliveryTracking } from "../hooks/useCatalog";
 import { CURRENCY_FORMATTER } from "../../../config";
 import toast from "react-hot-toast";
@@ -59,6 +62,20 @@ const OrderStatusPage = () => {
     order?.order_type === "DELIVERY" ? transaksiId : null
   );
   const tracking = trackingData?.data || [];
+
+  // Fix leaflet icon issue in React
+  delete L.Icon.Default.prototype._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+    iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+  });
+
+  // Get latest location from tracking history
+  const latestLocation = tracking
+    .slice()
+    .reverse()
+    .find((t) => t.latitude && t.longitude);
 
   const handleCancel = async () => {
     if (!window.confirm("Yakin ingin membatalkan pesanan ini?")) return;
@@ -326,6 +343,38 @@ const OrderStatusPage = () => {
                   order.delivery_status}
               </p>
             )}
+          </div>
+        )}
+
+        {/* Live Tracking Map */}
+        {order.order_type === "DELIVERY" && latestLocation && (
+          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <h3 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
+              <FiMapPin className="text-rose-500" />
+              Lokasi Driver Saat Ini
+            </h3>
+            <div className="w-full h-48 sm:h-64 rounded-xl overflow-hidden z-0 isolate">
+              <MapContainer 
+                center={[latestLocation.latitude, latestLocation.longitude]} 
+                zoom={15} 
+                scrollWheelZoom={false}
+                style={{ height: "100%", width: "100%", zIndex: 0 }}
+              >
+                <TileLayer
+                  url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                />
+                <Marker position={[latestLocation.latitude, latestLocation.longitude]}>
+                  <Popup>
+                    Lokasi driver terakhir diperbarui:<br />
+                    {new Date(latestLocation.created_at).toLocaleTimeString("id-ID")}
+                  </Popup>
+                </Marker>
+              </MapContainer>
+            </div>
+            <p className="text-xs text-slate-500 mt-2 text-center">
+              Update terakhir: {new Date(latestLocation.created_at).toLocaleString("id-ID")}
+            </p>
           </div>
         )}
 

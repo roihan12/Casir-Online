@@ -21,6 +21,8 @@ const getDrivers = async (cabangId, { page = 1, limit = 20 } = {}) => {
     prisma.driver.count({ where: { cabang_id: cabangId } }),
   ]);
 
+  console.log(drivers);
+
   return {
     data: drivers.map((d) => ({
       id: d.driver_id,

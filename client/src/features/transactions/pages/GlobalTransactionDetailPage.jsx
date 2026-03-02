@@ -484,7 +484,7 @@ const GlobalTransactionDetail = () => {
                   <Check size={16} className="mr-2" />
                   <span className="text-sm">
                     Lunas pada{" "}
-                    {formatDate(displayData.pembayaran[0].tanggal_pembayaran)}
+                    {formatDate(displayData.pembayaran[0]?.tanggal_pembayaran)}
                   </span>
                 </div>
               )}

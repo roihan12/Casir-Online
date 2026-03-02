@@ -100,6 +100,13 @@ router.put(
   transaksiController.cancelTransaksi
 );
 
+// PUT - Update online order status (Admin)
+router.put(
+  "/online/:id/status",
+  hasPermission(["transaksi:update"]),
+  transaksiController.updateOnlineOrderStatus
+);
+
 // GET - Download Return PDF
 router.get(
   "/:id/pdf",

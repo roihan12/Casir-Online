@@ -100,6 +100,8 @@ const getTransaksiListValidation = Joi.object({
     Joi.array().items(Joi.string().valid("PENJUALAN", "PEMBELIAN", "RETUR_PENJUALAN", "RETUR_PEMBELIAN"))
   ),
   status_pembayaran: Joi.string().valid("LUNAS", "BELUM_LUNAS", "DIBATALKAN"),
+  order_source: Joi.string().valid("ECATALOG", "POS", "MOBILE"),
+  order_status: Joi.string().valid("PENDING", "CONFIRMED", "PROCESSING", "READY", "ON_DELIVERY", "DELIVERED", "COMPLETED", "CANCELLED"),
   pelanggan_id: Joi.string(),
   supplier_id: Joi.string(),
   user_id: Joi.string(),
@@ -217,6 +219,12 @@ const previewDiscountValidation = Joi.object({
     .required(),
 });
 
+// Validasi untuk update status order online oleh Admin
+const updateOnlineOrderStatusValidation = Joi.object({
+  transaksi_id: Joi.string().required(),
+  order_status: Joi.string().valid("PENDING", "CONFIRMED", "PROCESSING", "READY", "ON_DELIVERY", "DELIVERED", "COMPLETED", "CANCELLED").required(),
+});
+
 module.exports = {
   createTransaksiValidation,
   createPembayaranValidation,
@@ -230,4 +238,5 @@ module.exports = {
   createPembayaranHutangValidation,
   getHutangListValidation,
   previewDiscountValidation,
+  updateOnlineOrderStatusValidation,
 };

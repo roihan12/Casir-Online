@@ -43,10 +43,17 @@ const getDeliveryOrdersValidation = Joi.object({
   limit: Joi.number().integer().min(1).max(50).optional().default(20),
 });
 
+const driverLocationValidation = Joi.object({
+  transaksiId: Joi.string().uuid().required(),
+  latitude: Joi.number().min(-90).max(90).required(),
+  longitude: Joi.number().min(-180).max(180).required(),
+});
+
 module.exports = {
   assignDriverValidation,
   updateDeliveryStatusValidation,
   paymentReceivedValidation,
   failedDeliveryValidation,
   getDeliveryOrdersValidation,
+  driverLocationValidation,
 };

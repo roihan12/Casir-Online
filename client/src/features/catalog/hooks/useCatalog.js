@@ -91,3 +91,10 @@ export const useDeliveryTracking = (transaksiId) => {
     refetchInterval: 30000,
   });
 };
+
+export const useTrackOrder = () => {
+  return useMutation({
+    mutationFn: ({ cabangId, identifier }) => 
+      catalogService.trackOrder(cabangId, identifier),
+  });
+};

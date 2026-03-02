@@ -94,6 +94,14 @@ const catalogService = {
     );
     return response.data;
   },
+
+  // Track an order by phone or transaction number
+  trackOrder: async (cabangId, identifier) => {
+    const response = await publicApi.get(
+      `/catalog/${cabangId}/track?identifier=${encodeURIComponent(identifier)}`
+    );
+    return response.data;
+  }
 };
 
 export default catalogService;

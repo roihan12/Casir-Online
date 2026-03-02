@@ -7,7 +7,7 @@ const {
 
 const getDrivers = async (req, res, next) => {
   try {
-    const cabangId = req.user?.cabangId || req.query.cabangId;
+    const cabangId = req.user?.cabangId || req.user?.cabang?.[0]?.cabangId || req.user?.cabang?.[0]?.id || req.query.cabangId;
     if (!cabangId) {
       return res.status(400).json({ status: false, errors: "Cabang ID required" });
     }
@@ -30,7 +30,7 @@ const getDrivers = async (req, res, next) => {
 
 const getAvailableDrivers = async (req, res, next) => {
   try {
-    const cabangId = req.user?.cabangId || req.query.cabangId;
+    const cabangId = req.query.cabangId;
     if (!cabangId) {
       return res.status(400).json({ status: false, errors: "Cabang ID required" });
     }
@@ -49,7 +49,7 @@ const getAvailableDrivers = async (req, res, next) => {
 
 const createDriver = async (req, res, next) => {
   try {
-    const cabangId = req.user?.cabangId;
+    const cabangId = req.user?.cabangId || req.user?.cabang?.[0]?.cabangId || req.user?.cabang?.[0]?.id;
     if (!cabangId) {
       return res.status(400).json({ status: false, errors: "Cabang ID required" });
     }

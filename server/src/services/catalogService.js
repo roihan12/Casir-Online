@@ -488,6 +488,41 @@ const getTaxPreview = async (cabangId, subtotal) => {
   };
 };
 
+// Track order for customer
+const trackOrder = async (cabangId, identifier) => {
+  return await withPublicRls(cabangId, async () => {
+    // Search transaction by nomor_transaksi or phone number
+    const transaksi = await prisma.transaksi.findFirst({
+      where: {
+        cabang_id: cabangId,
+        order_source: "ECATALOG",
+        deleted_at: null,
+        OR: [
+          { nomor_transaksi: identifier },
+          {
+            pelanggan: {
+              telepon: identifier,
+            },
+          },
+        ],
+      },
+      orderBy: { tanggal: "desc" },
+    });
+
+    if (!transaksi) {
+      throw new ResponseError(404, "Pesanan tidak ditemukan. Periksa kembali nomor transaksi atau nomor HP Anda.");
+    }
+
+    return {
+      transaksi_id: transaksi.transaksi_id,
+      cabang_id: transaksi.cabang_id,
+      nomor_transaksi: transaksi.nomor_transaksi,
+      status: transaksi.order_status || "PENDING",
+      tanggal: transaksi.tanggal,
+    };
+  });
+};
+
 module.exports = {
   getActiveBranches,
   getCatalogProducts,
@@ -496,4 +531,5 @@ module.exports = {
   getCabangInfo,
   calculateDeliveryFeePreview,
   getTaxPreview,
+  trackOrder,
 };
