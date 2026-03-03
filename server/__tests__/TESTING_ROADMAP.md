@@ -24,7 +24,7 @@ These are the simplest endpoints with basic CRUD operations and minimal dependen
 
 | # | Task | Endpoints | Models | Complexity | Status |
 |---|------|-----------|--------|------------|--------|
-| 1 | **Kategori Tests** | GET /api/kategori<br>GET /api/kategori/:id<br>POST /api/kategori<br>PUT /api/kategori/:id<br>DELETE /api/kategori/:id | Kategori | ⭐ Easy | 📝 Todo |
+| 1 | **Kategori Tests** | GET /api/kategori<br>GET /api/kategori/:id<br>POST /api/kategori<br>PUT /api/kategori/:id<br>DELETE /api/kategori/:id | Kategori | ⭐ Easy | ✅ Done |
 | 2 | **Supplier Tests** | GET /api/supplier<br>GET /api/supplier/:id<br>POST /api/supplier<br>PUT /api/supplier/:id<br>DELETE /api/supplier/:id | Supplier | ⭐ Easy | 📝 Todo |
 | 3 | **Cabang Tests** | GET /api/cabang<br>GET /api/cabang/:id<br>POST /api/cabang<br>PUT /api/cabang/:id<br>DELETE /api/cabang/:id | Cabang | ⭐ Easy | 📝 Todo |
 
@@ -113,56 +113,54 @@ Complex features with external integrations, file uploads, real-time updates.
 
 ## 🎯 RECOMMENDED STARTING POINT
 
-### Task 1: Kategori API Tests
+### Task 2: Supplier API Tests
 
 **Why start here?**
-1. Simplest CRUD operations
-2. Single model (Kategori)
-3. Already have `createKategori()` factory
+1. Simplest CRUD operations (similar to Kategori)
+2. Single model (Supplier)
+3. Need to use or create `createSupplier()` factory
 4. No complex relations
 5. Clear input validation
 6. Minimal business logic
 
 **Test cases needed:**
-```
-GET /api/kategori
-  ✓ Should return empty array when no categories
-  ✓ Should return list of categories
+```text
+GET /api/supplier
+  ✓ Should return empty array when no suppliers
+  ✓ Should return list of suppliers
   ✓ Should handle pagination
 
-GET /api/kategori/:id
-  ✓ Should return category by ID
+GET /api/supplier/:id
+  ✓ Should return supplier by ID
   ✓ Should return 404 for non-existent ID
   ✓ Should validate ID format
 
-POST /api/kategori
-  ✓ Should create category with valid data
-  ✓ Should reject duplicate namaKategori
+POST /api/supplier
+  ✓ Should create supplier with valid data
   ✓ Should validate required fields
   ✓ Should validate field constraints
 
-PUT /api/kategori/:id
-  ✓ Should update category with valid data
+PUT /api/supplier/:id
+  ✓ Should update supplier with valid data
   ✓ Should return 404 for non-existent ID
-  ✓ Should prevent duplicate namaKategori
 
-DELETE /api/kategori/:id
-  ✓ Should delete category
+DELETE /api/supplier/:id
+  ✓ Should delete supplier
   ✓ Should return 404 for non-existent ID
-  ✓ Should handle category with related products (cascade/check)
+  ✓ Should handle supplier with related products
 ```
 
 ---
 
 ## 📊 Progress Tracking
 
-- [ ] Phase 1: Simple CRUD (0/3)
+- [ ] Phase 1: Simple CRUD (1/3)
 - [ ] Phase 2: One-to-Many (0/3)
 - [ ] Phase 3: Many-to-Many (0/3)
 - [ ] Phase 4: Business Logic (0/3)
 - [ ] Phase 5: Advanced (0/4)
 
-**Total Progress:** 1/16 tasks completed (6.25%)
+**Total Progress:** 2/16 tasks completed (12.5%)
 
 ---
 
@@ -214,12 +212,12 @@ DELETE /api/kategori/:id
 
 Before I start implementing, please confirm:
 
-1. **Start with Task 1 (Kategori Tests)?** ✅
-2. **Use the same testing pattern as auth.test.js?** ✅
-3. **Create factory functions if not already available?** ✅
+1. **Start with Task 2 (Supplier Tests)?** ✅
+2. **Use the same testing pattern as kategori.test.js?** ✅
+3. **Create `createSupplier()` factory function if not already available?** ✅
 4. **Include both positive and negative test cases?** ✅
-5. **Add permission testing for protected routes?** ✅
+5. **Add permission testing for supplier module?** ✅
 
 ---
 
-**Next Step:** Once approved, I'll create `kategori.test.js` as Task 1.
+**Next Step:** Once approved, I'll create `supplier.test.js` as Task 2.

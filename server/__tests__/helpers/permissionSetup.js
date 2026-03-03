@@ -101,12 +101,21 @@ export const createUserWithModulePermissions = async (
     },
   });
 
-  // 4. Link user to role and cabang
+  // 4. Link user to role and cabang (for permissions)
   await prisma.userRole.create({
     data: {
       userId: user.id,
       roleId: role.id,
       cabangId: cabang.id,
+    },
+  });
+
+  // 5. Link user to cabang (for access control - cabangAccess middleware)
+  await prisma.userCabang.create({
+    data: {
+      userId: user.id,
+      cabangId: cabang.id,
+      isPrimary: true,
     },
   });
 

@@ -25,12 +25,25 @@ const errorMiddleware = async (err, req, res, next) => {
     ip: req.ip,
   });
 
+  // Handle Prisma-specific errors
+  if (err.code === "P2002") {
+    // Unique constraint violation
+    const field = err.meta?.target?.[0] || "field";
+    return res
+      .status(409)
+      .json({
+        success: false,
+        message: `${field} already exists`,
+      })
+      .end();
+  }
+
   if (err instanceof ResponseError) {
     res
       .status(err.status)
       .json({
         success: false,
-        errors: err.message,
+        message: err.message,
       })
       .end();
   } else {
@@ -44,7 +57,7 @@ const errorMiddleware = async (err, req, res, next) => {
       .status(500)
       .json({
         success: false,
-        errors: message,
+        message: message,
       })
       .end();
   }

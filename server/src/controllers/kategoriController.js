@@ -1,4 +1,6 @@
 const kategoriService = require("../services/kategoriService");
+const { validate } = require("../validation/validation");
+const { KategoriIdValidation } = require("../validation/kategoriValidation");
 
 const getAllKategori = async (req, res, next) => {
   try {
@@ -16,6 +18,7 @@ const getAllKategori = async (req, res, next) => {
 const getKategoriById = async (req, res, next) => {
   try {
     const { kategoriId } = req.params;
+    validate(KategoriIdValidation, { kategoriId });
     const kategori = await kategoriService.getKategoriById(kategoriId);
 
     if (!kategori) {
@@ -52,6 +55,7 @@ const createKategori = async (req, res, next) => {
 const updateKategori = async (req, res, next) => {
   try {
     const { kategoriId } = req.params;
+    validate(KategoriIdValidation, { kategoriId });
     const categoryData = req.body;
 
     const updatedCategory = await kategoriService.updateKategori(
@@ -72,6 +76,7 @@ const updateKategori = async (req, res, next) => {
 const deleteKategori = async (req, res, next) => {
   try {
     const { kategoriId } = req.params;
+    validate(KategoriIdValidation, { kategoriId });
 
     await kategoriService.deleteKategori(kategoriId);
 

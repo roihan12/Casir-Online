@@ -96,12 +96,17 @@ export const createUserWithRole = async (
 /**
  * Create a test Pelanggan (Customer)
  * @param {Object} overrides - Override default values
+ * @param {import('@prisma/client').PrismaClient} prismaOverride - Optional prisma client
  * @returns {Promise<Pelanggan>}
  */
-export const createPelanggan = async (overrides = {}) => {
-  const prisma = getPrisma();
+export const createPelanggan = async (overrides = {}, prismaOverride = null) => {
+  const prisma = prismaOverride || getPrisma();
+
+  // Create Cabang first since cabang_id is required by API
+  const cabang = await createCabang({}, prisma);
 
   const defaultData = {
+    cabang_id: cabang.id, // Required by API validation
     namaPelanggan: `Test Customer ${Date.now()}`,
     email: `customer_${Date.now()}@example.com`,
     telepon: '08123456789',
@@ -118,22 +123,30 @@ export const createPelanggan = async (overrides = {}) => {
 /**
  * Create a test Supplier
  * @param {Object} overrides - Override default values
+ * @param {import('@prisma/client').PrismaClient} prismaOverride - Optional prisma client
  * @returns {Promise<Supplier>}
  */
-export const createSupplier = async (overrides = {}) => {
-  const prisma = getPrisma();
+export const createSupplier = async (overrides = {}, prismaOverride = null) => {
+  const prisma = prismaOverride || getPrisma();
+
+  // Create Cabang first since cabang_id is required by API
+  const cabang = await createCabang({}, prisma);
 
   const defaultData = {
+    cabang_id: cabang.id, // Required by API validation
     namaSupplier: `Test Supplier ${Date.now()}`,
-    kontak: 'Supplier Contact',
+    kontak: 'Supplier Contact', // Note: This field may not exist in schema
     telepon: '081234567890',
     email: `supplier_${Date.now()}@example.com`,
     alamat: 'Jl. Supplier No. 789',
     status: 'aktif',
   };
 
+  // Remove 'kontak' if it's not in the schema
+  const { kontak, ...dataWithoutKontak } = defaultData;
+
   return prisma.supplier.create({
-    data: { ...defaultData, ...overrides },
+    data: { ...dataWithoutKontak, ...overrides },
   });
 };
 
@@ -185,10 +198,11 @@ export const createKategori = async (overrides = {}, prismaOverride = null) => {
 /**
  * Create a test ProdukMaster
  * @param {Object} overrides - Override default values
+ * @param {import('@prisma/client').PrismaClient} prismaOverride - Optional prisma client
  * @returns {Promise<ProdukMaster>}
  */
-export const createProdukMaster = async (overrides = {}) => {
-  const prisma = getPrisma();
+export const createProdukMaster = async (overrides = {}, prismaOverride = null) => {
+  const prisma = prismaOverride || getPrisma();
 
   const defaultData = {
     namaProduk: `Test Produk ${Date.now()}`,

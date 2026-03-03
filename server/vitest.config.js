@@ -14,6 +14,10 @@ export default defineConfig({
       shuffle: false, // Don't shuffle tests
       concurrent: false, // Run tests sequentially
     },
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+    },
   },
   resolve: {
       alias: {

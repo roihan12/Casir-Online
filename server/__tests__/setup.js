@@ -9,6 +9,10 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env.test') });
 let appPrismaModule;
 
 beforeAll(async () => {
+  // Disable Redis caching in tests
+  process.env.REDIS_ENABLED = 'false';
+  process.env.NODE_ENV = 'test';
+
   // Jalankan database di container sebelum semua test suite dimulai
   console.log('Menyiapkan Environment Testing...');
   await startTestDb();

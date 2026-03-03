@@ -147,6 +147,11 @@ const createCacheKey = (prefix, id, suffix = "") => {
  * @returns {Promise<any>} - Data dari cache atau hasil fetchFunction
  */
 const cacheOrFetch = async (key, fetchFunction, ttlSeconds = 86400) => {
+  // Skip caching if Redis is disabled (e.g., in tests)
+  if (process.env.REDIS_ENABLED === 'false') {
+    return await fetchFunction();
+  }
+
   try {
     // Coba ambil dari cache dulu
     const cachedData = await cacheGet(key);
