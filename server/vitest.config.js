@@ -5,14 +5,15 @@ export default defineConfig({
   test: {
     globals: true, // Berkenan menggunakan describe, it, expect tanpa import manual
     environment: 'node', // Testing environment khusus backend (tidak ada dom)
-    setupFiles: ['./__tests__/setup.js'], // Script ini yang akan run container DB
-    include: ['__tests__/**/*.test.js'], // Membaca spec di folder ini saja
-    testTimeout: 120000, // Timeout tinggi untuk instal docker container jika node belum siap
-    hookTimeout: 120000,
-    fileParallelism: false, // Penting! Jangan jalankan file .test secara pararel jika menggunakan 1 test container yang sama untuk hindari racewar
+    globalSetup: ['./__tests__/globalSetup.js'],
+    setupFiles: ['./__tests__/setupWorker.js'],
+    include: ['__tests__/**/*.test.js'],
+    testTimeout: 30000, 
+    hookTimeout: 30000,
+    fileParallelism: false, // We will use false because TRUNCATE runs concurrently
     sequence: {
-      shuffle: false, // Don't shuffle tests
-      concurrent: false, // Run tests sequentially
+      shuffle: false, 
+      concurrent: false, 
     },
     coverage: {
       provider: 'v8',

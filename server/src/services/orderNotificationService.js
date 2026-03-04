@@ -1,3 +1,4 @@
+const { PlatformType } = require("@prisma/client");
 const prisma = require("../config/db");
 const wa = require("./whatsappService");
 
@@ -36,7 +37,7 @@ const getBotConfig = async (cabangId) => {
       where: {
         cabangId,
         isActive: true,
-        platformType: "WHATSAPP",
+        platformType: PlatformType.whatsapp,
       },
     });
     return config;

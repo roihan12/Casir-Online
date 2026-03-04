@@ -81,6 +81,7 @@ export const startTestDb = async () => {
     await execPromise(`npx prisma@6 db push --schema="${prismaSchemaPath}"`, { env });
 
     console.log('[Testcontainers] Database test siap digunakan!');
+    return databaseUrl;
   } catch (error) {
     console.error('[Testcontainers] Gagal memulai database testing:', error);
     throw error;
@@ -171,4 +172,29 @@ export const getDatabaseUrl = () => {
     throw new Error('Database URL not available. Start test database first.');
   }
   return databaseUrl;
+};
+
+export const connectWorkerDb = async () => {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error('DATABASE_URL not set in worker');
+  
+  databaseUrl = url;
+  const { PrismaClient } = await import('@prisma/client');
+  prismaClient = new PrismaClient({
+    datasourceUrl: databaseUrl,
+    log: ['error', 'warn'],
+  });
+  
+  await prismaClient.$connect();
+  return prismaClient;
+};
+
+export const disconnectWorkerDb = async () => {
+  if (prismaClient) {
+    try {
+      await prismaClient.$disconnect();
+    } catch (error) {
+      console.error('[TestWorker] Error disconnecting Prisma:', error.message);
+    }
+  }
 };

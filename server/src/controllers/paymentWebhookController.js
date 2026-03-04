@@ -29,6 +29,8 @@ const handleMidtransWebhook = async (req, res, next) => {
     // 2. Process the notification via Midtrans service
     const result = await midtransService.handleNotification(notification);
 
+    console.log("result", result);
+
     if (!result || !result.order_id) {
       return res.status(200).json({ status: "ok" });
     }
@@ -37,12 +39,13 @@ const handleMidtransWebhook = async (req, res, next) => {
     const transaksi = await prisma.transaksi.findFirst({
       where: {
         transaksi_id: result.order_id,
-        order_source: "ECATALOG",
       },
       include: {
         transaksi_detail: true,
       },
     });
+
+    console.log("transaksi TAYOO", transaksi);
 
     if (!transaksi) {
       logger.warn("Webhook received for unknown transaction", {
@@ -98,6 +101,7 @@ const handleMidtransWebhook = async (req, res, next) => {
  */
 const handlePaymentSuccess = async (transaksi, paymentData) => {
   await prisma.$transaction(async (tx) => {
+    console.log ("Transaksi on3", transaksi)
     // Update transaksi status
     await tx.transaksi.update({
       where: { transaksi_id: transaksi.transaksi_id },

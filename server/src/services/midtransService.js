@@ -270,6 +270,8 @@ const handleNotification = async (notification) => {
   try {
     // Verify the transaction status with Midtrans
     const statusResponse = await getTransactionStatus(notification.order_id);
+    
+    console.log("statusResponse", statusResponse);
 
     // Check if the signature is valid (for production environments)
     // In production, implement proper signature verification
@@ -277,6 +279,9 @@ const handleNotification = async (notification) => {
     // Map Midtrans status to your application status
     const transactionStatus = statusResponse.transaction_status;
     const fraudStatus = statusResponse.fraud_status;
+
+    console.log("transactionStatus", transactionStatus);
+    console.log("fraudStatus", fraudStatus);
 
     let paymentStatus;
 
