@@ -7,7 +7,6 @@ datasource db {
   url      = env("DIRECT_URL")
 }
 
-
 model Cabang {
   id                   String                 @id @map("cabang_id")
   namaCabang           String                 @map("nama_cabang") @db.VarChar(100)
@@ -87,6 +86,7 @@ model User {
   absensi                                           AbsensiPegawai[]
   AuditLog                                          AuditLog[]
   discount_log                                      discount_log[]
+  driverProfile                                     driver?
   gaji_pegawai                                      gaji_pegawai?
   hutangCreated                                     Hutang[]                  @relation("HutangCreatedByUserId")
   hutangDeleted                                     Hutang[]                  @relation("HutangDeletedByUserId")
@@ -356,7 +356,7 @@ model PromoDiskon {
 }
 
 model PromoRule {
-  id           String        @id @default(uuid()) @map("promo_rule_id") @db.VarChar(36)
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @map("promo_rule_id") @db.VarChar(36)
   promoId      String        @map("promo_id") @db.VarChar(36)
   tipeRule     TipeRulePromo @map("tipe_rule")
   operator     String?       @default("EQUAL") @db.VarChar(20)
@@ -372,7 +372,7 @@ model PromoRule {
 }
 
 model PromoCabang {
-  id        String      @id @default(uuid()) @map("promo_cabang_id") @db.VarChar(36)
+  id        String      @id @default(dbgenerated("gen_random_uuid()")) @map("promo_cabang_id") @db.VarChar(36)
   promoId   String      @map("promo_id") @db.VarChar(36)
   cabangId  String      @map("cabang_id") @db.VarChar(36)
   isActive  Boolean?    @default(true) @map("is_active")
@@ -388,7 +388,7 @@ model PromoCabang {
 }
 
 model PromoProduk {
-  id         String          @id @default(uuid()) @map("promo_produk_id") @db.VarChar(36)
+  id         String          @id @default(dbgenerated("gen_random_uuid()")) @map("promo_produk_id") @db.VarChar(36)
   promoId    String          @map("promo_id") @db.VarChar(36)
   tipeTarget TipeTargetPromo @map("tipe_target")
   targetId   String          @map("target_id") @db.VarChar(36)
@@ -405,7 +405,7 @@ model PromoProduk {
 }
 
 model PromoBundle {
-  id             String       @id @default(uuid()) @map("promo_bundle_id") @db.VarChar(36)
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @map("promo_bundle_id") @db.VarChar(36)
   promoId        String       @map("promo_id") @db.VarChar(36)
   produkMasterId String       @map("produk_master_id") @db.VarChar(36)
   minQty         Int?         @default(1) @map("min_qty")
@@ -421,7 +421,7 @@ model PromoBundle {
 }
 
 model TransaksiPromo {
-  id           String      @id @default(uuid()) @map("transaksi_promo_id") @db.VarChar(36)
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @map("transaksi_promo_id") @db.VarChar(36)
   transaksiId  String      @map("transaksi_id") @db.VarChar(36)
   promoId      String      @map("promo_id") @db.VarChar(36)
   totalDiskon  Decimal     @default(0) @map("total_diskon") @db.Decimal(15, 2)
@@ -439,7 +439,7 @@ model TransaksiPromo {
 }
 
 model VoucherUsage {
-  id               String      @id @default(uuid()) @map("voucher_usage_id") @db.VarChar(36)
+  id               String      @id @default(dbgenerated("gen_random_uuid()")) @map("voucher_usage_id") @db.VarChar(36)
   promoId          String      @map("promo_id") @db.VarChar(36)
   pelangganId      String      @map("pelanggan_id") @db.VarChar(36)
   transaksiId      String?     @map("transaksi_id") @db.VarChar(36)
@@ -839,6 +839,8 @@ model Transaksi {
   order_cancelled_reason String?
   confirmed_at           DateTime?             @db.Timestamp(6)
   confirmed_by           String?               @db.VarChar(36)
+  customer_name          String?               @db.VarChar(100)
+  customer_phone         String?               @db.VarChar(20)
   BotOrder               BotOrder[]
   delivery_tracking      delivery_tracking[]
   discount_log           discount_log[]
@@ -1798,7 +1800,7 @@ model RoleMenu {
 }
 
 model Invoice {
-  id                  String     @id @default(uuid()) @db.Uuid
+  id                  String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   nomor_invoice       String     @unique @map("nomor_invoice") @db.VarChar(50)
   tanggal_invoice     DateTime?  @default(now()) @map("tanggal_invoice") @db.Timestamptz(6)
   tanggal_jatuh_tempo DateTime?  @map("tanggal_jatuh_tempo") @db.Timestamptz(6)
@@ -1822,7 +1824,7 @@ model Invoice {
 }
 
 model discount_config {
-  discount_config_id           String                @id @default(uuid()) @db.VarChar(36)
+  discount_config_id           String                @id @default(dbgenerated("gen_random_uuid()")) @db.VarChar(36)
   cabang_id                    String?               @db.VarChar(36)
   enable_member_discount       Boolean?              @default(true)
   member_discount_type         tipe_discount_member? @default(PERCENTAGE)
@@ -1840,7 +1842,7 @@ model discount_config {
 }
 
 model discount_log {
-  discount_log_id     String           @id @default(uuid()) @db.VarChar(36)
+  discount_log_id     String           @id @default(dbgenerated("gen_random_uuid()")) @db.VarChar(36)
   transaksi_id        String           @db.VarChar(36)
   transaksi_detail_id String?          @db.VarChar(36)
   tipe_discount       String           @db.VarChar(50)
@@ -1870,7 +1872,7 @@ model error_log {
 }
 
 model loyalty_reward {
-  loyalty_reward_id       String                @id @default(uuid()) @db.VarChar(36)
+  loyalty_reward_id       String                @id @default(dbgenerated("(gen_random_uuid())::character varying")) @db.VarChar(36)
   name                    String                @db.VarChar(100)
   description             String?
   points_required         Int
@@ -1900,7 +1902,7 @@ model loyalty_reward {
 }
 
 model loyalty_tier {
-  loyalty_tier_id  String           @id @default(uuid()) @db.VarChar(36)
+  loyalty_tier_id  String           @id @default(dbgenerated("(gen_random_uuid())::character varying")) @db.VarChar(36)
   name             String           @db.VarChar(50)
   min_points       Int              @default(0)
   max_points       Int?
@@ -1934,7 +1936,7 @@ model v_loyalty_config {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model gaji_pegawai {
-  gaji_id      String   @id @default(uuid()) @db.Uuid
+  gaji_id      String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   user_id      String   @unique(map: "gaji_pegawai_user_unique") @db.VarChar(200)
   gaji_pokok   Decimal  @db.Decimal(15, 2)
   tarif_lembur Decimal  @default(0) @db.Decimal(15, 2)
@@ -1949,7 +1951,7 @@ model gaji_pegawai {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model hari_libur {
-  libur_id     String   @id @default(uuid()) @db.Uuid
+  libur_id     String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   tanggal      DateTime @unique(map: "hari_libur_tanggal_unique") @db.Date
   nama         String   @db.VarChar(100)
   is_recurring Boolean  @default(false)
@@ -1957,7 +1959,7 @@ model hari_libur {
 }
 
 model izin_cuti {
-  izin_id                          String          @id @default(uuid()) @db.Uuid
+  izin_id                          String          @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   user_id                          String          @db.VarChar(200)
   cabang_id                        String          @db.VarChar(100)
   tipe_izin                        TipeIzin
@@ -1983,7 +1985,7 @@ model izin_cuti {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model komponen_gaji {
-  komponen_id       String              @id @default(uuid()) @db.Uuid
+  komponen_id       String              @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   nama              String              @db.VarChar(100)
   tipe              TipeKomponen
   nilai             Decimal             @default(0) @db.Decimal(15, 2)
@@ -2000,7 +2002,7 @@ model komponen_gaji {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model koreksi_absensi {
-  koreksi_id                             String           @id @default(uuid()) @db.Uuid
+  koreksi_id                             String           @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   absensi_id                             String           @db.VarChar
   user_id                                String           @db.VarChar(200)
   alasan                                 String
@@ -2024,13 +2026,13 @@ model koreksi_absensi {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model kuota_cuti {
-  kuota_id      String   @id @default(uuid()) @db.Uuid
+  kuota_id      String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   user_id       String   @db.VarChar(200)
   tahun         Int
   kuota_tahunan Int      @default(12)
   kuota_diambil Int      @default(0)
   kuota_pending Int      @default(0)
-  kuota_sisa    Int      @default(0)
+  kuota_sisa    Int      @default(dbgenerated("(kuota_tahunan - kuota_diambil)"))
   created_at    DateTime @default(now()) @db.Timestamptz(6)
   updated_at    DateTime @default(now()) @db.Timestamptz(6)
   user          User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -2040,7 +2042,7 @@ model kuota_cuti {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model notifikasi {
-  notif_id   String         @id @default(uuid()) @db.Uuid
+  notif_id   String         @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   user_id    String         @db.VarChar(100)
   tipe       TipeNotifikasi
   judul      String         @db.VarChar(200)
@@ -2056,7 +2058,7 @@ model notifikasi {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model rekap_absensi_harian {
-  rekap_id        String   @id @default(uuid()) @db.Uuid
+  rekap_id        String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   cabang_id       String   @db.VarChar(100)
   tanggal         DateTime @db.Date
   total_karyawan  Int      @default(0)
@@ -2075,7 +2077,7 @@ model rekap_absensi_harian {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model riwayat_gaji_pegawai {
-  riwayat_id     String    @id(map: "riwayat_gaji_pkey") @default(uuid()) @db.Uuid
+  riwayat_id     String    @id(map: "riwayat_gaji_pkey") @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   user_id        String    @db.VarChar(150)
   gaji_pokok     Decimal   @db.Decimal(15, 2)
   tarif_lembur   Decimal   @default(0) @db.Decimal(15, 2)
@@ -2090,7 +2092,7 @@ model riwayat_gaji_pegawai {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model slip_gaji {
-  slip_id               String             @id @default(uuid()) @db.Uuid
+  slip_id               String             @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   user_id               String             @db.VarChar(100)
   cabang_id             String             @db.VarChar(100)
   periode               String             @db.VarChar(7)
@@ -2128,9 +2130,9 @@ model slip_gaji {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model slip_gaji_detail {
-  detail_id     String        @id @default(uuid()) @db.Uuid
+  detail_id     String        @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   slip_gaji_id  String        @db.Uuid
-  komponen_id   String        @db.Uuid  
+  komponen_id   String        @db.Uuid
   nama          String        @db.VarChar(100)
   tipe          TipeKomponen
   nilai         Decimal       @db.Decimal(15, 2)
@@ -2141,7 +2143,7 @@ model slip_gaji_detail {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model tunjangan_pegawai {
-  tunjangan_id   String        @id @default(uuid()) @db.Uuid
+  tunjangan_id   String        @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   user_id        String        @db.VarChar(150)
   komponen_id    String        @db.Uuid
   nilai_override Decimal?      @db.Decimal(15, 2)
@@ -2157,7 +2159,7 @@ model tunjangan_pegawai {
 }
 
 model master_shift {
-  id                 String        @id @default(uuid()) @map("master_shift_id") @db.Uuid
+  id                 String        @id @default(dbgenerated("extensions.uuid_generate_v4()")) @map("master_shift_id") @db.Uuid
   namaShift          String        @map("nama_shift") @db.VarChar(50)
   jamMasuk           String        @map("jam_masuk") @db.VarChar(5)
   jamKeluar          String        @map("jam_keluar") @db.VarChar(5)
@@ -2177,7 +2179,7 @@ model master_shift {
 }
 
 model regu {
-  id          String        @id @default(uuid()) @db.Uuid
+  id          String        @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   nama_regu   String        @db.VarChar(255)
   cabang_id   String        @db.VarChar(100)
   created_by  String?       @db.VarChar(100)
@@ -2190,7 +2192,7 @@ model regu {
 }
 
 model regu_member {
-  id         String    @id @default(uuid()) @db.Uuid
+  id         String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   regu_id    String    @db.Uuid
   user_id    String    @db.VarChar(100)
   joined_at  DateTime? @default(now()) @db.Timestamp(6)
@@ -2203,7 +2205,7 @@ model regu_member {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model delivery_tracking {
-  tracking_id    String    @id @default(uuid()) @db.VarChar(36)
+  tracking_id    String    @id @default(dbgenerated("gen_random_uuid()")) @db.VarChar(36)
   transaksi_id   String    @db.VarChar(36)
   driver_id      String?   @db.VarChar(36)
   status         String    @db.VarChar(20)
@@ -2225,7 +2227,7 @@ model delivery_tracking {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model driver {
-  driver_id             String              @id @default(uuid()) @db.VarChar(36)
+  driver_id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.VarChar(36)
   cabang_id             String              @db.VarChar(36)
   nama                  String              @db.VarChar(100)
   no_hp                 String              @db.VarChar(20)
@@ -2246,17 +2248,20 @@ model driver {
   is_available          Boolean?            @default(true)
   created_at            DateTime?           @default(now()) @db.Timestamp(6)
   updated_at            DateTime?           @default(now()) @db.Timestamp(6)
+  user_id               String?             @unique(map: "driver_user_id_unique") @db.VarChar(36)
   delivery_tracking     delivery_tracking[]
+  user                  User?               @relation(fields: [user_id], references: [id], onUpdate: NoAction, map: "fk_driver_user")
   cabang                Cabang              @relation(fields: [cabang_id], references: [id], onUpdate: NoAction, map: "fk_driver_cabang")
   transaksi             Transaksi[]
 
   @@index([cabang_id], map: "idx_driver_cabang")
   @@index([status], map: "idx_driver_status")
+  @@index([user_id], map: "idx_driver_user_id")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model order_cancellation {
-  cancellation_id     String    @id @default(uuid()) @db.VarChar(36)
+  cancellation_id     String    @id @default(dbgenerated("gen_random_uuid()")) @db.VarChar(36)
   transaksi_id        String    @db.VarChar(36)
   cancelled_by        String?   @db.VarChar(36)
   cancellation_reason String?   @db.VarChar(255)
@@ -2275,7 +2280,7 @@ model order_cancellation {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model payment_webhook_log {
-  webhook_id        String    @id @default(uuid()) @db.VarChar(36)
+  webhook_id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.VarChar(36)
   payment_reference String    @db.VarChar(255)
   webhook_source    String    @db.VarChar(50)
   event_type        String?   @db.VarChar(100)

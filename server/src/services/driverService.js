@@ -17,11 +17,14 @@ const getDrivers = async (cabangId, { page = 1, limit = 20 } = {}) => {
       orderBy: { created_at: "desc" },
       skip: offset,
       take: limit,
+      include: {
+        user: {
+          select: { id: true, username: true, namaLengkap: true },
+        },
+      },
     }),
     prisma.driver.count({ where: { cabang_id: cabangId } }),
   ]);
-
-  console.log(drivers);
 
   return {
     data: drivers.map((d) => ({
@@ -38,6 +41,9 @@ const getDrivers = async (cabangId, { page = 1, limit = 20 } = {}) => {
       successful_deliveries: d.successful_deliveries,
       average_rating: d.average_rating ? Number(d.average_rating) : null,
       last_seen_at: d.last_seen_at,
+      linked_user_id: d.user_id || null,
+      linked_username: d.user?.username || null,
+      linked_user_name: d.user?.namaLengkap || null,
     })),
     pagination: {
       page,
@@ -85,6 +91,7 @@ const createDriver = async (cabangId, data) => {
       jenis_kendaraan: data.jenis_kendaraan || null,
       plat_kendaraan: data.plat_kendaraan || null,
       max_delivery_distance: data.max_delivery_distance || null,
+      user_id: data.user_id || null,
       status: "ACTIVE",
       is_available: true,
     },
@@ -110,22 +117,29 @@ const updateDriver = async (driverId, data) => {
     throw new ResponseError(404, "Driver tidak ditemukan");
   }
 
+  const updateData = {
+    ...(data.nama && { nama: data.nama }),
+    ...(data.no_hp && { no_hp: data.no_hp }),
+    ...(data.email !== undefined && { email: data.email }),
+    ...(data.jenis_kendaraan !== undefined && {
+      jenis_kendaraan: data.jenis_kendaraan,
+    }),
+    ...(data.plat_kendaraan !== undefined && {
+      plat_kendaraan: data.plat_kendaraan,
+    }),
+    ...(data.max_delivery_distance !== undefined && {
+      max_delivery_distance: data.max_delivery_distance,
+    }),
+  };
+
+  // Handle user_id linking (can be set or unlinked with null)
+  if (data.user_id !== undefined) {
+    updateData.user_id = data.user_id || null;
+  }
+
   const driver = await prisma.driver.update({
     where: { driver_id: driverId },
-    data: {
-      ...(data.nama && { nama: data.nama }),
-      ...(data.no_hp && { no_hp: data.no_hp }),
-      ...(data.email !== undefined && { email: data.email }),
-      ...(data.jenis_kendaraan !== undefined && {
-        jenis_kendaraan: data.jenis_kendaraan,
-      }),
-      ...(data.plat_kendaraan !== undefined && {
-        plat_kendaraan: data.plat_kendaraan,
-      }),
-      ...(data.max_delivery_distance !== undefined && {
-        max_delivery_distance: data.max_delivery_distance,
-      }),
-    },
+    data: updateData,
   });
 
   return {
@@ -134,6 +148,26 @@ const updateDriver = async (driverId, data) => {
     no_hp: driver.no_hp,
     status: driver.status,
   };
+};
+
+/**
+ * Get users that are not yet linked to any driver
+ */
+const getAvailableUsers = async (cabangId) => {
+  const users = await prisma.user.findMany({
+    where: {
+      status: "aktif",
+      driverProfile: null, // Not yet linked
+      userCabang: cabangId ? { some: { cabangId } } : undefined,
+    },
+    select: {
+      id: true,
+      username: true,
+      namaLengkap: true,
+    },
+    orderBy: { namaLengkap: "asc" },
+  });
+  return users;
 };
 
 /**
@@ -211,4 +245,5 @@ module.exports = {
   updateDriver,
   deleteDriver,
   toggleDriverStatus,
+  getAvailableUsers,
 };

@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
 import {
   FiUserPlus,
   FiEdit2,
@@ -14,6 +15,8 @@ import {
   FiX,
   FiStar,
   FiUsers,
+  FiLink,
+  FiUnlock,
 } from "react-icons/fi";
 import {
   useDrivers,
@@ -22,6 +25,7 @@ import {
   useDeleteDriver,
   useToggleDriverStatus,
 } from "../hooks/useDelivery";
+import deliveryClientService from "../../../services/deliveryClientService";
 import toast from "react-hot-toast";
 
 const driverSchema = z.object({
@@ -33,6 +37,7 @@ const driverSchema = z.object({
   email: z.string().email("Format email tidak valid").optional().or(z.literal("")),
   jenis_kendaraan: z.string().max(50).optional().or(z.literal("")),
   plat_kendaraan: z.string().max(20).optional().or(z.literal("")),
+  user_id: z.string().optional().or(z.literal("")),
 });
 
 const DriverManagementPage = () => {
@@ -44,6 +49,14 @@ const DriverManagementPage = () => {
   const drivers = driversData?.data || [];
   const pagination = driversData?.pagination || {};
 
+  // Query available users for linking
+  const { data: availableUsersData, refetch: refetchUsers } = useQuery({
+    queryKey: ["available-users-for-driver"],
+    queryFn: () => deliveryClientService.getAvailableUsers(),
+    enabled: showForm,
+  });
+  const availableUsers = availableUsersData?.data || [];
+
   const createDriver = useCreateDriver();
   const updateDriver = useUpdateDriver();
   const deleteDriver = useDeleteDriver();
@@ -53,6 +66,8 @@ const DriverManagementPage = () => {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(driverSchema),
@@ -62,6 +77,7 @@ const DriverManagementPage = () => {
       email: "",
       jenis_kendaraan: "",
       plat_kendaraan: "",
+      user_id: "",
     },
   });
 
@@ -73,6 +89,7 @@ const DriverManagementPage = () => {
       email: "",
       jenis_kendaraan: "",
       plat_kendaraan: "",
+      user_id: "",
     });
     setShowForm(true);
   };
@@ -85,21 +102,25 @@ const DriverManagementPage = () => {
       email: driver.email || "",
       jenis_kendaraan: driver.jenis_kendaraan || "",
       plat_kendaraan: driver.plat_kendaraan || "",
+      user_id: driver.linked_user_id || "",
     });
     setShowForm(true);
   };
 
   const onSubmit = async (data) => {
     try {
+      // Convert empty user_id to null
+      const payload = { ...data, user_id: data.user_id || null };
       if (editingDriver) {
-        await updateDriver.mutateAsync({ id: editingDriver.id, data });
+        await updateDriver.mutateAsync({ id: editingDriver.id, data: payload });
         toast.success("Driver berhasil diupdate");
       } else {
-        await createDriver.mutateAsync(data);
+        await createDriver.mutateAsync(payload);
         toast.success("Driver berhasil ditambahkan");
       }
       setShowForm(false);
       reset();
+      refetchUsers();
     } catch (err) {
       toast.error(err.response?.data?.errors || "Gagal menyimpan");
     }
@@ -123,6 +144,14 @@ const DriverManagementPage = () => {
       toast.error(err.response?.data?.errors || "Gagal toggle");
     }
   };
+
+  // Build user options: available users + the currently linked user (if editing)
+  const userOptions = [
+    ...availableUsers,
+    ...(editingDriver?.linked_user_id
+      ? [{ id: editingDriver.linked_user_id, username: editingDriver.linked_username, namaLengkap: editingDriver.linked_user_name }]
+      : []),
+  ].filter((u, i, a) => a.findIndex(x => x.id === u.id) === i); // dedupe
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -238,6 +267,20 @@ const DriverManagementPage = () => {
                     {driver.plat_kendaraan && ` · ${driver.plat_kendaraan}`}
                   </p>
                 )}
+                {/* User Link Badge */}
+                {driver.linked_user_id ? (
+                  <p className="text-sm flex items-center gap-2">
+                    <FiLink className="w-3.5 h-3.5 text-indigo-400" />
+                    <span className="text-indigo-600 font-medium bg-indigo-50 px-2 py-0.5 rounded-full text-xs">
+                      🔗 {driver.linked_user_name || driver.linked_username}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-sm flex items-center gap-2">
+                    <FiUnlock className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="text-amber-600 text-xs">Belum terhubung ke akun</span>
+                  </p>
+                )}
               </div>
 
               {/* Stats */}
@@ -278,7 +321,7 @@ const DriverManagementPage = () => {
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setShowForm(false)}
           />
-          <div className="relative bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+          <div className="relative bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-bold text-slate-800">
                 {editingDriver ? "Edit Driver" : "Tambah Driver"}
@@ -355,6 +398,28 @@ const DriverManagementPage = () => {
                     placeholder="B 1234 XYZ"
                   />
                 </div>
+              </div>
+
+              {/* Link to User Account */}
+              <div className="border-t border-slate-200 pt-4">
+                <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-1.5">
+                  <FiLink className="w-3.5 h-3.5 text-indigo-500" />
+                  Hubungkan ke Akun User
+                </label>
+                <p className="text-xs text-slate-400 mb-2">
+                  Pilih akun user agar driver bisa login ke halaman tugas pengiriman
+                </p>
+                <select
+                  {...register("user_id")}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all"
+                >
+                  <option value="">-- Tidak dihubungkan --</option>
+                  {userOptions.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.namaLengkap || u.username} (@{u.username})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex gap-3 pt-2">

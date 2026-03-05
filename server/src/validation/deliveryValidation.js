@@ -16,8 +16,8 @@ const updateDeliveryStatusValidation = Joi.object({
       "any.only": "Status harus PICKED_UP atau DELIVERED",
     }),
   notes: Joi.string().max(500).optional().allow(null, ""),
-  latitude: Joi.number().min(-90).max(90).optional(),
-  longitude: Joi.number().min(-180).max(180).optional(),
+  latitude: Joi.number().min(-90).max(90).optional().allow(null),
+  longitude: Joi.number().min(-180).max(180).optional().allow(null),
   photo_url: Joi.string().uri().optional().allow(null, ""),
 });
 
@@ -49,6 +49,15 @@ const driverLocationValidation = Joi.object({
   longitude: Joi.number().min(-180).max(180).required(),
 });
 
+const driverHistoryValidation = Joi.object({
+  status: Joi.string()
+    .valid("DELIVERED", "FAILED", "CANCELLED", "ALL")
+    .optional()
+    .default("ALL"),
+  page: Joi.number().integer().min(1).optional().default(1),
+  limit: Joi.number().integer().min(1).max(50).optional().default(20),
+});
+
 module.exports = {
   assignDriverValidation,
   updateDeliveryStatusValidation,
@@ -56,4 +65,5 @@ module.exports = {
   failedDeliveryValidation,
   getDeliveryOrdersValidation,
   driverLocationValidation,
+  driverHistoryValidation,
 };

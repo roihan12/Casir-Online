@@ -65,6 +65,8 @@ const formatUserData = (user, permissions) => {
     telepon: user.telepon,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
+    // Driver link — if user is linked to a driver record
+    driverId: user.driverProfile?.driver_id || null,
     roles: user.userRoles?.map((ur) => ({
       roleId: ur.roleId,
       namaRole: ur.role.namaRole,
@@ -119,6 +121,9 @@ const login = async (username, password, ipAddress, userAgent) => {
               },
             },
           },
+        },
+        driverProfile: {
+          select: { driver_id: true },
         },
       },
     });
@@ -246,6 +251,9 @@ const getProfile = async (id) => {
         include: {
           cabang: true,
         },
+      },
+      driverProfile: {
+        select: { driver_id: true },
       },
     },
   });

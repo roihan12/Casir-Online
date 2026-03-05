@@ -150,10 +150,10 @@ const AdminOnlineOrdersPage = () => {
                       </td>
                       <td className="px-6 py-4">
                         <span className="font-medium text-gray-800 block">
-                          {trx.pelanggan ? trx.pelanggan.namaPelanggan : "Pelanggan Guest"}
+                          {trx.customer_name ? trx.customer_name : "Pelanggan Guest"}
                         </span>
-                        {trx.pelanggan?.telepon && (
-                          <span className="text-xs text-gray-500">{trx.pelanggan.telepon}</span>
+                        {trx.customer_phone && (
+                          <span className="text-xs text-gray-500">{trx.customer_phone}</span>
                         )}
                       </td>
                       <td className="px-6 py-4">

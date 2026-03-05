@@ -1,8 +1,22 @@
-const prisma = require("../config/db");
+const { basePrisma } = require("../config/db");
 const midtransService = require("../services/midtransService");
 const { ResponseError } = require("../error/responseError");
 const { logger } = require("../utils/logger");
 const orderNotification = require("../services/orderNotificationService");
+
+/**
+ * Helper: Run webhook operations with RLS context
+ * Webhook is public (no auth), so we must SET LOCAL manually
+ * using the cabang_id from the transaksi
+ */
+const withWebhookRls = async (cabangId, callback) => {
+  return basePrisma.$transaction(async (tx) => {
+    await tx.$executeRawUnsafe(
+      `SET LOCAL app.current_cabang_ids = '${cabangId.replace(/'/g, "''")}'`
+    );
+    return callback(tx);
+  }, { timeout: 30000 });
+};
 
 /**
  * Handle Midtrans webhook notification
@@ -12,8 +26,8 @@ const handleMidtransWebhook = async (req, res, next) => {
   try {
     const notification = req.body;
 
-    // 1. Log the webhook request
-    await prisma.payment_webhook_log.create({
+    // 1. Log the webhook request (payment_webhook_log is NOT RLS-protected)
+    await basePrisma.payment_webhook_log.create({
       data: {
         payment_reference: notification.order_id || "unknown",
         webhook_source: "MIDTRANS",
@@ -36,18 +50,38 @@ const handleMidtransWebhook = async (req, res, next) => {
     }
 
     // 3. Find the transaction
-    const transaksi = await prisma.transaksi.findFirst({
-      where: {
-        transaksi_id: result.order_id,
-      },
-      include: {
-        transaksi_detail: true,
-      },
+    //    RLS blocks all rows when app.current_cabang_ids is not set.
+    //    Webhook has no auth context, so we first get ALL cabang IDs
+    //    (cabang table is NOT RLS-protected) and SET LOCAL to bypass RLS.
+    const rawTransaksi = await basePrisma.$transaction(async (tx) => {
+      // Get all cabang IDs (cabang table has no RLS)
+      const allCabang = await tx.cabang.findMany({
+        select: { id: true },
+      });
+      const allCabangIds = allCabang.map((c) => c.id).join(",");
+
+      // SET LOCAL with all cabang IDs to bypass RLS
+      await tx.$executeRawUnsafe(
+        `SET LOCAL app.current_cabang_ids = '${allCabangIds}'`
+      );
+
+      return tx.transaksi.findFirst({
+        where: {
+          transaksi_id: result.order_id,
+        },
+        select: {
+          transaksi_id: true,
+          cabang_id: true,
+          order_status: true,
+          status_pembayaran: true,
+          nomor_transaksi: true,
+        },
+      });
     });
 
-    console.log("transaksi TAYOO", transaksi);
+    console.log("transaksi RAW", rawTransaksi);
 
-    if (!transaksi) {
+    if (!rawTransaksi) {
       logger.warn("Webhook received for unknown transaction", {
         order_id: result.order_id,
       });
@@ -56,13 +90,35 @@ const handleMidtransWebhook = async (req, res, next) => {
 
     // 4. Check idempotency — skip if already processed
     if (
-      transaksi.order_status === "COMPLETED" ||
-      transaksi.order_status === "CANCELLED"
+      rawTransaksi.order_status === "COMPLETED" ||
+      rawTransaksi.order_status === "CANCELLED"
     ) {
       return res.status(200).json({ status: "ok", message: "Already processed" });
     }
 
-    // 5. Process based on payment status
+    // 5. Now fetch full transaksi with details using RLS context (cabang_id)
+    const transaksi = await withWebhookRls(rawTransaksi.cabang_id, async (tx) => {
+      return tx.transaksi.findFirst({
+        where: {
+          transaksi_id: result.order_id,
+        },
+        include: {
+          transaksi_detail: true,
+        },
+      });
+    });
+
+    console.log("transaksi FULL", transaksi);
+
+    if (!transaksi) {
+      logger.warn("Webhook: transaksi not found after RLS set", {
+        order_id: result.order_id,
+        cabang_id: rawTransaksi.cabang_id,
+      });
+      return res.status(200).json({ status: "ok" });
+    }
+
+    // 6. Process based on payment status
     if (result.status === "SUKSES") {
       await handlePaymentSuccess(transaksi, result);
     } else if (result.status === "GAGAL") {
@@ -70,8 +126,8 @@ const handleMidtransWebhook = async (req, res, next) => {
     }
     // PENDING status — no action needed
 
-    // 6. Update webhook log as processed
-    await prisma.payment_webhook_log.updateMany({
+    // 7. Update webhook log as processed
+    await basePrisma.payment_webhook_log.updateMany({
       where: {
         payment_reference: result.order_id,
         processed: false,
@@ -100,8 +156,17 @@ const handleMidtransWebhook = async (req, res, next) => {
  * Handle successful payment
  */
 const handlePaymentSuccess = async (transaksi, paymentData) => {
-  await prisma.$transaction(async (tx) => {
-    console.log ("Transaksi on3", transaksi)
+  console.log("Transaksi on3", transaksi);
+
+  // Use withWebhookRls so all operations run with proper cabang_id SET LOCAL
+  await withWebhookRls(transaksi.cabang_id, async (tx) => {
+    // Find a valid userId from this cabang for inventory movements
+    const cabangUser = await tx.$queryRawUnsafe(
+      `SELECT user_id FROM user_cabang WHERE cabang_id = $1 LIMIT 1`,
+      transaksi.cabang_id
+    );
+    const systemUserId = cabangUser.length > 0 ? cabangUser[0].user_id : null;
+
     // Update transaksi status
     await tx.transaksi.update({
       where: { transaksi_id: transaksi.transaksi_id },
@@ -159,18 +224,20 @@ const handlePaymentSuccess = async (transaksi, paymentData) => {
           data: { stok: { decrement: detail.jumlah } },
         });
 
-        // Create inventory movement
-        await tx.inventoryMovement.create({
-          data: {
-            produkId: detail.produk_id,
-            referenceId: transaksi.transaksi_id,
-            referenceType: "PENJUALAN_ONLINE",
-            quantity: -detail.jumlah,
-            keterangan: `Pembayaran online ${transaksi.nomor_transaksi}`,
-            userId: "system",
-            cabangId: transaksi.cabang_id,
-          },
-        });
+        // Create inventory movement (only if we have a valid user)
+        if (systemUserId) {
+          await tx.inventoryMovement.create({
+            data: {
+              produkId: detail.produk_id,
+              referenceId: transaksi.transaksi_id,
+              referenceType: "PENJUALAN_ONLINE",
+              quantity: -detail.jumlah,
+              keterangan: `Pembayaran online ${transaksi.nomor_transaksi}`,
+              userId: systemUserId,
+              cabangId: transaksi.cabang_id,
+            },
+          });
+        }
       }
     }
   });
@@ -186,7 +253,8 @@ const handlePaymentSuccess = async (transaksi, paymentData) => {
  * Handle failed/expired/cancelled payment
  */
 const handlePaymentFailed = async (transaksi, paymentData) => {
-  await prisma.$transaction(async (tx) => {
+  // Use withWebhookRls so all operations run with proper cabang_id SET LOCAL
+  await withWebhookRls(transaksi.cabang_id, async (tx) => {
     // Update transaksi
     await tx.transaksi.update({
       where: { transaksi_id: transaksi.transaksi_id },
@@ -228,3 +296,4 @@ const handlePaymentFailed = async (transaksi, paymentData) => {
 module.exports = {
   handleMidtransWebhook,
 };
+

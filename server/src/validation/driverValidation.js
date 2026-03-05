@@ -15,6 +15,7 @@ const createDriverValidation = Joi.object({
   jenis_kendaraan: Joi.string().max(50).optional().allow(null, ""),
   plat_kendaraan: Joi.string().max(20).optional().allow(null, ""),
   max_delivery_distance: Joi.number().integer().min(0).optional(),
+  user_id: Joi.string().max(36).optional().allow(null, ""),
 });
 
 const updateDriverValidation = Joi.object({
@@ -26,6 +27,7 @@ const updateDriverValidation = Joi.object({
   jenis_kendaraan: Joi.string().max(50).optional().allow(null, ""),
   plat_kendaraan: Joi.string().max(20).optional().allow(null, ""),
   max_delivery_distance: Joi.number().integer().min(0).optional(),
+  user_id: Joi.string().max(36).optional().allow(null, ""),
 });
 
 module.exports = {

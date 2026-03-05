@@ -109,6 +109,21 @@ const toggleDriverStatus = async (req, res, next) => {
   }
 };
 
+const getAvailableUsers = async (req, res, next) => {
+  try {
+    const cabangId = req.user?.cabangId || req.user?.cabang?.[0]?.cabangId || req.query.cabangId;
+    const result = await driverService.getAvailableUsers(cabangId);
+
+    res.status(200).json({
+      status: true,
+      message: "Success get available users",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getDrivers,
   getAvailableDrivers,
@@ -116,4 +131,5 @@ module.exports = {
   updateDriver,
   deleteDriver,
   toggleDriverStatus,
+  getAvailableUsers,
 };

@@ -151,6 +151,10 @@ import StoreFinderPage from "./features/catalog/pages/StoreFinderPage";
 import TrackOrderPage from "./features/catalog/pages/TrackOrderPage";
 import DeliveryDashboardPage from "./features/delivery/pages/DeliveryDashboardPage";
 import DriverManagementPage from "./features/delivery/pages/DriverManagementPage";
+import DriverDeliveryPage from "./features/delivery/pages/DriverDeliveryPage";
+import DriverLayout from "./features/delivery/components/DriverLayout";
+import DriverDashboardPage from "./features/delivery/pages/DriverDashboardPage";
+import DriverHistoryPage from "./features/delivery/pages/DriverHistoryPage";
 
 function App() {
   return (
@@ -750,6 +754,20 @@ function App() {
             >
               <Route index element={<DeliveryDashboardPage />} />
               <Route path="drivers" element={<DriverManagementPage />} />
+            </Route>
+
+            {/* Driver App (Mobile Layout) */}
+            <Route
+              path="/delivery/driver"
+              element={
+                <ProtectedRoute>
+                  <DriverLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="dashboard" element={<DriverDashboardPage />} />
+              <Route path="tasks" element={<DriverDeliveryPage />} />
+              <Route path="history" element={<DriverHistoryPage />} />
             </Route>
 
             {/* 404 Not Found */}

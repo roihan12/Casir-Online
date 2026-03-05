@@ -42,4 +42,16 @@ router.post(
   deliveryController.addDeliveryLocation
 );
 
+// Driver: get dashboard stats
+router.get(
+  "/driver/:driverId/dashboard",
+  deliveryController.getDriverDashboard
+);
+
+// Driver: get delivery history
+router.get(
+  "/driver/:driverId/history",
+  deliveryController.getDriverHistory
+);
+
 module.exports = router;

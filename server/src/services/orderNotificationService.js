@@ -221,9 +221,75 @@ ${trackingUrl}`;
   }
 };
 
+/**
+ * Send notification to DRIVER when assigned a delivery
+ */
+const sendDriverAssignmentNotification = async (transaksiId, driverId) => {
+  try {
+    const transaksi = await prisma.transaksi.findUnique({
+      where: { transaksi_id: transaksiId },
+      include: {
+        transaksi_detail: {
+          include: {
+            produk: {
+              include: { produkMaster: { select: { namaProduk: true } } },
+            },
+          },
+        },
+      },
+    });
+
+    if (!transaksi) return;
+
+    const driver = await prisma.driver.findUnique({
+      where: { driver_id: driverId },
+    });
+
+    if (!driver?.no_hp) return;
+
+    const phone = formatPhone(driver.no_hp);
+    if (!phone) return;
+
+    const botConfig = await getBotConfig(transaksi.cabang_id);
+    const deviceId = botConfig?.deviceId || null;
+
+    const itemsList = (transaksi.transaksi_detail || [])
+      .map((d, i) => `  ${i + 1}. ${d.produk?.produkMaster?.namaProduk || "Item"} x${d.jumlah}`)
+      .join("\n");
+
+    const isCOD = transaksi.status_pembayaran !== "LUNAS";
+
+    const message = `🚚 *Tugas Pengiriman Baru!*
+
+Halo *${driver.nama}* 👋
+
+Anda mendapat tugas pengiriman baru:
+
+📋 *No. Pesanan:* ${transaksi.nomor_transaksi}
+👤 *Customer:* ${transaksi.customer_name || "-"}
+📱 *Telepon:* ${transaksi.customer_phone || "-"}
+📍 *Alamat:* ${transaksi.customer_address || "-"}
+📝 *Catatan:* ${transaksi.customer_notes || "-"}
+
+🛒 *Item:*
+${itemsList}
+
+💵 *Total:* ${formatCurrency(Number(transaksi.total))}
+💳 *Pembayaran:* ${isCOD ? "⚠️ COD — Tagih ke customer" : "✅ Sudah Lunas"}
+
+Segera ambil pesanan di toko! 🏃‍♂️`;
+
+    await wa.sendMessage(phone, message, deviceId);
+    console.log(`[WA] Driver assignment notification sent to ${phone}`);
+  } catch (err) {
+    console.error("[WA] Failed to send driver notification:", err.message);
+  }
+};
+
 module.exports = {
   sendOrderConfirmation,
   sendOrderNotificationToAdmin,
   sendPaymentSuccessNotification,
   sendOrderStatusUpdate,
+  sendDriverAssignmentNotification,
 };

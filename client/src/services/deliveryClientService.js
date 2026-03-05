@@ -89,7 +89,27 @@ const deliveryClientService = {
   addDeliveryLocation: async (transaksiId, data) => {
     const response = await api.post(`/delivery/orders/${transaksiId}/location`, data);
     return response.data;
-  }
+  },
+
+  getAvailableUsers: async () => {
+    const response = await api.get("/drivers/available-users");
+    return response.data;
+  },
+
+  getDriverDashboard: async (driverId) => {
+    const response = await api.get(`/delivery/driver/${driverId}/dashboard`);
+    return response.data;
+  },
+
+  getDriverHistory: async (driverId, params = {}) => {
+    const query = new URLSearchParams();
+    if (params.status && params.status !== "ALL") query.append("status", params.status);
+    if (params.page) query.append("page", params.page);
+    if (params.limit) query.append("limit", params.limit);
+    
+    const response = await api.get(`/delivery/driver/${driverId}/history?${query.toString()}`);
+    return response.data;
+  },
 };
 
 export default deliveryClientService;

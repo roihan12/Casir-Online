@@ -11,6 +11,9 @@ router.get("/", driverController.getDrivers);
 // Get available drivers
 router.get("/available", driverController.getAvailableDrivers);
 
+// Get users not yet linked to any driver (for dropdown)
+router.get("/available-users", driverController.getAvailableUsers);
+
 // Create driver
 router.post("/", driverController.createDriver);
 

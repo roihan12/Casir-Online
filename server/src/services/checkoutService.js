@@ -272,6 +272,8 @@ const createOnlineOrder = async (data) => {
         biaya_tambahan: biayaTambahan,
         delivery_fee: deliveryFee,
         total,
+        customer_name: customer_name || null,
+        customer_phone: customer_phone || null,
         customer_address: customer_address || null,
         customer_notes: customer_notes || null,
         customer_email: customer_email || null,
@@ -316,6 +318,13 @@ const createOnlineOrder = async (data) => {
 
     // For COD and PAY_AT_STORE: reduce stock immediately
     if (isImmediateConfirm) {
+      // Find a valid userId from this cabang for inventory movements
+      const cabangUser = await tx.$queryRawUnsafe(
+        `SELECT user_id FROM user_cabang WHERE cabang_id = $1 LIMIT 1`,
+        cabang_id
+      );
+      const systemUserId = cabangUser.length > 0 ? cabangUser[0].user_id : null;
+
       for (const item of items) {
         const product = products.find((p) => p.id === item.produk_id);
         if (product.stok !== null) {
@@ -324,18 +333,20 @@ const createOnlineOrder = async (data) => {
             data: { stok: { decrement: item.jumlah } },
           });
 
-          // Create inventory movement
-          await tx.inventoryMovement.create({
-            data: {
-              produkId: item.produk_id,
-              referenceId: transaksi.transaksi_id,
-              referenceType: "PENJUALAN_ONLINE",
-              quantity: -item.jumlah,
-              keterangan: `Penjualan online ${nomorTransaksi}`,
-              userId: "system",
-              cabangId: cabang_id,
-            },
-          });
+          // Create inventory movement (only if we have a valid user)
+          if (systemUserId) {
+            await tx.inventoryMovement.create({
+              data: {
+                produkId: item.produk_id,
+                referenceId: transaksi.transaksi_id,
+                referenceType: "PENJUALAN_ONLINE",
+                quantity: -item.jumlah,
+                keterangan: `Penjualan online ${nomorTransaksi}`,
+                userId: systemUserId,
+                cabangId: cabang_id,
+              },
+            });
+          }
         }
       }
     }
@@ -369,6 +380,44 @@ const createOnlineOrder = async (data) => {
           name: product.produkMaster.namaProduk.substring(0, 50),
         };
       });
+
+      // Tambahkan komponen biaya sebagai item terpisah agar
+      // calculatedGross di midtransService cocok dengan total di DB
+      if (pajak > 0) {
+        orderItems.push({
+          id: "TAX",
+          price: Math.round(pajak),
+          quantity: 1,
+          name: "Pajak",
+        });
+      }
+
+      if (deliveryFee > 0) {
+        orderItems.push({
+          id: "DELIVERY-FEE",
+          price: Math.round(deliveryFee),
+          quantity: 1,
+          name: "Biaya Pengiriman",
+        });
+      }
+
+      if (biayaTambahan > 0) {
+        orderItems.push({
+          id: "PACKAGING-FEE",
+          price: Math.round(biayaTambahan),
+          quantity: 1,
+          name: "Biaya Kemasan",
+        });
+      }
+
+      if (diskon > 0) {
+        orderItems.push({
+          id: "DISCOUNT",
+          price: -Math.round(diskon),
+          quantity: 1,
+          name: "Diskon",
+        });
+      }
 
       paymentResult = await midtransService.generatePaymentLink({
         transaction_id: transaksi.transaksi_id,
@@ -441,6 +490,65 @@ const createOnlineOrder = async (data) => {
   const notifData = { ...response, cabang_id };
   orderNotification.sendOrderConfirmation(notifData, cabang).catch(() => {});
   orderNotification.sendOrderNotificationToAdmin(notifData, cabang).catch(() => {});
+
+  // 10. Earn loyalty points (non-blocking) — only if pelanggan is matched
+  if (matchedPelangganId && total > 0) {
+    (async () => {
+      try {
+        const loyaltyConfig = await prisma.loyaltyConfig.findFirst({
+          where: { cabangId: cabang_id, isActive: true },
+        });
+
+        if (loyaltyConfig && loyaltyConfig.pointRate > 0) {
+          const minTx = Number(loyaltyConfig.minimumTransaction || 0);
+          if (total >= minTx) {
+            const pointsEarned = Math.floor(total / loyaltyConfig.pointRate);
+            if (pointsEarned > 0) {
+              const pelanggan = await prisma.pelanggan.findUnique({
+                where: { id: matchedPelangganId },
+                select: { poin: true },
+              });
+              const currentPoints = pelanggan?.poin || 0;
+              const newPoints = currentPoints + pointsEarned;
+
+              // Update pelanggan points
+              await prisma.pelanggan.update({
+                where: { id: matchedPelangganId },
+                data: {
+                  poin: newPoints,
+                  lifetime_points: { increment: pointsEarned },
+                },
+              });
+
+              // Create loyalty point history
+              await prisma.loyaltyPointHistory.create({
+                data: {
+                  pelangganId: matchedPelangganId,
+                  transaksiId: result.transaksi.transaksi_id,
+                  pointSebelumnya: currentPoints,
+                  pointDidapatkan: pointsEarned,
+                  pointAkhir: newPoints,
+                  type: "EARN",
+                  keterangan: `Poin dari transaksi online ${result.transaksi.nomor_transaksi}`,
+                  description: `Earned ${pointsEarned} points from order`,
+                },
+              });
+
+              // Update transaksi points_earned
+              await prisma.transaksi.update({
+                where: { transaksi_id: result.transaksi.transaksi_id },
+                data: { points_earned: pointsEarned },
+              });
+
+              response.points_earned = pointsEarned;
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Loyalty point earning failed:", err.message);
+      }
+    })();
+  }
 
   return response;
 };

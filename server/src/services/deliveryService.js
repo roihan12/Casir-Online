@@ -1,6 +1,7 @@
 const prisma = require("../config/db");
 const { ResponseError } = require("../error/responseError");
 const { logger } = require("../utils/logger");
+const orderNotification = require("./orderNotificationService");
 
 /**
  * Delivery Service — Handles delivery lifecycle management
@@ -167,8 +168,8 @@ const assignDriver = async (transaksiId, driverId) => {
     });
   });
 
-  // TODO: Send WA notification to driver
-  // notificationService.notifyNewDeliveryTask(driverId, transaksiId);
+  // Send WA notification to driver (non-blocking)
+  orderNotification.sendDriverAssignmentNotification(transaksiId, driverId).catch(() => {});
 
   return {
     success: true,
@@ -245,9 +246,13 @@ const updateDeliveryStatus = async (transaksiId, data) => {
     });
   });
 
-  // TODO: Send WA notification
-  // if (status === "PICKED_UP") notificationService.notifyOrderShipped(transaksiId);
-  // if (status === "DELIVERED") notificationService.notifyOrderDelivered(transaksiId);
+  // Send WA notification to customer (non-blocking)
+  if (status === "PICKED_UP") {
+    orderNotification.sendOrderStatusUpdate(transaksiId, "ON_DELIVERY").catch(() => {});
+  }
+  if (status === "DELIVERED") {
+    orderNotification.sendOrderStatusUpdate(transaksiId, "COMPLETED").catch(() => {});
+  }
 
   return {
     success: true,
@@ -367,17 +372,26 @@ const markDeliveryFailed = async (transaksiId, alasan) => {
         data: { stok: { increment: detail.jumlah } },
       });
 
-      await tx.inventoryMovement.create({
-        data: {
-          produkId: detail.produk_id,
-          referenceId: transaksi.transaksi_id,
-          referenceType: "DELIVERY_FAILED",
-          quantity: detail.jumlah,
-          keterangan: `Gagal kirim: ${alasan} (${transaksi.nomor_transaksi})`,
-          userId: "system",
-          cabangId: transaksi.cabang_id,
-        },
-      });
+      // Find valid userId for inventory movement
+      const cabangUser = await tx.$queryRawUnsafe(
+        `SELECT user_id FROM user_cabang WHERE cabang_id = $1 LIMIT 1`,
+        transaksi.cabang_id
+      );
+      const systemUserId = cabangUser.length > 0 ? cabangUser[0].user_id : null;
+
+      if (systemUserId) {
+        await tx.inventoryMovement.create({
+          data: {
+            produkId: detail.produk_id,
+            referenceId: transaksi.transaksi_id,
+            referenceType: "DELIVERY_FAILED",
+            quantity: detail.jumlah,
+            keterangan: `Gagal kirim: ${alasan} (${transaksi.nomor_transaksi})`,
+            userId: systemUserId,
+            cabangId: transaksi.cabang_id,
+          },
+        });
+      }
     }
 
     // Create cancellation record
@@ -439,6 +453,8 @@ const getDriverActiveDeliveries = async (driverId) => {
     delivery_status: o.delivery_status,
     status_pembayaran: o.status_pembayaran,
     total: Number(o.total),
+    customer_name: o.customer_name || "-",
+    customer_phone: o.customer_phone || "-",
     customer_address: o.customer_address,
     customer_notes: o.customer_notes,
     created_at: o.created_at,
@@ -518,6 +534,138 @@ const addDeliveryLocation = async (transaksiId, data) => {
   };
 };
 
+/**
+ * Get dashboard stats for a specific driver
+ */
+const getDriverDashboardStats = async (driverId) => {
+  // Total deliveries (all statuses)
+  const total = await prisma.transaksi.count({
+    where: {
+      delivery_driver_id: driverId,
+      order_source: "ECATALOG",
+      order_type: "DELIVERY",
+    },
+  });
+
+  // Successful deliveries
+  const success = await prisma.transaksi.count({
+    where: {
+      delivery_driver_id: driverId,
+      order_source: "ECATALOG",
+      order_type: "DELIVERY",
+      delivery_status: "DELIVERED",
+    },
+  });
+
+  // Failed / Cancelled deliveries
+  const failed = await prisma.transaksi.count({
+    where: {
+      delivery_driver_id: driverId,
+      order_source: "ECATALOG",
+      order_type: "DELIVERY",
+      OR: [
+        { delivery_status: "FAILED" },
+        { order_status: "CANCELLED" }
+      ],
+    },
+  });
+
+  // Active deliveries
+  const active = await prisma.transaksi.count({
+    where: {
+      delivery_driver_id: driverId,
+      order_source: "ECATALOG",
+      order_type: "DELIVERY",
+      delivery_status: { in: ["ASSIGNED", "PICKED_UP"] },
+      order_status: { notIn: ["CANCELLED"] },
+    },
+  });
+
+  return {
+    total,
+    success,
+    failed,
+    active,
+  };
+};
+
+/**
+ * Get delivery history for a specific driver
+ */
+const getDriverDeliveryHistory = async (driverId, filters = {}) => {
+  const { status = "ALL", page = 1, limit = 20 } = filters;
+  const skip = (page - 1) * limit;
+
+  // Build where clause
+  let where = {
+    delivery_driver_id: driverId,
+    order_source: "ECATALOG",
+    order_type: "DELIVERY",
+    // Only include past deliveries (exclude active + null)
+    delivery_status: { notIn: ["ASSIGNED", "PICKED_UP", "PENDING"] },
+    NOT: { delivery_status: null }
+  };
+
+  if (status !== "ALL") {
+    if (status === "CANCELLED") {
+      where.order_status = "CANCELLED";
+      delete where.delivery_status;
+    } else {
+      where.delivery_status = status;
+    }
+  }
+
+  const [total, orders] = await Promise.all([
+    prisma.transaksi.count({ where }),
+    prisma.transaksi.findMany({
+      where,
+      orderBy: { created_at: "desc" },
+      skip,
+      take: limit,
+      include: {
+        transaksi_detail: {
+          include: {
+            produk: {
+              include: {
+                produkMaster: { select: { namaProduk: true } },
+              },
+            },
+          },
+        },
+      },
+    }),
+  ]);
+
+  const mappedOrders = orders.map((o) => ({
+    transaksi_id: o.transaksi_id,
+    nomor_transaksi: o.nomor_transaksi,
+    order_status: o.order_status,
+    delivery_status: o.delivery_status,
+    status_pembayaran: o.status_pembayaran,
+    total: Number(o.total),
+    customer_name: o.customer_name || "-",
+    customer_phone: o.customer_phone || "-",
+    customer_address: o.customer_address,
+    customer_notes: o.customer_notes,
+    created_at: o.created_at,
+    items: o.transaksi_detail.map((d) => ({
+      nama: d.produk?.produkMaster?.namaProduk || "Unknown",
+      jumlah: d.jumlah,
+    })),
+    is_cod: o.status_pembayaran !== "LUNAS",
+  }));
+
+  return {
+    data: mappedOrders,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+};
+
 module.exports = {
   getDeliveryOrders,
   assignDriver,
@@ -527,4 +675,6 @@ module.exports = {
   getDriverActiveDeliveries,
   getDeliveryTracking,
   addDeliveryLocation,
+  getDriverDashboardStats,
+  getDriverDeliveryHistory,
 };

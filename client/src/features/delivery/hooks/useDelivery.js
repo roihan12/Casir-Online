@@ -121,3 +121,28 @@ export const useAddDeliveryLocation = () => {
       deliveryClientService.addDeliveryLocation(transaksiId, { latitude, longitude })
   });
 };
+
+export const useDriverActiveDeliveries = (driverId) => {
+  return useQuery({
+    queryKey: ["driver-active-deliveries", driverId],
+    queryFn: () => deliveryClientService.getDriverActiveDeliveries(driverId),
+    enabled: !!driverId,
+    refetchInterval: 15000, // Poll every 15s
+  });
+};
+
+export const useDriverDashboard = (driverId) => {
+  return useQuery({
+    queryKey: ["driver-dashboard", driverId],
+    queryFn: () => deliveryClientService.getDriverDashboard(driverId),
+    enabled: !!driverId,
+  });
+};
+
+export const useDriverHistory = (driverId, params = {}) => {
+  return useQuery({
+    queryKey: ["driver-history", driverId, params],
+    queryFn: () => deliveryClientService.getDriverHistory(driverId, params),
+    enabled: !!driverId,
+  });
+};

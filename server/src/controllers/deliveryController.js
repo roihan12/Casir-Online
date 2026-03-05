@@ -7,6 +7,7 @@ const {
   failedDeliveryValidation,
   getDeliveryOrdersValidation,
   driverLocationValidation,
+  driverHistoryValidation,
 } = require("../validation/deliveryValidation");
 
 /**
@@ -197,6 +198,49 @@ const addDeliveryLocation = async (req, res, next) => {
   }
 };
 
+/**
+ * Get driver dashboard stats
+ */
+const getDriverDashboard = async (req, res, next) => {
+  try {
+    const driverId = req.params.driverId;
+    const result = await deliveryService.getDriverDashboardStats(driverId);
+
+    res.status(200).json({
+      status: true,
+      message: "Success get driver dashboard stats",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get driver delivery history
+ */
+const getDriverHistory = async (req, res, next) => {
+  try {
+    const driverId = req.params.driverId;
+    const filters = validate(driverHistoryValidation, {
+      status: req.query.status,
+      page: req.query.page ? parseInt(req.query.page) : undefined,
+      limit: req.query.limit ? parseInt(req.query.limit) : undefined,
+    });
+
+    const result = await deliveryService.getDriverDeliveryHistory(driverId, filters);
+
+    res.status(200).json({
+      status: true,
+      message: "Success get driver recent history",
+      data: result.data,
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getDeliveryOrders,
   assignDriver,
@@ -206,4 +250,6 @@ module.exports = {
   getDriverActiveDeliveries,
   getDeliveryTracking,
   addDeliveryLocation,
+  getDriverDashboard,
+  getDriverHistory,
 };
