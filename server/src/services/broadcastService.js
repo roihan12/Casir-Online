@@ -89,6 +89,23 @@ const executeBroadcast = async (campaignId) => {
     console.error("Failed to parse target audience", e);
   }
 
+  // Fetch bot configuration
+  const botConfig = await prisma.botConfig.findFirst({
+      where: {
+          cabangId: campaign.cabangId,
+          isActive: true
+      }
+  });
+
+  if (!botConfig) {
+      console.warn(`[Broadcast] Cannot execute broadcast ${campaign.id}. No active BotConfig found for branch ${campaign.cabangId}.`);
+      await prisma.marketingCampaign.update({
+          where: { id: campaign.id },
+          data: { status: 'failed', deskripsi: 'Broadcast gagal. Bot WhatsApp tidak aktif.' }
+      });
+      return;
+  }
+
   // Fetch customers
   // We use getAllPelanggan from pelangganService, but we might need to adjust params
   const customerResult = await pelangganService.getAllPelanggan({
@@ -99,10 +116,12 @@ const executeBroadcast = async (campaignId) => {
   });
 
   const customers = customerResult.data;
-  console.log(`Found ${customers.length} target customers for broadcast.`);
+  console.log(`[Broadcast] Found ${customers.length} target customers.`);
 
   let successCount = 0;
   let failCount = 0;
+  
+  const wService = new whatsappService();
 
   // Send messages with delay
   for (const customer of customers) {
@@ -123,9 +142,9 @@ const executeBroadcast = async (campaignId) => {
         if (content.imageUrl) {
             // Send image if available (not implemented in this simplified version, requires buffer)
             // For now sending text
-            await whatsappService.sendMessage(formattedPhone, personalizedMessage);
+            await wService.sendMessage(formattedPhone, personalizedMessage, botConfig.deviceId);
         } else {
-            await whatsappService.sendMessage(formattedPhone, personalizedMessage);
+            await wService.sendMessage(formattedPhone, personalizedMessage, botConfig.deviceId);
         }
 
         // Log interaction

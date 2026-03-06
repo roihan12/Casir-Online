@@ -708,6 +708,137 @@ async function handleMessage(payload, deviceId, io) {
   // Extract phone number from JID (remove @s.whatsapp.net)
   const fromPhone = from.replace('@s.whatsapp.net', '');
 
+  // Log incoming message to the database
+  try {
+    let msgDate = new Date();
+    if (timestamp) {
+      if (typeof timestamp === 'number') {
+        msgDate = new Date(timestamp * 1000); // Unix timestamp in seconds
+      } else {
+        msgDate = new Date(timestamp);
+      }
+    }
+
+    await prisma.whatsappMessage.create({
+      data: {
+        messageId: id || `msg_${Date.now()}`,
+        chatId: chat_id || from,
+        deviceId: deviceId || 'unknown',
+        fromPhone: fromPhone,
+        fromName: from_name || null,
+        messageType: messageType,
+        body: content,
+        mediaUrl: mediaUrl,
+        timestamp: msgDate,
+        status: 'received'
+      }
+    });
+  } catch (err) {
+    if (err.code !== 'P2002') { // ignore duplicate messageId conflicts
+        console.error("Failed to log WhatsappMessage to DB:", err);
+    }
+  }
+
+  // Retrieve active bot config (to fetch messages and settings)
+  let activeBotConfig = null;
+  try {
+      const configRows = await prisma.$queryRawUnsafe(
+        `SELECT bot_config_id, cabang_id, platform_type, is_active, api_key, api_secret, phone_number, webhook_url, welcome_message, catalog_message, order_message, thank_you_message, created_at, updated_at, "name", api_url, device_id
+        FROM bot_config WHERE is_active = true LIMIT 1`
+      );
+      if (configRows && configRows.length > 0) {
+          activeBotConfig = configRows[0];
+      }
+  } catch (e) {
+      console.error("Failed to fetch bot config in webhook:", e);
+  }
+
+  // --- AI Customer Service & Self-Ordering Logic ---
+  if (messageType === 'text' && content && activeBotConfig) {
+      const textLower = content.trim().toLowerCase();
+      let replyMessage = null;
+
+      // Check session to see if CS is handling it manually
+      let session = await prisma.botSession.findFirst({
+          where: { platformUserId: fromPhone, botConfigId: activeBotConfig.bot_config_id }
+      });
+
+      // Initialize session if not exist
+      if (!session) {
+          session = await prisma.botSession.create({
+              data: {
+                  platformUserId: fromPhone,
+                  botConfigId: activeBotConfig.bot_config_id,
+                  sessionStatus: 'active',
+                  lastInteraction: new Date(),
+                  sessionData: {}
+              }
+          });
+      }
+
+      // If user types 'cs' or 'admin', manual handover
+      if (textLower === 'cs' || textLower === 'admin' || textLower === 'bantuan') {
+          await prisma.botSession.update({
+              where: { id: session.id },
+              data: { sessionStatus: 'idle' } // Deactivate bot, CS takes over
+          });
+          replyMessage = "Baik, CS kami akan segera membantu Anda. Mohon tunggu sebentar.";
+      } 
+      else if (session.sessionStatus === 'active') {
+          // --- AI-Based Chatbot (Gemini) ---
+          try {
+              const geminiService = require('../services/geminiService');
+              const aiResponse = await geminiService.generateBotResponse(content, activeBotConfig, session);
+              
+              replyMessage = aiResponse.reply;
+
+              // Save conversational context
+              await prisma.botSession.update({
+                  where: { id: session.id },
+                  data: {
+                      sessionData: {
+                          history: aiResponse.newHistory
+                      }
+                  }
+              });
+
+              // Send Websocket Notification if order was placed inside Gemini Tooling
+              if (io && aiResponse.hasOrdered) {
+                  io.emit('new_bot_order', {
+                      phone: fromPhone,
+                      cabangId: activeBotConfig.cabang_id
+                  });
+              }
+
+          } catch (aiErr) {
+              console.error("AI Handling error:", aiErr);
+              replyMessage = "Mohon maaf, layanan AI CS kami sedang sibuk/gangguan. Mohon ketik *CS* untuk dibantu admin.";
+          }
+      }
+
+      // Send the auto-reply if exists
+      if (replyMessage) {
+          try {
+              const whatsappService = require('../services/whatsappService');
+              // const wService = new whatsappService();
+              
+              let formattedPhone = fromPhone;
+              if (formattedPhone.startsWith('0')) formattedPhone = '62' + formattedPhone.slice(1);
+              if (!formattedPhone.endsWith('@s.whatsapp.net')) formattedPhone += '@s.whatsapp.net';
+
+              let botDeviceId = activeBotConfig?.device_id || deviceId;
+              if (botDeviceId && botDeviceId.includes('@s.whatsapp.net')) {
+                botDeviceId = botDeviceId.replace('@s.whatsapp.net', '');
+              }
+
+              await whatsappService.sendMessage(formattedPhone, replyMessage, botDeviceId);
+          } catch (replyErr) {
+              console.error("Failed to send auto-reply via webhook:", replyErr);
+          }
+      }
+  }
+  // --- End Auto-Reply Logic ---
+
   // Try to find customer by phone number
   let customerId = null;
   let branchId = null;
@@ -916,3 +1047,237 @@ async function handleGroupParticipants(payload, deviceId, io) {
     });
   }
 }
+
+/**
+ * Get bot orders
+ */
+exports.getOrders = async (req, res) => {
+  try {
+    const { status, search, page = 1, limit = 10 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Build where clause
+    const where = {};
+    if (status && status !== 'All') {
+      where.orderStatus = status.toLowerCase(); // Map frontend "Pending" to "pending"
+    }
+
+    if (search) {
+      where.OR = [
+        { id: { contains: search } },
+        { session: { platformUserId: { contains: search } } }
+      ];
+    }
+
+    // Include relations
+    const include = {
+      session: {
+        include: {
+          pelanggan: true
+        }
+      },
+      transaksi: true
+    };
+
+    // Get data
+    const [orders, totalRecords] = await Promise.all([
+      prisma.botOrder.findMany({
+        where,
+        include,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: parseInt(limit)
+      }),
+      prisma.botOrder.count({ where })
+    ]);
+
+    // Map to frontend expected format
+    const mappedOrders = orders.map(order => {
+      // Calculate items and total (placeholder total if not in orderData)
+      let itemsCount = 0;
+      let total = 0;
+      
+      try {
+        if (Array.isArray(order.orderData)) {
+           itemsCount = order.orderData.reduce((acc, item) => acc + (item.qty || 1), 0);
+           // If JSON has price, calculate it. Otherwise 0.
+           total = order.orderData.reduce((acc, item) => acc + ((item.qty || 1) * (item.price || 0)), 0);
+        }
+      } catch (e) {}
+
+      // Override total with actual Transaksi total if exists
+      if (order.transaksi) {
+        total = Number(order.transaksi.total_akhir || order.transaksi.total_amount || 0);
+      }
+
+      // Map status
+      let formattedStatus = 'Pending';
+      if (order.orderStatus) {
+        formattedStatus = order.orderStatus.charAt(0).toUpperCase() + order.orderStatus.slice(1);
+      }
+
+      return {
+        id: order.id,
+        customer: order.session?.pelanggan?.nama || order.session?.platformUserId || 'Unknown Customer',
+        date: new Date(order.createdAt).toISOString().slice(0, 16).replace('T', ' '),
+        items: itemsCount,
+        total: total,
+        status: formattedStatus,
+        paymentStatus: order.transaksi?.status_pembayaran === 'lunas' ? 'Paid' : 'Unpaid',
+        rawOriginalData: order
+      };
+    });
+
+    res.json({
+      data: mappedOrders,
+      meta: {
+        totalRecords,
+        totalPages: Math.ceil(totalRecords / parseInt(limit)),
+        currentPage: parseInt(page),
+        limit: parseInt(limit)
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * Update bot order status
+ */
+exports.updateOrderStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!id || !status) {
+      return res.status(400).json({ message: 'Order ID and status are required' });
+    }
+
+    const updatedOrder = await prisma.botOrder.update({
+      where: { id },
+      data: { orderStatus: status.toLowerCase() }
+    });
+
+    res.json(updatedOrder);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * Get Analysis Metrics
+ */
+exports.getAnalysis = async (req, res) => {
+  try {
+    const { days = 7 } = req.query;
+    const dateLimit = new Date();
+    dateLimit.setDate(dateLimit.getDate() - parseInt(days));
+
+    // 1. Total Pesan Masuk (Pesan dari user/bukan dari device)
+    const totalPesan = await prisma.whatsappMessage.count({
+      where: {
+        createdAt: { gte: dateLimit },
+        fromPhone: { not: '' } // Assumption: user messages have fromPhone
+      }
+    });
+
+    // 2. Total Sesi Bot
+    const sessionCount = await prisma.botSession.count({
+      where: {
+        createdAt: { gte: dateLimit }
+      }
+    });
+
+    // 3. Pesanan via WA
+    const totalOrders = await prisma.botOrder.count({
+      where: {
+        createdAt: { gte: dateLimit }
+      }
+    });
+
+    // 4. Total Penjualan
+    const completedOrders = await prisma.botOrder.findMany({
+      where: {
+        createdAt: { gte: dateLimit },
+        orderStatus: 'completed'
+      },
+      include: {
+        transaksi: true
+      }
+    });
+    
+    let totalPenjualan = 0;
+    completedOrders.forEach(order => {
+      if (order.transaksi) {
+        totalPenjualan += Number(order.transaksi.total_akhir || order.transaksi.total_amount || 0);
+      } else if (order.orderData && Array.isArray(order.orderData)) {
+        totalPenjualan += order.orderData.reduce((acc, item) => acc + ((item.qty || 1) * (item.price || 0)), 0);
+      }
+    });
+
+    // 5. Volume Pesan Harian (Group by Date)
+    const rawMessages = await prisma.whatsappMessage.findMany({
+      where: {
+        createdAt: { gte: dateLimit }
+      },
+      select: {
+        createdAt: true
+      }
+    });
+    
+    // Grouping by YYYY-MM-DD
+    const volumeHarianMap = {};
+    rawMessages.forEach(msg => {
+      if(msg.createdAt) {
+        const dateStr = msg.createdAt.toISOString().slice(0, 10);
+        volumeHarianMap[dateStr] = (volumeHarianMap[dateStr] || 0) + 1;
+      }
+    });
+    
+    // Format to array and sort by date
+    const volumeHarian = Object.entries(volumeHarianMap)
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+
+    // 6. Analisis Status Pesanan (Untuk Grafik 2 / Pie Chart)
+    const orderStatuses = await prisma.botOrder.groupBy({
+      by: ['orderStatus'],
+      where: {
+        createdAt: { gte: dateLimit }
+      },
+      _count: {
+        orderStatus: true
+      }
+    });
+
+    const statusCounts = {
+      pending: 0,
+      processing: 0,
+      completed: 0,
+      cancelled: 0
+    };
+    
+    orderStatuses.forEach(stat => {
+      statusCounts[stat.orderStatus] = stat._count.orderStatus;
+    });
+
+    res.json({
+      metrics: {
+        totalPesan,
+        sessionCount,
+        totalOrders,
+        totalPenjualan
+      },
+      charts: {
+        volumeHarian,
+        orderStatuses: statusCounts
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

@@ -9,6 +9,44 @@ const {
   cacheDeletePattern,
 } = require("../utils/redisUtils");
 const { invalidateTransaksiCache } = require("./transaksiService");
+const whatsappService = require('./whatsappService');
+
+// Helper to format currency
+const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0
+    }).format(amount);
+};
+
+// Helper for sending receipts
+const sendReceipt = async (phone, message, cabangId) => {
+    try {
+        if (!phone) return false;
+
+        let formattedPhone = phone.replace(/[^0-9]/g, '');
+        if (formattedPhone.startsWith('0')) {
+            formattedPhone = '62' + formattedPhone.substring(1);
+        }
+
+        const botConfig = await prisma.botConfig.findFirst({
+            where: {
+                cabangId: cabangId,
+                isActive: true
+            }
+        });
+
+        if (!botConfig) return false;
+
+        const wService = new whatsappService();
+        await wService.sendMessage(`${formattedPhone}@s.whatsapp.net`, message, botConfig.deviceId);
+        return true;
+    } catch (error) {
+        console.error(`[WhatsappReceipt] Failed to send receipt to ${phone}:`, error.message);
+        return false;
+    }
+};
 
 /**
  * Create pembayaran hutang (debt payment)
@@ -112,6 +150,18 @@ const createPembayaranHutang = async (data, auditInfo) => {
     await cacheDeletePattern(`hutang-list:*`);
     if (hutang.transaksiId) {
       await invalidateTransaksiCache(hutang.transaksiId);
+    }
+
+    // Try sending Whatsapp Receipt
+    if (hutang.pelanggan && hutang.pelanggan.telepon && hutang.cabang) {
+        const remainingStr = isLunas ? "LUNAS" : formatCurrency(newSisaHutang);
+        const receiptMsg = `Halo Kak ${hutang.pelanggan.namaPelanggan},\n\n` +
+            `Terima kasih, pembayaran sebesar *${formatCurrency(jumlahBayar)}* untuk tagihan referensi *${hutang.nomorReferensi}* telah kami terima.\n\n` +
+            `Sisa Tagihan Anda: *${remainingStr}*.\n\n` +
+            `Salam hormat,\n*${hutang.cabang.namaCabang}*`;
+        
+        // Fire and forget, don't await so it doesn't block the API response
+        sendReceipt(hutang.pelanggan.telepon, receiptMsg, hutang.cabangId).catch(err => console.error(err));
     }
 
     // Return complete payment info

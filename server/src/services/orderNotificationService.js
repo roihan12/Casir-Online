@@ -77,7 +77,7 @@ Berikut detail pesanan Anda:
 🛒 *Daftar Item:*
 ${itemsList}
 
-💰 *Subtotal:* ${formatCurrency(orderData.subtotal)}${orderData.diskon > 0 ? `\n🏷️ *Diskon:* -${formatCurrency(orderData.diskon)}` : ""}${orderData.delivery_fee > 0 ? `\n🚚 *Ongkir:* ${formatCurrency(orderData.delivery_fee)}` : ""}
+💰 *Subtotal:* ${formatCurrency(orderData.subtotal)}${orderData.diskon > 0 ? `\n🏷️ *Diskon:* -${formatCurrency(orderData.diskon)}` : ""}${orderData.delivery_fee > 0 ? `\n🚚 *Ongkir:* ${formatCurrency(orderData.delivery_fee)}` : ""}${orderData.biaya_tambahan > 0 ? `\n🏷️ *Biaya Tambahan:* ${formatCurrency(orderData.biaya_tambahan)}` : ""}
 💵 *Total:* ${formatCurrency(orderData.total)}
 
 📍 *Lacak Pesanan:*
@@ -133,15 +133,8 @@ Segera proses pesanan ini! 🚀`;
 /**
  * Send payment success notification to CUSTOMER
  */
-const sendPaymentSuccessNotification = async (transaksiId) => {
+const sendPaymentSuccessNotification = async (transaksi) => {
   try {
-    const transaksi = await prisma.transaksi.findUnique({
-      where: { transaksi_id: transaksiId },
-      include: {
-        pelanggan: true,
-      },
-    });
-
     if (!transaksi) return;
 
     const phone = formatPhone(transaksi.customer_phone);
@@ -150,7 +143,7 @@ const sendPaymentSuccessNotification = async (transaksiId) => {
     const botConfig = await getBotConfig(transaksi.cabang_id);
     const deviceId = botConfig?.deviceId || null;
 
-    const trackingUrl = `${process.env.CLIENT_URL || "http://localhost:5173"}/catalog/${transaksi.cabang_id}/order/${transaksiId}`;
+    const trackingUrl = `${process.env.CLIENT_URL || "http://localhost:5173"}/catalog/${transaksi.cabang_id}/order/${transaksi.transaksi_id}`;
 
     const message = `💰 *Pembayaran Berhasil!*
 

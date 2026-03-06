@@ -8,6 +8,7 @@ const {
   cacheOrFetch, 
   cacheDeletePattern
 } = require("../utils/redisUtils");
+const whatsappService = require("./whatsappService");
 
 // Service untuk membuka shift baru
 const openShift = async (data, auditInfo) => {
@@ -181,6 +182,61 @@ const closeShift = async (data, auditInfo) => {
   // Hapus cache shift aktif
   const activeShiftKey = createCacheKey('active-shift', `${shift.userId}:${shift.cabangId}`);
   await cacheDelete(activeShiftKey);
+
+  // Send WhatsApp notification to Admin/Owner
+  try {
+      const botConfig = await prisma.botConfig.findFirst({
+        where: { cabangId: shift.cabangId, isActive: true }
+      });
+
+      if (botConfig) {
+          // Find all users with admin_cabang or super_admin role for this branch (simplified)
+          // In a real system, you might have a specific notification settings table
+          const admins = await prisma.user.findMany({
+              where: {
+                  cabangId: shift.cabangId,
+                  roles: {
+                      some: {
+                          role: {
+                              namaRole: { in: ['admin_cabang', 'super_admin'] }
+                          }
+                      }
+                  }
+              }
+          });
+
+          if (admins.length > 0) {
+              const wService = new whatsappService();
+              
+              const formatCur = (amount) => new Intl.NumberFormat("id-ID", {style: "currency", currency: "IDR", minimumFractionDigits: 0}).format(amount);
+              
+              const reportMsg = `📊 *LAPORAN TUTUP SHIFT* 📊\n\n` +
+                 `Cabang: *${updatedShift.cabang.namaCabang}*\n` +
+                 `Kasir: *${updatedShift.user.namaLengkap}*\n` +
+                 `Waktu Buka: ${new Date(shift.waktuMulai).toLocaleTimeString('id-ID')}\n` +
+                 `Waktu Tutup: ${new Date(updatedShift.waktuSelesai).toLocaleTimeString('id-ID')}\n\n` +
+                 `Total Transaksi: *${totalTransaksi}*\n` +
+                 `Total Pendapatan: *${formatCur(totalPendapatan)}*\n` +
+                 `Kas Awal: *${formatCur(shift.kasAwal)}*\n` +
+                 `Kas Akhir (Fisik): *${formatCur(kasAkhir)}*\n` +
+                 `Status: *${selisihKas === 0 ? 'Sesuai ✅' : (selisihKas > 0 ? 'Lebih ⚠️ (+'+formatCur(selisihKas)+')' : 'Kurang ❌ ('+formatCur(selisihKas)+')')}*\n\n` +
+                 `Catatan:\n_${keterangan || '-'}_`;
+
+              for (const admin of admins) {
+                  if (admin.telepon || admin.noHp) {
+                      let phone = admin.telepon || admin.noHp;
+                      let formattedPhone = phone.replace(/[^0-9]/g, '');
+                      if (formattedPhone.startsWith('0')) formattedPhone = '62' + formattedPhone.slice(1);
+                      if (!formattedPhone.endsWith('@s.whatsapp.net')) formattedPhone += '@s.whatsapp.net';
+
+                      await wService.sendMessage(formattedPhone, reportMsg, botConfig.deviceId);
+                  }
+              }
+          }
+      }
+  } catch (err) {
+      console.error("[ShiftWA] Failed to send shift closure report:", err.message);
+  }
   
   // Cache shift detail (masih bermanfaat untuk laporan)
   const shiftDetailKey = createCacheKey('shift', shiftId);

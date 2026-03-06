@@ -288,19 +288,65 @@ const whatsappService = {
   },
 
   /**
-   * Get chat history from database for a specific customer
-   * @param {string} customerId - Customer ID
-   * @param {Object} params - Query parameters for pagination
-   * @param {number} params.limit - Number of messages to return
-   * @returns {Promise<Array>} Chat history
+   * Get chat history for a customer
+   * @param {string} customerId - ID of the customer
+   * @returns {Promise<Object>} History data matching response format
    */
-  getChatHistory: async (customerId, params = {}) => {
+  getChatHistory: async (customerId) => {
     try {
-      const response = await api.get(`/whatsapp/history/${customerId}`, { params });
+      const response = await api.get(`/whatsapp/history/${customerId}`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching chat history for customer ${customerId}:`, error);
       throw error.response?.data || { message: "Failed to fetch chat history" };
+    }
+  },
+
+  /**
+   * Get WhatsApp analysis metrics
+   * @param {Object} params - Query parameters (e.g. { days: 7 })
+   * @returns {Promise<Object>} Analysis Data
+   */
+  getAnalysis: async (params = {}) => {
+    try {
+      const response = await api.get(`/whatsapp/analysis`, { params });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching Analysis data:", error);
+      throw error.response?.data || { message: "Failed to fetch analysis data" };
+    }
+  },
+
+  // ==================== ORDERS ====================
+
+  /**
+   * Get bot orders
+   * @param {Object} params - Query parameters (status, search, page, limit)
+   * @returns {Promise<Object>} List of orders and metadata
+   */
+  getBotOrders: async (params = {}) => {
+    try {
+      const response = await api.get(`/whatsapp/orders`, { params });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching WhatsApp bot orders:", error);
+      throw error.response?.data || { message: "Failed to fetch orders" };
+    }
+  },
+
+  /**
+   * Update bot order status
+   * @param {string} id - Order ID
+   * @param {string} status - New order status
+   * @returns {Promise<Object>} Updated order
+   */
+  updateBotOrderStatus: async (id, status) => {
+    try {
+      const response = await api.put(`/whatsapp/orders/${id}/status`, { status });
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating status for order ${id}:`, error);
+      throw error.response?.data || { message: "Failed to update order status" };
     }
   },
 

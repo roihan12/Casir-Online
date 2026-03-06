@@ -5,6 +5,7 @@ import { useCabang } from "@features/cabang/hooks/useCabang";
 import SuperAdminLayout from "./SuperAdminLayout";
 import AdminCabangLayout from "./AdminCabangLayout";
 import KasirLayout from "./KasirLayout";
+import PosAssistant from "../../../features/chat/components/PosAssistant";
 
 /**
  * DynamicLayout component that renders the appropriate layout based on user role and selected branch
@@ -126,7 +127,12 @@ const DynamicLayout = () => {
     }
   };
 
-  return getLayoutComponent();
+  return (
+    <>
+      {getLayoutComponent()}
+      <PosAssistant />
+    </>
+  );
 };
 
 export default DynamicLayout;

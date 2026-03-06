@@ -127,7 +127,7 @@ const DeliveryDashboardPage = () => {
       setAssignModal(null);
       setSelectedDriverId("");
     } catch (err) {
-      toast.error(err.response?.data?.errors || "Gagal assign driver");
+      toast.error(err.response?.data?.message || "Gagal assign driver");
     }
   };
 

@@ -1,18 +1,24 @@
 import React, { useState } from 'react';
 import { FaShoppingBag, FaSearch, FaFilter, FaEye, FaCheckCircle, FaTimesCircle, FaTruck } from 'react-icons/fa';
-
-// Mock Data
-const mockOrders = [
-  { id: 'ORD-001', customer: 'Budi Santoso', date: '2024-02-01 10:30', total: 150000, status: 'Pending', items: 2, paymentStatus: 'Unpaid' },
-  { id: 'ORD-002', customer: 'Siti Aminah', date: '2024-02-01 09:15', total: 75000, status: 'Processing', items: 1, paymentStatus: 'Paid' },
-  { id: 'ORD-003', customer: 'Gunawan', date: '2024-01-31 16:45', total: 250000, status: 'Shipped', items: 3, paymentStatus: 'Paid' },
-  { id: 'ORD-004', customer: 'Rina Wati', date: '2024-01-31 14:20', total: 500000, status: 'Completed', items: 5, paymentStatus: 'Paid' },
-  { id: 'ORD-005', customer: 'Ahmad Dani', date: '2024-01-30 11:00', total: 125000, status: 'Cancelled', items: 1, paymentStatus: 'Refunded' },
-];
+import { useQuery } from '@tanstack/react-query';
+import whatsappService from '../services/whatsappService';
 
 const OrderPage = () => {
-  const [orders, setOrders] = useState(mockOrders);
   const [filterStatus, setFilterStatus] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Fetch orders from backend
+  const { data: responseData, isLoading, isError } = useQuery({
+    queryKey: ['whatsapp-orders', filterStatus, searchQuery],
+    queryFn: () => whatsappService.getBotOrders({
+      status: filterStatus === 'All' ? undefined : filterStatus,
+      search: searchQuery || undefined,
+      limit: 50 // simplistic pagination matching UI mockup currently
+    })
+  });
+
+  const orders = responseData?.data || [];
+  const meta = responseData?.meta || {};
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -41,6 +47,8 @@ const OrderPage = () => {
                 <input 
                     type="text" 
                     placeholder="Cari Pesanan ID atau Pelanggan" 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                 />
                 <FaSearch className="absolute left-3 top-2.5 text-gray-400" />
@@ -79,30 +87,40 @@ const OrderPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {orders.filter(o => filterStatus === 'All' || o.status === filterStatus).map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50 transition group">
-                  <td className="p-4 font-medium text-blue-600">{order.id}</td>
-                  <td className="p-4 font-medium text-gray-800">{order.customer}</td>
-                  <td className="p-4 text-gray-500 text-sm">{order.date}</td>
-                  <td className="p-4 text-gray-600 text-sm">{order.items} items</td>
-                  <td className="p-4 font-semibold text-gray-900">Rp {order.total.toLocaleString()}</td>
-                  <td className="p-4">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                      {order.status}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                     <span className={`px-2 py-0.5 rounded text-xs font-semibold ${order.paymentStatus === 'Paid' ? 'text-green-600 bg-green-50' : 'text-orange-600 bg-orange-50'}`}>
-                        {order.paymentStatus}
-                     </span>
-                  </td>
-                  <td className="p-4 text-center">
-                    <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition">
-                      <FaEye />
-                    </button>
-                  </td>
+              {isLoading ? (
+                <tr>
+                  <td colSpan="8" className="p-4 text-center text-gray-500">Loading orders...</td>
                 </tr>
-              ))}
+              ) : orders.length === 0 ? (
+                <tr>
+                  <td colSpan="8" className="p-4 text-center text-gray-500">No orders found.</td>
+                </tr>
+              ) : (
+                orders.map((order) => (
+                  <tr key={order.id} className="hover:bg-gray-50 transition group">
+                    <td className="p-4 font-medium text-blue-600">{order.id.slice(0, 13)}...</td>
+                    <td className="p-4 font-medium text-gray-800">{order.customer}</td>
+                    <td className="p-4 text-gray-500 text-sm">{order.date}</td>
+                    <td className="p-4 text-gray-600 text-sm">{order.items} items</td>
+                    <td className="p-4 font-semibold text-gray-900">Rp {order.total.toLocaleString()}</td>
+                    <td className="p-4">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2 py-0.5 rounded text-xs font-semibold ${order.paymentStatus === 'Paid' ? 'text-green-600 bg-green-50' : 'text-orange-600 bg-orange-50'}`}>
+                          {order.paymentStatus}
+                      </span>
+                    </td>
+                    <td className="p-4 text-center">
+                      <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition">
+                        <FaEye />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

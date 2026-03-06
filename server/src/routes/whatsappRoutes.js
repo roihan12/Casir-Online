@@ -49,6 +49,17 @@ router.get('/chats/:chatJid/messages', whatsappController.getChatMessages);
 // Get chat history from database (by customer)
 router.get('/history/:customerId', whatsappController.getChatHistory);
 
+// Get analysis metrics
+router.get('/analysis', whatsappController.getAnalysis);
+
+// ==================== ORDERS ====================
+
+// Get orders
+router.get('/orders', whatsappController.getOrders);
+
+// Update order status
+router.put('/orders/:id/status', whatsappController.updateOrderStatus);
+
 // ==================== DEVICES ====================
 
 // Get all devices

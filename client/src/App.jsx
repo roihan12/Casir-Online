@@ -14,6 +14,7 @@ import ResetPasswordPage from "./features/auth/pages/ResetPasswordPage";
 import DynamicLayout from "./common/components/layout/DynamicLayout";
 
 import DashboardPage from "./features/dashboard/pages/DashboardPage";
+import AdminAbsensiDashboard from "./features/dashboard/pages/AdminAbsensiDashboard";
 import CabangManagement from "./features/cabang/pages/CabangManagementPage";
 import CabangDetail from "./features/cabang/components/CabangDetail";
 import SupplierManagement from "./features/suppliers/pages/SupplierManagementPage";
@@ -91,6 +92,7 @@ import { UserManagementPage as UserManagement } from "./features/users";
 import UserDetail from "./features/users/pages/UserDetailPage";
 import RoleManagement from "./features/users/pages/RoleManagementPage";
 import PermissionsPage from "./features/users/pages/PermissionsPage";
+import KaryawanAbsensiDashboard from "./features/users/pages/KaryawanAbsensiDashboard";
 import { ProductManagementPage as ProductManagement } from "./features/products";
 import { CategoryManagementPage as CategoryManagement } from "./features/categories";
 import ProductRequestManagement from "./features/products/pages/ProductRequestManagementPage";
@@ -141,6 +143,8 @@ import CustomerLoyaltyReport from "./features/reports/pages/CustomerLoyaltyRepor
 import LowStockReport from "./features/reports/pages/LowStockReport";
 import PromoDiscountReport from "./features/reports/pages/PromoDiscountReport";
 import TransactionDetailReport from "./features/reports/pages/TransactionDetailReport";
+import LaporanKehadiran from "./features/reports/pages/LaporanKehadiran";
+import LaporanPayroll from "./features/payroll/pages/LaporanPayroll";
 import NotificationPage from "./features/notifications/pages/NotificationPage";
 
 import CatalogPage from "./features/catalog/pages/CatalogPage";
@@ -350,6 +354,7 @@ function App() {
               <Route path=":id" element={<UserDetail />} />
               <Route path="roles" element={<RoleManagement />} />
               <Route path="permissions" element={<PermissionsPage />} />
+             
             </Route>
 
             {/* Product Management */}
@@ -556,7 +561,9 @@ function App() {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<AttendanceAdminPage />} />
+              <Route index element={<AdminAbsensiDashboard />} />
+              <Route path="legacy" element={<AttendanceAdminPage />} />
+              <Route path="karyawan" element={<KaryawanAbsensiDashboard />} />
             </Route>
 
             <Route
@@ -567,6 +574,8 @@ function App() {
                 </ProtectedRoute>
               }
             >
+
+              
               <Route index element={<LocationManagementPage />} />
             </Route>
 
@@ -651,6 +660,8 @@ function App() {
               <Route path="promo-diskon" element={<PromoDiscountReport />} />
               <Route path="transactions" element={<TransactionDetailReport />} />
               <Route path="customers" element={<CustomerLoyaltyReport />} />
+              <Route path="kehadiran" element={<LaporanKehadiran />} />
+              <Route path="payroll" element={<LaporanPayroll />} />
             </Route>
 
             {/* Promo & Diskon */}

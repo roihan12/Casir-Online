@@ -79,8 +79,6 @@ const handleMidtransWebhook = async (req, res, next) => {
       });
     });
 
-    console.log("transaksi RAW", rawTransaksi);
-
     if (!rawTransaksi) {
       logger.warn("Webhook received for unknown transaction", {
         order_id: result.order_id,
@@ -156,7 +154,6 @@ const handleMidtransWebhook = async (req, res, next) => {
  * Handle successful payment
  */
 const handlePaymentSuccess = async (transaksi, paymentData) => {
-  console.log("Transaksi on3", transaksi);
 
   // Use withWebhookRls so all operations run with proper cabang_id SET LOCAL
   await withWebhookRls(transaksi.cabang_id, async (tx) => {
@@ -243,7 +240,7 @@ const handlePaymentSuccess = async (transaksi, paymentData) => {
   });
 
   // Send WA notifications (non-blocking)
-  orderNotification.sendPaymentSuccessNotification(transaksi.transaksi_id).catch(() => {});
+  orderNotification.sendPaymentSuccessNotification(transaksi).catch(() => {});
   logger.info("Payment success, WA notification sent", {
     transaksi_id: transaksi.transaksi_id,
   });

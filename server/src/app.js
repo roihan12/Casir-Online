@@ -52,6 +52,7 @@ const promoRoutes = require("./routes/promoRoutes");
 const discountConfigRoutes = require("./routes/discountConfigRoutes");
 const loyaltyRoutes = require("./routes/loyaltyRoutes");
 const whatsappRoutes = require('./routes/whatsappRoutes');
+const chatRoutes = require("./routes/chatRoutes"); // Added chatRoutes import
 const broadcastRoutes = require("./routes/broadcastRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const reportExportRoutes = require("./routes/reportExportRoutes");
@@ -80,6 +81,10 @@ const paymentWebhookRoutes = require("./routes/paymentWebhookRoutes");
 const driverRoutes = require("./routes/driverRoutes");
 const deliveryRoutes = require("./routes/deliveryRoutes");
 
+const dashboardAbsensiAdminRoutes = require("./routes/dashboardAbsensiAdminRoutes");
+const dashboardAbsensiKaryawanRoutes = require("./routes/dashboardAbsensiKaryawanRoutes");
+const laporanKehadiranRoutes = require("./routes/laporanKehadiranRoutes");
+const laporanPayrollRoutes = require("./routes/laporanPayrollRoutes");
 
 const {
   setupNotificationScheduler,
@@ -88,13 +93,29 @@ const {
   setupKreditNotifikasiScheduler,
 } = require("./schedulers/kreditNotifikasiScheduler");
 const {
-  setupOrderExpiryScheduler,
+  initCronJobs: initBillingReminderJobs
+} = require("./services/billingReminderService");
+const {
+  setupBirthdayReminderScheduler
+} = require("./schedulers/birthdayReminderScheduler");
+const {
+  setupHRScheduler
+} = require("./schedulers/attendanceReminderScheduler");
+const {
+  setupOrderExpiryScheduler
 } = require("./schedulers/orderExpiryScheduler");
+const {
+  setupAbsensiScheduler
+} = require("./schedulers/absensiScheduler");
 
 if (process.env.ENABLE_SCHEDULERS === "true") {
   setupNotificationScheduler();
   setupKreditNotifikasiScheduler();
   setupOrderExpiryScheduler();
+  initBillingReminderJobs();
+  setupBirthdayReminderScheduler();
+  setupHRScheduler();
+  setupAbsensiScheduler();
 }
 
 let corsOptions = {
@@ -222,6 +243,11 @@ app.use("/api/penggajian", penggajianRoutes);
 app.use("/api/import/produk-master", importProdukMasterRoutes);
 app.use("/api/import/produk", importProdukRoutes);
 app.use("/api/ocr", ocrRoutes);
+app.use("/api/dashboard-absensi-admin", dashboardAbsensiAdminRoutes);
+app.use("/api/dashboard-absensi-karyawan", dashboardAbsensiKaryawanRoutes);
+app.use("/api/laporan-kehadiran", laporanKehadiranRoutes);
+app.use("/api/laporan-payroll", laporanPayrollRoutes);
+
 
 // Public routes (no auth required)
 app.use("/api/catalog", catalogRoutes);
@@ -231,6 +257,7 @@ app.use("/api/payment/webhook", paymentWebhookRoutes);
 // Authenticated routes for driver & delivery
 app.use("/api/drivers", driverRoutes);
 app.use("/api/delivery", deliveryRoutes);
+app.use("/api/chat", chatRoutes);
 
 // 404 handler
 app.use((req, res) => {

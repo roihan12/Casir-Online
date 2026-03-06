@@ -29,70 +29,7 @@ import { Input } from "../../../../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../components/ui/tabs";
 import { Badge } from "../../../../components/ui/badge";
 import { useToast } from "../../../../hooks/useToast";
-
-// Mock service - replace with actual service
-const templateService = {
-  getTemplates: async () => {
-    // Mock data - replace with actual API call
-    return [
-      {
-        id: "1",
-        name: "Welcome Message",
-        content: "Halo {{customerName}}, terima kasih telah menghubungi Casir-Online. Ada yang bisa kami bantu?",
-        type: "GREETING",
-        variables: ["customerName"],
-        isActive: true,
-        createdAt: "2025-01-01T00:00:00.000Z",
-        updatedAt: "2025-01-01T00:00:00.000Z"
-      },
-      {
-        id: "2",
-        name: "Order Confirmation",
-        content: "Pesanan #{{orderNumber}} telah dikonfirmasi. Total pembayaran: Rp {{amount}}. Metode pembayaran: {{paymentMethod}}. Terima kasih telah berbelanja di Casir-Online.",
-        type: "ORDER",
-        variables: ["orderNumber", "amount", "paymentMethod"],
-        isActive: true,
-        createdAt: "2025-01-01T00:00:00.000Z",
-        updatedAt: "2025-01-01T00:00:00.000Z"
-      },
-      {
-        id: "3",
-        name: "Shipping Notification",
-        content: "Pesanan #{{orderNumber}} telah dikirim melalui {{courier}}. Nomor resi: {{trackingNumber}}. Estimasi tiba: {{estimatedArrival}}.",
-        type: "SHIPPING",
-        variables: ["orderNumber", "courier", "trackingNumber", "estimatedArrival"],
-        isActive: true,
-        createdAt: "2025-01-01T00:00:00.000Z",
-        updatedAt: "2025-01-01T00:00:00.000Z"
-      },
-      {
-        id: "4",
-        name: "Product Inquiry Response",
-        content: "Terima kasih atas pertanyaan tentang {{productName}}. Produk tersebut {{availability}}. Harga: Rp {{price}}. Ada pertanyaan lain?",
-        type: "PRODUCT",
-        variables: ["productName", "availability", "price"],
-        isActive: true,
-        createdAt: "2025-01-01T00:00:00.000Z",
-        updatedAt: "2025-01-01T00:00:00.000Z"
-      },
-      {
-        id: "5",
-        name: "Promo Notification",
-        content: "PROMO SPESIAL! {{promoName}} - {{promoDescription}}. Berlaku hingga {{endDate}}. Gunakan kode: {{promoCode}}. Jangan lewatkan!",
-        type: "MARKETING",
-        variables: ["promoName", "promoDescription", "endDate", "promoCode"],
-        isActive: true,
-        createdAt: "2025-01-01T00:00:00.000Z",
-        updatedAt: "2025-01-01T00:00:00.000Z"
-      }
-    ];
-  },
-  deleteTemplate: async (id) => {
-    // Mock delete - replace with actual API call
-    console.log("Deleting template:", id);
-    return { success: true };
-  }
-};
+import whatsappService from "../services/whatsappService";
 
 // Form validation schema
 const templateSchema = z.object({
@@ -118,7 +55,7 @@ const WhatsAppTemplatesPage = () => {
     error 
   } = useQuery({
     queryKey: ["whatsappTemplates"],
-    queryFn: templateService.getTemplates,
+    queryFn: whatsappService.getTemplates,
   });
 
   // Form setup
@@ -140,7 +77,7 @@ const WhatsAppTemplatesPage = () => {
 
   // Delete template mutation
   const deleteTemplateMutation = useMutation({
-    mutationFn: templateService.deleteTemplate,
+    mutationFn: whatsappService.deleteTemplate,
     onSuccess: () => {
       toast({
         title: "Template deleted successfully",
@@ -194,16 +131,40 @@ const WhatsAppTemplatesPage = () => {
     });
   };
 
+  const createTemplateMutation = useMutation({
+    mutationFn: whatsappService.createTemplate,
+    onSuccess: () => {
+      toast({ title: "Template created successfully", variant: "success" });
+      queryClient.invalidateQueries({ queryKey: ["whatsappTemplates"] });
+      setShowCreateForm(false);
+      reset();
+    },
+    onError: (error) => toast({ title: "Failed to create template", description: error.message, variant: "destructive" })
+  });
+
+  const updateTemplateMutation = useMutation({
+    mutationFn: ({ id, data }) => whatsappService.updateTemplate(id, data),
+    onSuccess: () => {
+      toast({ title: "Template updated successfully", variant: "success" });
+      queryClient.invalidateQueries({ queryKey: ["whatsappTemplates"] });
+      setShowCreateForm(false);
+      setEditingTemplate(null);
+      reset();
+    },
+    onError: (error) => toast({ title: "Failed to update template", description: error.message, variant: "destructive" })
+  });
+
   const onSubmit = (data) => {
-    console.log("Form data:", data);
-    // Mock form submission - replace with actual API call
-    toast({
-      title: editingTemplate ? "Template updated successfully" : "Template created successfully",
-      variant: "success",
-    });
-    setShowCreateForm(false);
-    setEditingTemplate(null);
-    reset();
+    // Transform content to extract variables for backend dynamically if needed, 
+    // or backend might parse them directly from content.
+    const variables = Array.from(data.content.matchAll(/\{\{([^}]+)\}\}/g)).map(m => m[1]);
+    const payload = { ...data, variables };
+
+    if (editingTemplate && editingTemplate.id) {
+      updateTemplateMutation.mutate({ id: editingTemplate.id, data: payload });
+    } else {
+      createTemplateMutation.mutate(payload);
+    }
   };
 
   const highlightVariables = (content) => {

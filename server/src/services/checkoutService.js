@@ -77,6 +77,8 @@ const createOnlineOrder = async (data) => {
     customer_lng,
   } = data;
 
+  console.log("Data dari WA: ", data);
+
   // 1. Verify branch exists
   const cabang = await prisma.cabang.findFirst({
     where: { id: cabang_id, status: "aktif" },

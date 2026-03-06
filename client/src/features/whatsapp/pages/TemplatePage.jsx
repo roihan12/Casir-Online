@@ -3,13 +3,9 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FaPlus, FaEdit, FaTrash, FaFileAlt, FaTimes } from 'react-icons/fa';
-
-// Mock Data
-const initialTemplates = [
-  { id: 1, name: 'Welcome Message', content: 'Halo [Nama], selamat datang di toko kami! Ada yang bisa dibantu?', category: 'Greeting' },
-  { id: 2, name: 'Order Confirmation', content: 'Terima kasih atas pesanan Anda. Pesanan akan segera diproses.', category: 'Order' },
-  { id: 3, name: 'Payment Reminder', content: 'Halo kak, jangan lupa selesaikan pembayaran untuk pesanan [No Order] ya.', category: 'Payment' },
-];
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import whatsappService from '../services/whatsappService';
+import { toast } from 'react-hot-toast';
 
 const schema = z.object({
   name: z.string().min(1, 'Nama template wajib diisi'),
@@ -18,9 +14,17 @@ const schema = z.object({
 });
 
 const TemplatePage = () => {
-  const [templates, setTemplates] = useState(initialTemplates);
+  const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
+
+  // Fetch templates data
+  const { data: templatesResponse, isLoading } = useQuery({
+    queryKey: ['whatsappTemplates'],
+    queryFn: whatsappService.getTemplates,
+  });
+  
+  const templates = templatesResponse?.data || templatesResponse?.results || templatesResponse || [];
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
@@ -41,18 +45,50 @@ const TemplatePage = () => {
     setEditingTemplate(null);
   };
 
+  // Create Mutation
+  const createMutation = useMutation({
+    mutationFn: whatsappService.createTemplate,
+    onSuccess: () => {
+      toast.success('Template berhasil ditambahkan');
+      queryClient.invalidateQueries(['whatsappTemplates']);
+      closeModal();
+    },
+    onError: (err) => toast.error('Gagal tambah template: ' + err.message)
+  });
+
+  // Update Mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => whatsappService.updateTemplate(id, data),
+    onSuccess: () => {
+      toast.success('Template berhasil diperbarui');
+      queryClient.invalidateQueries(['whatsappTemplates']);
+      closeModal();
+    },
+    onError: (err) => toast.error('Gagal update template: ' + err.message)
+  });
+
+  // Delete Mutation
+  const deleteMutation = useMutation({
+    mutationFn: whatsappService.deleteTemplate,
+    onSuccess: () => {
+      toast.success('Template berhasil dihapus');
+      queryClient.invalidateQueries(['whatsappTemplates']);
+    },
+    onError: (err) => toast.error('Gagal hapus template: ' + err.message)
+  });
+
   const onSubmit = (data) => {
+    const payload = { ...data, templateType: data.category.toUpperCase() };
     if (editingTemplate) {
-      setTemplates(templates.map(t => t.id === editingTemplate.id ? { ...t, ...data } : t));
+      updateMutation.mutate({ id: editingTemplate.id, data: payload });
     } else {
-      setTemplates([...templates, { id: Date.now(), ...data }]);
+      createMutation.mutate(payload);
     }
-    closeModal();
   };
 
   const handleDelete = (id) => {
     if (confirm('Apakah Anda yakin ingin menghapus template ini?')) {
-      setTemplates(templates.filter(t => t.id !== id));
+      deleteMutation.mutate(id);
     }
   };
 

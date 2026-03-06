@@ -85,6 +85,7 @@ model User {
   total_discount_given                              Decimal?                  @default(0) @db.Decimal(15, 2)
   absensi                                           AbsensiPegawai[]
   AuditLog                                          AuditLog[]
+  chat_sessions                                     chat_sessions[]
   discount_log                                      discount_log[]
   driverProfile                                     driver?
   gaji_pegawai                                      gaji_pegawai?
@@ -2301,6 +2302,30 @@ model payment_webhook_log {
   @@index([webhook_source, created_at], map: "idx_webhook_source")
 }
 
+model chat_messages {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  session_id    String        @db.Uuid
+  role          chat_role
+  content       String
+  created_at    DateTime?     @default(now()) @db.Timestamp(6)
+  chat_sessions chat_sessions @relation(fields: [session_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([created_at], map: "idx_chat_messages_created_at")
+  @@index([session_id], map: "idx_chat_messages_session_id")
+}
+
+model chat_sessions {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id       String          @db.VarChar(36)
+  title         String?         @default("New Chat") @db.VarChar(255)
+  created_at    DateTime?       @default(now()) @db.Timestamp(6)
+  updated_at    DateTime?       @default(now()) @db.Timestamp(6)
+  chat_messages chat_messages[]
+  user          User            @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_chat_sessions_user_id")
+}
+
 enum PermissionAction {
   create
   read
@@ -2720,4 +2745,9 @@ enum tipe_diskon {
   HARGA_SPESIAL
   CASHBACK
   VOUCHER
+}
+
+enum chat_role {
+  user
+  ai
 }
