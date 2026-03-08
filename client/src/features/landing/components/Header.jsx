@@ -67,7 +67,7 @@ const Header = () => {
               Masuk
             </Link>
             <a 
-              href="https://github.com/ABSUKANGHUROYKI/Casir-Online"
+              href="https://github.com/roihan12/Casir-Online"
               target="_blank"
               rel="noopener noreferrer"
               className="px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
@@ -108,7 +108,7 @@ const Header = () => {
             Masuk
           </Link>
           <a 
-            href="https://github.com/ABSUKANGHUROYKI/Casir-Online"
+            href="https://github.com/roihan12/Casir-Online"
             className="mx-4 mt-2 px-5 py-3 text-center text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg"
             onClick={() => setMobileMenuOpen(false)}
           >

@@ -58,8 +58,8 @@ const LandingPage = () => {
             <div>
               <h4 className="font-semibold text-gray-900 mb-4">Sistem Terbuka</h4>
               <ul className="space-y-3">
-                 <li><a href="https://github.com/ABSUKANGHUROYKI/Casir-Online" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-indigo-600 transition-colors">Kode Sumber (GitHub)</a></li>
-                 <li><a href="https://github.com/ABSUKANGHUROYKI/Casir-Online/issues" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-indigo-600 transition-colors">Laporkan Masalah</a></li>
+                 <li><a href="https://github.com/roihan12/Casir-Online" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-indigo-600 transition-colors">Kode Sumber (GitHub)</a></li>
+                 <li><a href="https://github.com/roihan12/Casir-Online/issues" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-indigo-600 transition-colors">Laporkan Masalah</a></li>
               </ul>
             </div>
           </div>
@@ -69,7 +69,7 @@ const LandingPage = () => {
               © {new Date().getFullYear()} Casir-Online. Dibuka untuk umum dengan dedikasi tinggi.
             </p>
             <p className="text-gray-400 text-sm flex items-center gap-1">
-              Dibuat dengan <FiHeart className="text-red-500" /> oleh Komunitas Pengembang
+              Dibuat dengan <FiHeart className="text-red-500" /> oleh Roihan Sori
             </p>
           </div>
         </div>

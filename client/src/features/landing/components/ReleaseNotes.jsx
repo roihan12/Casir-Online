@@ -5,7 +5,7 @@ const ReleaseNotes = () => {
   const updates = [
     {
       version: 'v1.2.0',
-      date: 'Oktober 2023',
+      date: 'Maret 2026',
       badge: 'Major Update',
       badgeColor: 'bg-indigo-100 text-indigo-700',
       changes: [
@@ -16,7 +16,7 @@ const ReleaseNotes = () => {
     },
     {
       version: 'v1.1.5',
-      date: 'September 2023',
+      date: 'Februari 2026',
       badge: 'Patch',
       badgeColor: 'bg-gray-100 text-gray-700',
       changes: [
@@ -27,7 +27,7 @@ const ReleaseNotes = () => {
     },
     {
       version: 'v1.0.0',
-      date: 'Agustus 2023',
+      date: 'Januari 2026',
       badge: 'Initial Release',
       badgeColor: 'bg-teal-100 text-teal-700',
       changes: [
@@ -38,7 +38,7 @@ const ReleaseNotes = () => {
   ];
 
   return (
-    <div className="relative py-24 bg-gradient-to-b from-white via-blue-50/20 to-white overflow-hidden" id="updates">
+    <div className="relative py-24 bg-white overflow-hidden" id="updates">
       {/* Decorative gradient glow */}
       <div className="absolute right-0 top-1/3 -mr-20 w-72 h-72 bg-blue-100/40 rounded-full blur-[100px] pointer-events-none"></div>
 
@@ -88,7 +88,7 @@ const ReleaseNotes = () => {
         </div>
         
         <div className="text-center mt-12">
-           <a href="https://github.com/ABSUKANGHUROYKI/Casir-Online/releases" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-semibold group">
+           <a href="https://github.com/roihan12/Casir-Online/releases" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-semibold group">
              Lihat Semua Pembaruan di GitHub 
              <span className="group-hover:translate-x-1 transition-transform">→</span>
            </a>

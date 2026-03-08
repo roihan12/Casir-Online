@@ -54,7 +54,7 @@ const Features = () => {
   ];
 
   return (
-    <div className="relative py-24 bg-gradient-to-b from-white via-blue-50/30 to-white overflow-hidden" id="features">
+    <div className="relative py-24 bg-white overflow-hidden" id="features">
       {/* Decorative blurred spots */}
       <div className="absolute left-0 top-1/4 w-96 h-96 bg-blue-200/20 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="absolute right-0 bottom-1/4 w-96 h-96 bg-sky-200/20 rounded-full blur-[120px] pointer-events-none"></div>

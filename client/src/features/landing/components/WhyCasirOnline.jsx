@@ -18,7 +18,7 @@ const WhyCasirOnline = () => {
 
         <div className="grid md:grid-cols-2 gap-12">
           {/* Untuk Merchant */}
-          <div className="bg-gradient-to-br from-indigo-900/50 to-gray-900 border border-indigo-500/20 p-8 md:p-12 rounded-3xl relative">
+          <div className="bg-indigo-900 border border-indigo-500/20 p-8 md:p-12 rounded-3xl relative">
             <div className="absolute top-0 right-0 p-8 opacity-20 text-6xl pointer-events-none">🏪</div>
             <h3 className="text-2xl font-semibold mb-6 text-indigo-300">Bagi Pemilik Bisnis</h3>
             <ul className="space-y-4">
@@ -47,7 +47,7 @@ const WhyCasirOnline = () => {
           </div>
 
           {/* Untuk Developer */}
-          <div className="bg-gradient-to-br from-teal-900/50 to-gray-900 border border-teal-500/20 p-8 md:p-12 rounded-3xl relative">
+          <div className="bg-teal-900 border border-teal-500/20 p-8 md:p-12 rounded-3xl relative">
             <div className="absolute top-0 right-0 p-8 opacity-20 text-6xl pointer-events-none">💻</div>
             <h3 className="text-2xl font-semibold mb-6 text-teal-300">Bagi Developer</h3>
             <ul className="space-y-4">

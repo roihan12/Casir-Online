@@ -4,7 +4,7 @@ import { FiPlayCircle, FiArrowRight } from 'react-icons/fi';
 
 const Hero = () => {
   return (
-    <div className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden bg-gradient-to-b from-blue-50/40 via-white to-gray-50/50">
+    <div className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden bg-blue-50">
       {/* Background Subtle Shapes */}
       <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3">
         <div className="w-[600px] h-[600px] rounded-full bg-blue-50/50 blur-3xl opacity-60" />
@@ -23,7 +23,7 @@ const Hero = () => {
         {/* Headline */}
         <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 text-gray-900 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
           Kelola Bisnis Ritel <br className="hidden md:block" />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-600">
+          <span className="text-indigo-600">
             Lebih Modern & Cerdas
           </span>
         </h1>
@@ -36,7 +36,7 @@ const Hero = () => {
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
           <a 
-            href="https://github.com/ABSUKANGHUROYKI/Casir-Online" 
+            href="https://github.com/roihan12/Casir-Online" 
             target="_blank" 
             rel="noopener noreferrer" 
             className="w-full sm:w-auto px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold transition-all duration-300 shadow-lg shadow-indigo-600/30 hover:shadow-indigo-600/50 flex items-center justify-center gap-2 group hover:-translate-y-1"
@@ -65,25 +65,14 @@ const Hero = () => {
                 </div>
                 <div className="ml-4 h-4 w-32 bg-gray-200 rounded"></div>
              </div>
-             {/* Fake Content Area */}
-             <div className="p-8 grid grid-cols-4 gap-6 h-full bg-gray-50/50">
-                <div className="col-span-1 border-r border-gray-100 pr-6 space-y-4">
-                   <div className="h-8 w-full bg-gray-200 rounded-lg"></div>
-                   <div className="h-8 w-2/3 bg-gray-200 rounded-lg"></div>
-                   <div className="h-8 w-3/4 bg-gray-200 rounded-lg"></div>
-                </div>
-                <div className="col-span-3 space-y-6">
-                   <div className="flex gap-6">
-                     <div className="h-32 w-1/3 bg-white shadow-sm border border-gray-100 rounded-xl"></div>
-                     <div className="h-32 w-1/3 bg-indigo-50 shadow-sm border border-indigo-100 rounded-xl"></div>
-                     <div className="h-32 w-1/3 bg-white shadow-sm border border-gray-100 rounded-xl"></div>
-                   </div>
-                   <div className="h-64 w-full bg-white shadow-sm border border-gray-100 rounded-xl"></div>
-                </div>
+             {/* Real App Screenshot */}
+             <div className="w-full h-[calc(100%-49px)] bg-gray-50">
+               <img 
+                 src="/images/screenshots/analytics.png" 
+                 alt="Dashboard Casir Online" 
+                 className="w-full h-full object-cover object-top" 
+               />
              </div>
-             
-             {/* Gradient Overlay for polished look */}
-             <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-white to-transparent"></div>
           </div>
         </div>
       </div>

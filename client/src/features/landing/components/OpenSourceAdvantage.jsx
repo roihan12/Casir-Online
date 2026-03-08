@@ -3,7 +3,7 @@ import { FiCheckCircle, FiShield, FiTrendingUp } from 'react-icons/fi';
 
 const OpenSourceAdvantage = () => {
   return (
-    <div className="relative py-24 bg-gradient-to-br from-blue-50/30 via-white to-sky-50/30 overflow-hidden" id="mengapa">
+    <div className="relative py-24 bg-sky-50 overflow-hidden" id="why">
       {/* Subtle background glow */}
       <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-blue-100/30 rounded-full blur-[100px] pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-sky-100/30 rounded-full blur-[100px] pointer-events-none"></div>
@@ -14,7 +14,7 @@ const OpenSourceAdvantage = () => {
           <div className="lg:w-1/2">
             <h2 className="text-3xl md:text-5xl font-bold mb-6 text-gray-900 leading-tight">
               Aman, Gratis, dan <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-600">Terbuka Untuk Semua</span>
+              <span className="text-indigo-600">Terbuka Untuk Semua</span>
             </h2>
             <p className="text-lg text-gray-600 mb-8 leading-relaxed">
               Casir-Online bukan sekadar software langganan. Kami percaya infrastruktur kasir dan operasional toko harus menjadi milik pengusaha seutuhnya, tanpa biaya tak terduga setiap bulannya.
@@ -58,7 +58,7 @@ const OpenSourceAdvantage = () => {
                <p className="text-gray-600 mb-8">
                  Kami ingin melihat lebih banyak bisnis kecil & menengah beralih dari buku catatan manual ke sistem manajemen digital tanpa harus bangkrut membayar lisensinya. 
                </p>
-               <a href="https://github.com/ABSUKANGHUROYKI/Casir-Online" target="_blank" rel="noopener noreferrer" className="block w-full text-center px-6 py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">
+               <a href="https://github.com/roihan12/Casir-Online" target="_blank" rel="noopener noreferrer" className="block w-full text-center px-6 py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">
                  Kunjungi Repositori Kami
                </a>
              </div>

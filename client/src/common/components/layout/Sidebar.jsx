@@ -176,13 +176,13 @@ const Sidebar = () => {
           ${isMobile ? "fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out" : "relative transition-all duration-300"}
           ${isMobile ? (collapsed ? "-translate-x-full" : "translate-x-0") : ""}
           ${!isMobile ? (collapsed ? "w-16 lg:w-20" : "w-64") : "w-64"}
-          bg-white p-2 md:p-4 flex flex-col h-screen border-r
+          bg-white p-2 md:p-4 flex flex-col h-screen text-gray-700 border-r border-gray-200 shadow-sm
         `}
       >
         {/* Tombol toggle sidebar (Chevron) - Sembunyikan di Mobile */}
         <button
           onClick={toggleSidebar}
-          className="hidden md:flex absolute -right-3 top-20 bg-white border rounded-full p-1 shadow-md z-10"
+          className="hidden md:flex absolute -right-3 top-20 bg-white text-gray-500 border border-gray-200 rounded-full p-1 shadow-sm z-10 transition-colors hover:bg-gray-50 hover:text-indigo-600"
         >
           {collapsed ? <LucideIcons.ChevronRight size={16} /> : <LucideIcons.ChevronLeft size={16} />}
         </button>
@@ -193,12 +193,12 @@ const Sidebar = () => {
             collapsed && !isMobile ? "justify-center" : "ml-2"
           } mb-8 relative pt-2 md:pt-0`}
         >
-          <div className="h-8 w-8 rounded-full bg-purple-500 flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold">K</span>
+          <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+            <LucideIcons.Store size={18} className="text-white" />
           </div>
           {(!collapsed || isMobile) && (
-            <div className="ml-2 overflow-hidden flex-1">
-              <span className="text-xl font-semibold">KasirKu</span>
+            <div className="ml-3 overflow-hidden flex-1">
+              <span className="text-xl font-bold text-gray-900 tracking-tight">Casir Online</span>
               {selectedCabang && (
                 <div className="flex items-center text-xs text-gray-500 mt-0.5">
                   <LucideIcons.MapPin size={10} className="mr-1 flex-shrink-0" />
@@ -222,13 +222,13 @@ const Sidebar = () => {
         </div>
 
         <nav className="flex-1 overflow-y-auto scroll-smooth
-          scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent
-          hover:scrollbar-thumb-gray-400
+          scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent
+          hover:scrollbar-thumb-gray-300
           [&::-webkit-scrollbar]:w-1.5
           [&::-webkit-scrollbar-track]:bg-transparent
-          [&::-webkit-scrollbar-thumb]:bg-gray-300
+          [&::-webkit-scrollbar-thumb]:bg-gray-200
           [&::-webkit-scrollbar-thumb]:rounded-full
-          [&::-webkit-scrollbar-thumb]:hover:bg-gray-400">
+          [&::-webkit-scrollbar-thumb]:hover:bg-gray-300">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-8">
               <Spinner size="md" color="primary" />
@@ -244,8 +244,8 @@ const Sidebar = () => {
             menuItems.map((item) => (
               <React.Fragment key={item.key}>
                 <div
-                  className={`mb-1 text-gray-500 p-3 rounded-lg flex items-center justify-between hover:bg-gray-50 cursor-pointer ${
-                    isMenuActive(item.link) ? "bg-indigo-50 text-indigo-600" : ""
+                  className={`mb-1 p-3 rounded-lg flex items-center justify-between hover:bg-gray-50 cursor-pointer transition-colors ${
+                    isMenuActive(item.link) ? "bg-indigo-50 text-indigo-700 font-semibold" : "text-gray-600 hover:text-gray-900"
                   }`}
                   onClick={(e) =>
                     handleNavigate(
@@ -275,10 +275,10 @@ const Sidebar = () => {
                     {item.submenu.map((subItem, index) => (
                       <div
                         key={subItem.key || index}
-                        className={`flex items-center py-2 px-3 text-sm hover:text-indigo-600 cursor-pointer rounded-lg ${
+                        className={`flex items-center py-2 px-3 text-sm cursor-pointer rounded-lg transition-colors ${
                           isMenuActive(subItem.link)
-                            ? "text-indigo-600 bg-indigo-50"
-                            : "text-gray-500"
+                            ? "text-indigo-700 bg-indigo-50 font-medium shadow-[inset_2px_0_0_0_#4f46e5]"
+                            : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
                         }`}
                         onClick={() => {
                           if (subItem.link) {

@@ -3,7 +3,7 @@ import { FiCopy, FiCheck } from 'react-icons/fi';
 
 const QuickStart = () => {
   const [copied, setCopied] = useState(false);
-  const installCode = `git clone https://github.com/ABSUKANGHUROYKI/Casir-Online.git
+  const installCode = `git clone https://github.com/roihan12/Casir-Online.git
 cd casir-online
 # Install dependensi frontend dan backend
 npm install
@@ -52,7 +52,7 @@ npm run dev`;
         </div>
         
         <div className="mt-8 flex justify-center gap-4">
-          <a href="https://github.com/ABSUKANGHUROYKI/Casir-Online/blob/main/readme.md" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-2 hover:underline">
+          <a href="https://github.com/roihan12/Casir-Online/blob/main/readme.md" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-2 hover:underline">
             Baca Dokumentasi Penuh →
           </a>
         </div>

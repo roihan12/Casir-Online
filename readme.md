@@ -2,6 +2,58 @@
 
 Sistem Point of Sale (POS) modern yang didesain untuk manajemen retail multi-cabang dengan dukungan penuh untuk inventory management, transaksi penjualan/pembelian, dan customer relationship management.
 
+## Antarmuka Aplikasi
+
+Berikut adalah beberapa tampilan dari modul-modul utama di Casir Online:
+
+<details>
+  <summary><b>Lihat Screenshot Laporan & Analitik</b></summary>
+  <br/>
+  <img src="client/public/images/screenshots/analytics.png" alt="Dashboard Analitik" width="800"/>
+</details>
+
+<details>
+  <summary><b>Lihat Screenshot Kasir Pintar (POS)</b></summary>
+  <br/>
+  <img src="client/public/images/screenshots/pos.png" alt="Point of Sale" width="800"/>
+</details>
+
+<details>
+  <summary><b>Lihat Screenshot Manajemen Stok</b></summary>
+  <br/>
+  <img src="client/public/images/screenshots/inventory.png" alt="Manajemen Stok" width="800"/>
+</details>
+
+<details>
+  <summary><b>Lihat Screenshot WhatsApp Bot</b></summary>
+  <br/>
+  <img src="client/public/images/screenshots/whatsapp.png" alt="WhatsApp Bot" width="800"/>
+</details>
+
+<details>
+  <summary><b>Lihat Screenshot Akses & Role</b></summary>
+  <br/>
+  <img src="client/public/images/screenshots/role.png" alt="Akses dan Role" width="800"/>
+</details>
+
+<details>
+  <summary><b>Lihat Screenshot Kurir Delivery</b></summary>
+  <br/>
+  <img src="client/public/images/screenshots/delivery.png" alt="Kurir Delivery" width="800"/>
+</details>
+
+<details>
+  <summary><b>Lihat Screenshot Absensi Karyawan</b></summary>
+  <br/>
+  <img src="client/public/images/screenshots/hr.png" alt="Absensi Karyawan" width="800"/>
+</details>
+
+<details>
+  <summary><b>Lihat Screenshot Sistem Payroll</b></summary>
+  <br/>
+  <img src="client/public/images/screenshots/payroll.png" alt="Sistem Payroll" width="800"/>
+</details>
+
 ## Fitur Utama
 
 ### Manajemen Pengguna & Cabang
@@ -70,7 +122,7 @@ Database menggunakan PostgreSQL dengan Prisma sebagai ORM. Struktur utama databa
 1. Clone repository
 
 ```bash
-git clone https://github.com/ABSUKANGHUROYKI/Casir-Online.git
+git clone https://github.com/roihan12/Casir-Online.git
 cd casir-online
 ```
 
@@ -116,7 +168,14 @@ npm start
 - ✅ Manajemen pengguna multi-cabang
 - ✅ Operasi CRUD dasar untuk produk master
 - ✅ Manajemen produk spesifik per cabang
-
+- ✅ Manajemen shift dengan kas awal dan akhir
+- ✅ Manajemen pelanggan
+- ✅ Pelacakan riwayat harga
+- ✅ Pemrosesan transaksi penjualan dasar
+- ✅ Integrasi WhatsApp Bot untuk pesanan
+- ✅ Manajemen Delivery/Kurir
+- ✅ Modul Absensi Karyawan
+- ✅ Modul Sistem Payroll (Penggajian)
 
 <!-- #### Fitur dalam Pengerjaan 🔄
 - 🔄 Implementasi program loyalitas dan point rewards lanjutan
@@ -130,31 +189,31 @@ npm start
 - ⏳ API batch untuk operasi massal
 - ⏳ Fitur keamanan yang ditingkatkan
 - ⏳ Sistem notifikasi real-time
-- ⏳ Pelacakan stok
+- ⏳ Pelacakan stok lanjutan
 - ⏳ Transfer stok antar cabang
-- ⏳ Pelacakan riwayat harga
 - ⏳ Dukungan multiple pricing
-- ⏳ Pemrosesan transaksi penjualan dasar
 - ⏳ Transaksi pembelian dengan alur persetujuan
 - ⏳ Retur penjualan dan pembelian
 - ⏳ Dukungan metode pembayaran beragam (tunai, QRIS, e-wallet)
-- ⏳ Manajemen pelanggan 
 - ⏳ Manajemen supplier
-- ⏳ Manajemen shift dengan kas awal dan akhir
 - ⏳ Laporan dasar untuk penjualan, pembelian, dan inventaris
 
 ### Frontend
 
 #### Fitur yang Sudah Dikerjakan ✅
 - ✅ Antarmuka login dan manajemen pengguna
-- ✅ Dashboard cabang
-- ✅ Layar manajemen produk dasar
+- ✅ Dashboard cabang dengan analitik
+- ✅ Layar manajemen produk & katalog
 - ✅ Antarmuka pelacakan inventaris
-- ✅ Antarmuka transaksi POS sederhana
-- ✅ Layar manajemen pelanggan dasar
+- ✅ Antarmuka transaksi POS (Kasir Pintar)
+- ✅ Layar manajemen pelanggan (CRM)
 - ✅ Antarmuka manajemen supplier
+- ✅ Antarmuka Role & Hak Akses
+- ✅ Dashboard Kurir Delivery
+- ✅ Modul Absensi Staf & Karyawan
+- ✅ Modul Sistem Payroll
 - ✅ Tampilan laporan sederhana
-- ✅ Desain responsif untuk penggunaan desktop
+- ✅ Desain responsif, modern, tanpa gradient untuk desktop
 
 #### Fitur dalam Pengerjaan 🔄
 - 🔄 UI POS lanjutan dengan shortcut keyboard
@@ -162,18 +221,18 @@ npm start
 - 🔄 Kemampuan filter dan pencarian lanjutan
 
 #### Fitur yang Belum Dikerjakan ⏳
-- ⏳ Optimasi responsif untuk mobile
-- ⏳ Kemampuan mode offline
+- ⏳ Optimasi responsif penuh untuk layar mobile kecil
+- ⏳ Kemampuan mode offline (PWA)
 - ⏳ Portal loyalitas yang menghadap ke pelanggan
 - ⏳ Manajemen inventaris drag-and-drop
-- ⏳ Antarmuka kustomisasi struk
-- ⏳ Dukungan mode gelap
-- ⏳ Optimasi performa UI
+- ⏳ Antarmuka kustomisasi pembuat struk
+- ⏳ Dukungan tema gelap (Dark Mode)
+- ⏳ Optimasi performa UI tahap lanjut
 - ⏳ Pengalaman onboarding pengguna yang ditingkatkan
-- ⏳ Peningkatan aksesibilitas
+- ⏳ Peningkatan aksesibilitas web
 - ⏳ Pengujian kompatibilitas lintas browser
-- ⏳ Widget dashboard interaktif
-- ⏳ Fungsionalitas ekspor untuk semua laporan
+- ⏳ Widget dashboard interaktif drag-and-drop
+- ⏳ Fungsionalitas ekspor untuk semua dokumen laporan
 
 
 ## Kontribusi
