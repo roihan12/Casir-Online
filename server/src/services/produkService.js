@@ -635,31 +635,37 @@ const updateProduk = async (id, data, { userId, userName, ipAddress }) => {
     }
 
     // Check if price changed to create history
+    // Only check if the field is actually provided (not undefined)
     const isPriceChanged =
-      existingProduk.hargaBeli !== data.hargaBeli ||
-      existingProduk.hargaJual !== data.hargaJual ||
-      ((existingProduk.hargaGrosir || null) !== (data.hargaGrosir || null) &&
-        existingProduk.hargaGrosir?.toString() !==
-          data.hargaGrosir?.toString());
+      (data.hargaBeli !== undefined && existingProduk.hargaBeli !== data.hargaBeli) ||
+      (data.hargaJual !== undefined && existingProduk.hargaJual !== data.hargaJual) ||
+      (data.hargaGrosir !== undefined &&
+        ((existingProduk.hargaGrosir || null) !== (data.hargaGrosir || null) &&
+         existingProduk.hargaGrosir?.toString() !== data.hargaGrosir?.toString()));
 
     // Make sure we have the user ID for price history
     if (!userId) {
       throw new ResponseError(400, "User ID is required for price updates");
     }
 
+    // Build update data object with only provided fields
+    const updateData = {
+      updated_by: userName,
+      updated_by_user_Id: userId,
+    };
+
+    // Only include fields that are explicitly provided
+    if (data.hargaBeli !== undefined) updateData.hargaBeli = data.hargaBeli;
+    if (data.hargaJual !== undefined) updateData.hargaJual = data.hargaJual;
+    if (data.hargaGrosir !== undefined) updateData.hargaGrosir = data.hargaGrosir;
+    if (data.minStok !== undefined) updateData.minStok = data.minStok;
+    if (data.maxStok !== undefined) updateData.maxStok = data.maxStok;
+    if (data.status !== undefined) updateData.status = data.status;
+
     // Update the product
     const updatedProduk = await tx.produk.update({
       where: { id },
-      data: {
-        hargaBeli: data.hargaBeli,
-        hargaJual: data.hargaJual,
-        hargaGrosir: data.hargaGrosir,
-        minStok: data.minStok,
-        maxStok: data.maxStok,
-        status: data.status,
-        updated_by: userName,
-        updated_by_user_Id: userId,
-      },
+      data: updateData,
     });
 
     // If price changed, create price history records for each changed price
@@ -670,7 +676,7 @@ const updateProduk = async (id, data, { userId, userName, ipAddress }) => {
       const supplierId = data.supplierId || null;
 
       // For purchase price (hargaBeli)
-      if (existingProduk.hargaBeli !== data.hargaBeli) {
+      if (data.hargaBeli !== undefined && existingProduk.hargaBeli !== data.hargaBeli) {
         await tx.produkPriceHistory.create({
           data: {
             produkId: id,
@@ -691,7 +697,7 @@ const updateProduk = async (id, data, { userId, userName, ipAddress }) => {
       }
 
       // For selling price (hargaJual)
-      if (existingProduk.hargaJual !== data.hargaJual) {
+      if (data.hargaJual !== undefined && existingProduk.hargaJual !== data.hargaJual) {
         await tx.produkPriceHistory.create({
           data: {
             produkId: id,
@@ -712,31 +718,34 @@ const updateProduk = async (id, data, { userId, userName, ipAddress }) => {
       }
 
       // For wholesale price (hargaGrosir)
-      // Handle null cases properly
-      const oldGrosir = existingProduk.hargaGrosir || null;
-      const newGrosir = data.hargaGrosir || null;
+      // Only process if hargaGrosir is explicitly provided
+      if (data.hargaGrosir !== undefined) {
+        // Handle null cases properly
+        const oldGrosir = existingProduk.hargaGrosir || null;
+        const newGrosir = data.hargaGrosir || null;
 
-      if (
-        oldGrosir !== newGrosir ||
-        oldGrosir?.toString() !== newGrosir?.toString()
-      ) {
-        await tx.produkPriceHistory.create({
-          data: {
-            produkId: id,
-            cabangId: existingProduk.cabangId,
-            tipeHarga: "grosir",
-            hargaLama: oldGrosir || 0,
-            hargaBaru: newGrosir || 0,
-            tanggalPerubahan: now,
-            alasanPerubahan: alasan,
-            dokumenReferensi: dokumenRef,
-            supplierId: supplierId,
-            created_by: userName,
-            updated_by: userName,
-            created_by_user_Id: userId,
-            updated_by_user_Id: userId,
-          },
-        });
+        if (
+          oldGrosir !== newGrosir ||
+          oldGrosir?.toString() !== newGrosir?.toString()
+        ) {
+          await tx.produkPriceHistory.create({
+            data: {
+              produkId: id,
+              cabangId: existingProduk.cabangId,
+              tipeHarga: "grosir",
+              hargaLama: oldGrosir || 0,
+              hargaBaru: newGrosir || 0,
+              tanggalPerubahan: now,
+              alasanPerubahan: alasan,
+              dokumenReferensi: dokumenRef,
+              supplierId: supplierId,
+              created_by: userName,
+              updated_by: userName,
+              created_by_user_Id: userId,
+              updated_by_user_Id: userId,
+            },
+          });
+        }
       }
     }
 

@@ -136,7 +136,7 @@ describe('Checkout API Integration Tests (Public)', () => {
 
       if (transaksiId) {
         const response = await agent
-          .get(`/api/checkout/${transaksiId}/status`)
+          .get(`/api/checkout/${transaksiId}/status?cabangId=${cabang.id}`)
           .expect(200);
 
         expect(response.body.status || response.body.success).toBeTruthy();
@@ -311,8 +311,9 @@ describe('Checkout API Integration Tests (Public)', () => {
 
   describe('GET /api/checkout/:transaksiId/status - Negative Cases', () => {
     it('❌ Should return 404 for non-existent order', async () => {
+      const cabang = await createCabang({}, prisma);
       const response = await agent
-        .get('/api/checkout/00000000-0000-0000-0000-000000000000/status')
+        .get(`/api/checkout/00000000-0000-0000-0000-000000000000/status?cabangId=${cabang.id}`)
         .expect(404);
 
       expect(response.body.success).toBe(false);

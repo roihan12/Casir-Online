@@ -14,6 +14,7 @@ import ResetPasswordPage from "./features/auth/pages/ResetPasswordPage";
 import DynamicLayout from "./common/components/layout/DynamicLayout";
 
 import DashboardPage from "./features/dashboard/pages/DashboardPage";
+import LandingPage from "./features/landing/pages/LandingPage";
 import AdminAbsensiDashboard from "./features/dashboard/pages/AdminAbsensiDashboard";
 import CabangManagement from "./features/cabang/pages/CabangManagementPage";
 import CabangDetail from "./features/cabang/components/CabangDetail";
@@ -224,8 +225,15 @@ function App() {
               }
             />
 
-            {/* Default redirect */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            {/* Landing Page */}
+            <Route
+              path="/"
+              element={
+                <WithoutAuth>
+                  <LandingPage />
+                </WithoutAuth>
+              }
+            />
 
             {/* Search Results - accessible to all logged in users */}
             <Route

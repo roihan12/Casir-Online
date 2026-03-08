@@ -14,6 +14,36 @@ let prismaClient;
 let container;
 let databaseUrl;
 
+// Helper function to execute SQL file with stored procedures
+const executeSqlFile = async (prisma) => {
+  try {
+    const sqlPath = path.resolve(__dirname, '../helpers/storeProcedure.sql');
+    const sqlContent = fs.readFileSync(sqlPath, 'utf8');
+
+    // Split by function definitions and execute each one
+    // SQL functions use $function$...$function$ delimiters
+    const functionRegex = /CREATE\s+(OR\s+REPLACE\s+)?FUNCTION\s+[\w.]+\s*\([^)]*\)\s*RETURNS\s+[\s\S]*?AS\s+\$function\$[\s\S]*?\$function\$\s*;/g;
+    const functions = sqlContent.match(functionRegex) || [];
+
+    console.log(`[Testcontainers] Found ${functions.length} functions to execute`);
+
+    for (const func of functions) {
+      try {
+        await prisma.$executeRawUnsafe(func);
+      } catch (err) {
+        // Some functions might already exist or fail, that's ok for tests
+        if (!err.message.includes('already exists') && !err.message.includes('does not exist')) {
+          console.warn(`[Testcontainers] Warning executing SQL function: ${err.message.substring(0, 100)}`);
+        }
+      }
+    }
+    console.log('[Testcontainers] Stored procedures berhasil diterapkan.');
+  } catch (error) {
+    console.error('[Testcontainers] Error executing SQL file:', error.message);
+    // Don't throw - tests should still run even if stored procedures fail
+  }
+};
+
 export const startTestDb = async () => {
   try {
     const isWindows = process.platform === 'win32';
@@ -79,6 +109,10 @@ export const startTestDb = async () => {
     const env = { ...process.env, DATABASE_URL: databaseUrl, DIRECT_URL: databaseUrl };
 
     await execPromise(`npx prisma@6 db push --schema="${prismaSchemaPath}"`, { env });
+
+    // Execute stored procedures from helpers/storeProcedure.sql
+    console.log('[Testcontainers] Menerapkan stored procedures dan functions...');
+    await executeSqlFile(prismaClient);
 
     console.log('[Testcontainers] Database test siap digunakan!');
     return databaseUrl;

@@ -160,7 +160,8 @@ Tugasmu adalah:
                        cabang_id: botConfig.cabang_id,
                        customer_phone: fromPhone,
                        customer_name: args.customer_name,
-                       order_type: 'DELIVERY', // assume default for chat
+                       order_type: 'DELIVERY', 
+                       order_source: 'WHATSAPP', 
                        payment_method: args.payment_method === 'COD' ? 'COD' : 'PAYMENT_LINK',
                        items: args.items.map(item => ({
                            produk_id: item.produk_id,

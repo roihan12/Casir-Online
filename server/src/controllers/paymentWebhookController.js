@@ -221,6 +221,8 @@ const handlePaymentSuccess = async (transaksi, paymentData) => {
           data: { stok: { decrement: detail.jumlah } },
         });
 
+
+
         // Create inventory movement (only if we have a valid user)
         if (systemUserId) {
           await tx.inventoryMovement.create({

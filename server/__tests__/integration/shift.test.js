@@ -439,7 +439,7 @@ describe('Shift API Integration Tests', () => {
 
       // Get only dibuka status
       const response = await agent
-        .get('/api/shift?status=dibuka')
+        .get('/api/shifts?status=dibuka')
         .expect(200);
 
       expect(response.body.status).toBe(true);
@@ -486,7 +486,7 @@ describe('Shift API Integration Tests', () => {
       }
 
       const response = await agent
-        .get('/api/shift?page=1&limit=3')
+        .get('/api/shifts?page=1&limit=3')
         .expect(200);
 
       expect(response.body.data.length).toBeLessThanOrEqual(3);
@@ -515,7 +515,7 @@ describe('Shift API Integration Tests', () => {
         });
 
       const response = await agent
-        .get('/api/shifts/reports/summary')
+        .get(`/api/shifts/reports/summary?cabangId=${auth.cabang.id}`)
         .expect(200);
 
       expect(response.body.status).toBe(true);

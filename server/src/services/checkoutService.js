@@ -75,6 +75,7 @@ const createOnlineOrder = async (data) => {
     promo_codes = [],
     customer_lat,
     customer_lng,
+    order_source = "ECATALOG",
   } = data;
 
   console.log("Data dari WA: ", data);
@@ -264,7 +265,7 @@ const createOnlineOrder = async (data) => {
         tanggal: new Date(),
         pelanggan_id: matchedPelangganId,
         jenis_transaksi: "PENJUALAN",
-        order_source: "ECATALOG",
+        order_source: order_source || "ECATALOG",
         order_type,
         order_status: orderStatus,
         status_pembayaran: statusPembayaran,
@@ -568,7 +569,9 @@ const getOrderStatus = async (transaksiId, cabangId) => {
     return tx.transaksi.findFirst({
     where: {
       transaksi_id: transaksiId,
-      order_source: "ECATALOG",
+      order_source: {
+        in: ["ECATALOG", "WHATSAPP"]
+      }
     },
     include: {
       transaksi_detail: {

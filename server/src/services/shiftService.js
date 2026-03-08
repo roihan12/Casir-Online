@@ -1,13 +1,14 @@
 const prisma = require("../config/db");
 const { ResponseError } = require("../error/responseError");
-const { 
-  cacheSet, 
-  cacheGet, 
-  cacheDelete, 
-  createCacheKey, 
-  cacheOrFetch, 
+const {
+  cacheSet,
+  cacheGet,
+  cacheDelete,
+  createCacheKey,
+  cacheOrFetch,
   cacheDeletePattern
 } = require("../utils/redisUtils");
+const { formatDecimal, formatObjectDecimals } = require("../utils/formatHelper");
 const whatsappService = require("./whatsappService");
 
 // Service untuk membuka shift baru
@@ -76,8 +77,12 @@ const openShift = async (data, auditInfo) => {
   // Simpan ke cache
   const activeShiftKey = createCacheKey('active-shift', `${auditInfo.userId}:${cabangId}`);
   await cacheSet(activeShiftKey, shift, 3600); // Cache 1 jam
-  
-  return shift;
+
+  // Format decimal fields
+  const monetaryFields = ['kasAwal', 'kasAkhir', 'totalPendapatan', 'selisih'];
+  const formattedShift = formatObjectDecimals(shift, monetaryFields);
+
+  return formattedShift;
 };
 
 // Service untuk menutup shift
@@ -252,15 +257,22 @@ const closeShift = async (data, auditInfo) => {
   
   // Invalidasi cache daftar shift
   await cacheDeletePattern('shifts:*');
-  
+
+  // Format decimal fields
+  const monetaryFields = ['kasAwal', 'kasAkhir', 'totalPendapatan', 'selisih'];
+  const formattedShift = formatObjectDecimals(updatedShift, monetaryFields);
+
+  // Format summary values
+  const formattedSummary = {
+    expectedKasAkhir: formatDecimal(expectedKasAkhir),
+    selisihKas: formatDecimal(selisihKas),
+    totalTransaksi,
+    totalPendapatan: formatDecimal(totalPendapatan),
+  };
+
   return {
-    ...updatedShift,
-    summary: {
-      expectedKasAkhir,
-      selisihKas,
-      totalTransaksi,
-      totalPendapatan,
-    },
+    ...formattedShift,
+    summary: formattedSummary,
   };
 };
 
@@ -341,7 +353,11 @@ const adjustShift = async (data, auditInfo) => {
   await cacheDeletePattern('shifts:*');
   await cacheDeletePattern('shift-report:*');
   
-  return updatedShift;
+  // Format decimal fields
+  const monetaryFields = ['kasAwal', 'kasAkhir', 'totalPendapatan', 'selisih'];
+  const formattedShift = formatObjectDecimals(updatedShift, monetaryFields);
+
+  return formattedShift;
 };
 
 // Service untuk mendapatkan shift aktif milik kasir
@@ -392,12 +408,16 @@ const getActiveShift = async (userId) => {
     const totalTransaksi = transaksiData._count.transaksi_id || 0;
     const totalPendapatan = transaksiData._sum.total || 0;
 
+    // Format decimal fields
+    const monetaryFields = ['kasAwal', 'kasAkhir', 'totalPendapatan', 'selisih'];
+    const formattedShift = formatObjectDecimals(activeShift, monetaryFields);
+
     return {
-      ...activeShift,
+      ...formattedShift,
       currentStats: {
         totalTransaksi,
-        totalPendapatan,
-        expectedKasAkhir: Number(activeShift.kasAwal) + Number(totalPendapatan),
+        totalPendapatan: formatDecimal(totalPendapatan),
+        expectedKasAkhir: formatDecimal(Number(activeShift.kasAwal) + Number(totalPendapatan)),
       },
     };
   }, 60); // Cache hanya 1 menit karena data mungkin berubah sering
@@ -458,14 +478,18 @@ const getShiftById = async (shiftId) => {
       });
     });
 
+    // Format decimal fields
+    const monetaryFields = ['kasAwal', 'kasAkhir', 'totalPendapatan', 'selisih'];
+    const formattedShift = formatObjectDecimals(shift, monetaryFields);
+
     return {
-      ...shift,
+      ...formattedShift,
       paymentSummary,
       totalTransaksi: shift.transaksi.length,
-      totalPendapatan: shift.transaksi.reduce(
+      totalPendapatan: formatDecimal(shift.transaksi.reduce(
         (sum, t) => sum + Number(t.total),
         0
-      ),
+      )),
     };
   }, 300); // Cache 1 jam
 };
@@ -547,13 +571,17 @@ const getShifts = async (filters) => {
       // Hitung total halaman
       const totalPages = Math.ceil(totalCount / limit);
 
+      // Format decimal fields for all shifts
+      const monetaryFields = ['kasAwal', 'kasAkhir', 'totalPendapatan', 'selisih'];
+      const formattedShifts = shifts.map(shift => formatObjectDecimals(shift, monetaryFields));
+
       return {
-        data: shifts,
+        data: formattedShifts,
         pagination: {
           totalItems: totalCount,
           totalPages,
-          currentPage: parseInt(page),
-          itemsPerPage: parseInt(limit),
+          page: parseInt(page),
+          limit: parseInt(limit),
           hasNextPage: page < totalPages,
           hasPrevPage: page > 1,
         },
@@ -667,17 +695,27 @@ const getShiftReport = async (filters) => {
       const totalCount = summary.totalShifts;
       const totalPages = Math.ceil(totalCount / limit);
 
+      // Format decimal fields for all shifts
+      const monetaryFields = ['kasAwal', 'kasAkhir', 'totalPendapatan', 'selisih'];
+      const formattedShifts = shifts.map(shift => formatObjectDecimals(shift, monetaryFields));
+
+      // Format summary values
+      const formattedSummary = {
+        ...summary,
+        totalRevenue: formatDecimal(summary.totalRevenue),
+      };
+
       return {
-        data: shifts,
+        data: formattedShifts,
         meta: {
           totalItems: totalCount,
           totalPages,
-          currentPage: page,
-          itemsPerPage: limit,
+          page: page,
+          limit: limit,
           hasNextPage: page < totalPages,
           hasPrevPage: page > 1,
         },
-        summary
+        summary: formattedSummary
       };
     },
     300
