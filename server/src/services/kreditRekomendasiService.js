@@ -1,6 +1,8 @@
 const prisma = require("../config/db");
 const { ResponseError } = require("../error/responseError");
 const { cacheSet, cacheGet, cacheDelete, createCacheKey } = require("../utils/redisUtils");
+const { logger } = require("../utils/logger");
+
 
 /**
  * Calculate customer credit score based on transaction history
@@ -128,7 +130,7 @@ const calculateCreditScore = async (pelangganId) => {
     // Ensure score is within 0-100 range
     return Math.max(0, Math.min(100, Math.round(score)));
   } catch (error) {
-    console.error("Error calculating credit score:", error);
+    logger.error("Error calculating credit score:", error);
     return 0; // Default to 0 on error
   }
 };
@@ -182,7 +184,7 @@ const determineCreditLimit = async (pelangganId, creditScore) => {
     // Ensure minimum limit if score qualifies
     return creditScore >= 40 ? Math.max(recommendedLimit, 500000) : 0;
   } catch (error) {
-    console.error("Error determining credit limit:", error);
+    logger.error("Error determining credit limit:", error);
     return 0;
   }
 };

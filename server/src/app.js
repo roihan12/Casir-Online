@@ -6,6 +6,11 @@ const rateLimit = require("express-rate-limit");
 const cookieParser = require("cookie-parser");
 const bodyParser = require("body-parser");
 const { errorMiddleware } = require("./middleware/errorMiddleware");
+const promClient = require("prom-client");
+const packageJson = require("../package.json");
+
+// Collect default metrics for Prometheus
+promClient.collectDefaultMetrics();
 
 // Import routes
 const authRoutes = require("./routes/authRoutes");
@@ -120,17 +125,29 @@ if (process.env.ENABLE_SCHEDULERS === "true") {
 
 let corsOptions = {
   origin: function (origin, callback) {
+    // 1. Izinkan requests yang tidak memiliki origin (seperti dari mobile app/curl/postman)
     if (!origin) return callback(null, true);
-    if (/^https:\/\/localhost:\d+$/.test(origin) || 
-        /^https:\/\/127\.0\.0\.1:\d+$/.test(origin) || 
-        /^https:\/\/192\.168\.\d+\.\d+:\d+$/.test(origin)) {
+
+    // 2. Izinkan Development URLs & Jaringan Lokal (termasuk jaringan Docker internal)
+    if (/^https?:\/\/localhost(:\d+)?$/.test(origin) || 
+        /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin) || 
+        /^https?:\/\/192\.168\.\d+\.\d+(:\d+)?$/.test(origin) ||
+        /^https?:\/\/172\.\d+\.\d+\.\d+(:\d+)?$/.test(origin)) { // Tambahkan subnet Docker (172.x.x.x)
       return callback(null, true);
     }
-    // Set production origins here
-    // if (origin === 'https://yourproductiondomain.com') return callback(null, true);
+
+    // 3. Production URLs dari Environment Variable
+    if (process.env.ALLOWED_ORIGINS) {
+      const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
+      // Lakukan pencocokan exact match atau regex match bila diperlukan
+      if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        return callback(null, true);
+      }
+    }
     
-    callback(new Error('Not allowed by CORS'));
-  }, // Mendukung regex untuk URL development termasuk jaringan lokal
+    // 4. Jika tetap gagal, tolak dengan detail errorMessage untuk log
+    callback(new Error(`Not allowed by CORS: ${origin}`));
+  },
   credentials: true,
 };
 
@@ -175,6 +192,18 @@ const limiter = rateLimit({
   message: "Too many requests from this IP, please try again after 15 minutes",
 });
 app.use("/api/", limiter);
+
+// System & Observability endpoints
+app.get("/health", (req, res) => res.status(200).json({ status: "UP", timestamp: new Date() }));
+app.get("/version", (req, res) => res.status(200).json({ version: packageJson.version || "1.0.0" }));
+app.get("/metrics", async (req, res) => {
+  try {
+    res.set("Content-Type", promClient.register.contentType);
+    res.end(await promClient.register.metrics());
+  } catch (ex) {
+    res.status(500).end(ex);
+  }
+});
 
 // Apply routes
 app.use("/api/auth", authRoutes);

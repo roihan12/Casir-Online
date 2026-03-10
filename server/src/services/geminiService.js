@@ -3,6 +3,8 @@ const { GoogleGenAI, Type } = require("@google/genai");
 const prisma = require("../config/db");
 const checkoutService = require("./checkoutService");
 const { getCatalogProducts } = require('./catalogService');
+const { logger } = require("../utils/logger");
+
 
 
 // Initialize Gemini SDK
@@ -11,7 +13,7 @@ let ai;
 try {
   ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 } catch (err) {
-  console.warn("Failed to initialize Google GenAI. GEMINI_API_KEY might be missing.");
+  logger.warn("Failed to initialize Google GenAI. GEMINI_API_KEY might be missing.");
 }
 
 /**
@@ -130,7 +132,7 @@ Tugasmu adalah:
             const args = call.args;
             let funcResult = null;
 
-            console.log("Function call:", functionName, args);
+            logger.info("Function call:", functionName, args);
 
             try {
                 if (functionName === 'search_product') {
@@ -138,8 +140,8 @@ Tugasmu adalah:
                         search: args.query
                     });
 
-                    console.log("Products found:1", products);
-                    console.log("Products found:2", products.data);
+                    logger.info("Products found:1", products);
+                    logger.info("Products found:2", products.data);
                     
                     if (products.data.length === 0) {
                         funcResult = { pesan: "Produk tidak ditemukan di cabang ini." };
@@ -195,7 +197,7 @@ Tugasmu adalah:
                     });
                 }
             } catch (e) {
-                console.error(`Gemini Function [${functionName}] error:`, e);
+                logger.error(`Gemini Function [${functionName}] error:`, e);
                 funcResult = { sukses: false, error: e.message };
             }
 
@@ -240,7 +242,7 @@ Tugasmu adalah:
             hasOrdered
         };
     } catch (error) {
-        console.error("Gemini AI Error:", error);
+        logger.error("Gemini AI Error:", error);
         return {
             reply: "Maaf, sistem AI kami sedang sibuk. Silakan coba beberapa saat lagi atau ketik *CS*.",
             newHistory: [],
@@ -282,7 +284,7 @@ JANGAN menambah teks markdown, JANGAN menambah penjelasan lain, HANYA JSON. Jika
         rawJson = rawJson.replace(/```json/g, '').replace(/```/g, '').trim();
         return JSON.parse(rawJson);
     } catch (error) {
-         console.error("Gemini Extraction Error:", error);
+         logger.error("Gemini Extraction Error:", error);
          return null;
     }
 }
@@ -355,7 +357,7 @@ const askPosAssistant = async (question, history = [], posData = null) => {
 
          return response.text;
      } catch (error) {
-         console.error("Gemini POS Assistant Error:", error);
+         logger.error("Gemini POS Assistant Error:", error);
          throw error;
      }
 }

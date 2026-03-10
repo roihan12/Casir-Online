@@ -3,6 +3,8 @@ const transaksiService = require("../services/transaksiService");
 const { ResponseError } = require("../error/responseError");
 const { validate } = require("../validation/validation");
 const { qrisPaymentValidation } = require("../validation/transaksiValidation");
+const { logger } = require("../utils/logger");
+
 
 // Controller untuk membuat QRIS payment
 const createQrisPayment = async (req, res, next) => {
@@ -40,7 +42,7 @@ const handleQrisCallback = async (req, res, next) => {
     res.status(200).json({ status: "OK", data: result });
   } catch (error) {
     // Log the error but still return 200 to Midtrans to prevent retries
-    console.error("QRIS Callback Error:", error);
+    logger.error("QRIS Callback Error:", error);
     res.status(200).json({ status: "ERROR", message: error.message });
   }
 };

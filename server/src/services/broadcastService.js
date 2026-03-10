@@ -2,6 +2,8 @@ const prisma = require("../config/db");
 const pelangganService = require("./pelangganService");
 const whatsappService = require("./whatsappService");
 const { ResponseError } = require("../error/responseError");
+const { logger } = require("../utils/logger");
+
 
 /**
  * Create and start a broadcast campaign
@@ -54,7 +56,7 @@ const createBroadcast = async (data, user) => {
   // For now, if no schedule, run immediately.
   if (!scheduleTime) {
     executeBroadcast(campaign.id).catch(err => {
-        console.error(`Broadcast execution failed for campaign ${campaign.id}:`, err);
+        logger.error(`Broadcast execution failed for campaign ${campaign.id}:`, err);
     });
   }
 
@@ -66,7 +68,7 @@ const createBroadcast = async (data, user) => {
  * @param {String} campaignId 
  */
 const executeBroadcast = async (campaignId) => {
-  console.log(`Starting broadcast execution for campaign: ${campaignId}`);
+  logger.info(`Starting broadcast execution for campaign: ${campaignId}`);
   
   const campaign = await prisma.marketingCampaign.findUnique({
     where: { id: campaignId },
@@ -86,7 +88,7 @@ const executeBroadcast = async (campaignId) => {
   try {
     segments = JSON.parse(campaign.targetAudience || "{}");
   } catch (e) {
-    console.error("Failed to parse target audience", e);
+    logger.error("Failed to parse target audience", e);
   }
 
   // Fetch bot configuration
@@ -98,7 +100,7 @@ const executeBroadcast = async (campaignId) => {
   });
 
   if (!botConfig) {
-      console.warn(`[Broadcast] Cannot execute broadcast ${campaign.id}. No active BotConfig found for branch ${campaign.cabangId}.`);
+      logger.warn(`[Broadcast] Cannot execute broadcast ${campaign.id}. No active BotConfig found for branch ${campaign.cabangId}.`);
       await prisma.marketingCampaign.update({
           where: { id: campaign.id },
           data: { status: 'failed', deskripsi: 'Broadcast gagal. Bot WhatsApp tidak aktif.' }
@@ -116,7 +118,7 @@ const executeBroadcast = async (campaignId) => {
   });
 
   const customers = customerResult.data;
-  console.log(`[Broadcast] Found ${customers.length} target customers.`);
+  logger.info(`[Broadcast] Found ${customers.length} target customers.`);
 
   let successCount = 0;
   let failCount = 0;
@@ -160,7 +162,7 @@ const executeBroadcast = async (campaignId) => {
 
         successCount++;
       } catch (error) {
-          console.error(`Failed to send to ${customer.telepon}:`, error.message);
+          logger.error(`Failed to send to ${customer.telepon}:`, error.message);
           failCount++;
           
           // Log failure
@@ -189,7 +191,7 @@ const executeBroadcast = async (campaignId) => {
       }
   });
 
-  console.log(`Broadcast completed. Success: ${successCount}, Failed: ${failCount}`);
+  logger.info(`Broadcast completed. Success: ${successCount}, Failed: ${failCount}`);
 };
 
 /**

@@ -1,6 +1,8 @@
 const { ResponseError } = require("../error/responseError");
 const path = require("path");
 const { supabase,bucketName } = require("../config/supabase");
+const { logger } = require("./logger");
+
 
 const uploadFileToSupabase = async (file) => {
   const timestamp = Date.now();
@@ -65,7 +67,7 @@ const deleteFilesFromSupabase = async (filePaths) => {
     .remove(filePaths);
 
   if (error) {
-    console.error("Error deleting files from Supabase:", error);
+    logger.error("Error deleting files from Supabase:", error);
     throw new Error(`Error deleting files from Supabase: ${error.message}`);
   }
 

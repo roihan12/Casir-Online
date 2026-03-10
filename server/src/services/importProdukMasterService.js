@@ -15,6 +15,8 @@ const {
 } = require("../utils/redisUtils");
 const ProductDashboardService = require("./productDashboardService");
 const ExcelJS = require("exceljs");
+const { logger } = require("../utils/logger");
+
 
 const BATCH_SIZE = 100;
 
@@ -25,8 +27,8 @@ const BATCH_SIZE = 100;
 const previewImportProdukMaster = async (buffer, mimetype) => {
   const { headers, rows } = await parseImportFile(buffer, mimetype);
 
-  console.log("headers", headers);
-  console.log("rows", rows);
+  logger.info("headers", headers);
+  logger.info("rows", rows);
 
   // Validate required columns
   validateRequiredColumns(headers, PRODUK_MASTER_REQUIRED_COLUMNS);

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import request from 'supertest';
 import { getTestPrismaClient, clearTestDb } from '../utils/testDbManager';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import path from 'path';
 
 // We'll dynamically import app after DATABASE_URL is set

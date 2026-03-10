@@ -15,6 +15,8 @@ const {
   cacheDeletePattern,
 } = require("../utils/redisUtils");
 const { getBranchesWithSupplierAccess } = require("./produkSupplierService");
+const { logger } = require("../utils/logger");
+
 
 /**
  * Create a new supplier with optimized database queries
@@ -69,7 +71,7 @@ const createSupplier = async (data, context) => {
       record_id: supplier.id,
       oldValues: null,
       new_values: validData,
-    }).catch((error) => console.error("Audit log creation failed:", error));
+    }).catch((error) => logger.error("Audit log creation failed:", error));
 
     return supplier;
   });
@@ -126,7 +128,7 @@ const updateSupplier = async (id, data, context) => {
       record_id: supplier.id,
       oldValues: oldData,
       new_values: validData,
-    }).catch((error) => console.error("Audit log creation failed:", error));
+    }).catch((error) => logger.error("Audit log creation failed:", error));
 
     return supplier;
   });
@@ -166,7 +168,7 @@ const deleteSupplier = async (id, context) => {
       record_id: id,
       oldValues: oldData,
       new_values: null,
-    }).catch((error) => console.error("Audit log creation failed:", error));
+    }).catch((error) => logger.error("Audit log creation failed:", error));
 
     return { message: "Supplier deleted successfully" };
   });

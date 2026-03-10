@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const userAvatarController = require("../controllers/userAvatarController");
 const { authenticate } = require("../middleware/authMiddleware");
+const { uploadLimiter } = require("../middleware/rateLimiter");
 const multer = require("multer");
 
 // Konfigurasi multer untuk upload file
@@ -26,6 +27,7 @@ router.use(authenticate);
 // Rute untuk upload avatar
 router.post(
   "/upload/:id?",
+  uploadLimiter,
   upload.single("avatar"),
   userAvatarController.uploadAvatar
 );

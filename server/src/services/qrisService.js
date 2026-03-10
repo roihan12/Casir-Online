@@ -1,6 +1,8 @@
 const midtransService = require("./midtransService");
 const prisma = require("../config/db");
 const { ResponseError } = require("../error/responseError");
+const { logger } = require("../utils/logger");
+
 
 // Generate QRIS code
 const generateQrisCode = async (data) => {
@@ -18,7 +20,7 @@ const generateQrisCode = async (data) => {
   // Format order items for Midtrans
   const formattedItems = order_items || [];
 
-  console.log(formattedItems);
+  logger.info(formattedItems);
 
   // Call Midtrans service to generate QRIS
   const qrisData = await midtransService.generateQRIS({
@@ -32,7 +34,7 @@ const generateQrisCode = async (data) => {
   });
 
   // Log the QRIS generation
-  console.log(
+  logger.info(
     `QRIS generated for transaction ${external_id} with amount ${amount}`
   );
 
@@ -83,7 +85,7 @@ const checkQrisStatus = async (reference_id) => {
       amount: statusData.gross_amount,
     };
   } catch (error) {
-    console.error("Error checking QRIS status:", error);
+    logger.error("Error checking QRIS status:", error);
     throw new ResponseError(500, "Failed to check QRIS payment status");
   }
 };
@@ -172,7 +174,7 @@ const handleQrisCallback = async (notificationData) => {
       payment_status: paymentData.status,
     };
   } catch (error) {
-    console.error("Error processing QRIS callback:", error);
+    logger.error("Error processing QRIS callback:", error);
     throw new ResponseError(500, "Failed to process QRIS callback");
   }
 };
@@ -211,7 +213,7 @@ const cancelQrisPayment = async (reference_id) => {
       midtrans_response: cancelData,
     };
   } catch (error) {
-    console.error("Error canceling QRIS payment:", error);
+    logger.error("Error canceling QRIS payment:", error);
     throw new ResponseError(500, "Failed to cancel QRIS payment");
   }
 };

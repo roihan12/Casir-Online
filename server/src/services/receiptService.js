@@ -8,6 +8,8 @@ const puppeteer = require("puppeteer");
 const qrcode = require("qrcode");
 const nodemailer = require("nodemailer");
 const whatsappService = require("./whatsappService");
+const { logger } = require("../utils/logger");
+
 
 
 /**
@@ -437,7 +439,7 @@ const generateReceiptHtml = async (transactionData, options = {}) => {
   // Determine template based on type
   let templatePath;
   if (paperType === "thermal") {
-    console.log("thermal" , path.join(__dirname, "../../templates/thermal_receipt.ejs"));
+    logger.info("thermal" , path.join(__dirname, "../../templates/thermal_receipt.ejs"));
     templatePath = path.join(__dirname, "../../templates/thermal_receipt.ejs");
   } else {
     templatePath = path.join(__dirname, "../../templates/a4_receipt.ejs");
@@ -466,7 +468,7 @@ const generateReceiptHtml = async (transactionData, options = {}) => {
 
       qrCodeData = await qrcode.toDataURL(qrData);
     } catch (error) {
-      console.error("Failed to generate QR code:", error);
+      logger.error("Failed to generate QR code:", error);
     }
   }
 
@@ -541,7 +543,7 @@ const generateReceiptHtml = async (transactionData, options = {}) => {
     const html = await ejs.renderFile(templatePath, templateData);
     return html;
   } catch (error) {
-    console.error("Error rendering template:", error);
+    logger.error("Error rendering template:", error);
     throw new ResponseError(500, `Error rendering template: ${error.message}`);
   }
 };
@@ -580,7 +582,7 @@ const generatePdfFromHtml = async (html, options = {}) => {
     const pdfBuffer = await page.pdf(pdfOptions);
     return pdfBuffer;
   } catch (error) {
-    console.error("Error generating PDF:", error);
+    logger.error("Error generating PDF:", error);
     throw new ResponseError(500, `Error generating PDF: ${error.message}`);
   } finally {
     if (browser) {
@@ -744,7 +746,7 @@ const sendReceiptByEmail = async (data, auditInfo) => {
       messageId: info.messageId,
     };
   } catch (error) {
-    console.error("Failed to send email:", error);
+    logger.error("Failed to send email:", error);
     throw new ResponseError(500, `Failed to send email: ${error.message}`);
   }
 };
@@ -824,7 +826,7 @@ const handlePaymentReceipt = async (transaksiId, options = {}, auditInfo = {}) =
         format,
       }, auditInfo || { userId: "SYSTEM", ipAddress: "0.0.0.0" });
     } catch (error) {
-      console.error("Failed to send receipt email:", error);
+      logger.error("Failed to send receipt email:", error);
       // Continue execution even if email fails
     }
   }
@@ -907,7 +909,7 @@ const sendReceiptByWhatsapp = async (data, auditInfo) => {
         { caption }
     );
 
-    console.log("result", result);
+    logger.info("result", result);
 
     // Add audit log
     await prisma.auditLog.create({
@@ -929,7 +931,7 @@ const sendReceiptByWhatsapp = async (data, auditInfo) => {
       message: `Struk berhasil dikirim ke ${phone}`,
     };
   } catch (error) {
-    console.error("Failed to send WhatsApp receipt:", error);
+    logger.error("Failed to send WhatsApp receipt:", error);
     throw new ResponseError(500, `Gagal mengirim WhatsApp: ${error.message}`);
   }
 };

@@ -1,5 +1,7 @@
 const prisma = require("../config/db");
 const { ResponseError } = require("../error/responseError");
+const { logger } = require("../utils/logger");
+
 
 // Menambahkan stok dengan batch number dan expired date
 const addProductBatch = async (data, auditInfo) => {
@@ -234,7 +236,7 @@ SELECT
     OFFSET ${skip}
   `;
 
-  console.log("produkAkankadaluarsa", produkAkankadaluarsa);
+  logger.info("produkAkankadaluarsa", produkAkankadaluarsa);
 
   return {
     data: produkAkankadaluarsa,

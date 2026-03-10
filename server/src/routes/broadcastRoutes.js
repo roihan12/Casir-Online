@@ -3,6 +3,7 @@ const router = express.Router();
 const broadcastController = require("../controllers/broadcastController");
 const { authenticate } = require("../middleware/authMiddleware");
 const { hasPermission } = require("../middleware/permissionMiddleware");
+const { messageLimiter } = require("../middleware/rateLimiter");
 
 // All routes require authentication
 router.use(authenticate);
@@ -10,6 +11,7 @@ router.use(authenticate);
 // Create new broadcast
 router.post(
   "/send",
+  messageLimiter,
   hasPermission(["marketing:create"]), // Assuming permission exists or use a generic one
   broadcastController.createBroadcast
 );

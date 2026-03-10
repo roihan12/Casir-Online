@@ -1,6 +1,8 @@
 const { PlatformType } = require("@prisma/client");
 const prisma = require("../config/db");
 const wa = require("./whatsappService");
+const { logger } = require("../utils/logger");
+
 
 /**
  * Format phone number to international format (628xxx)
@@ -42,7 +44,7 @@ const getBotConfig = async (cabangId) => {
     });
     return config;
   } catch (err) {
-    console.warn("Failed to get bot config:", err.message);
+    logger.warn("Failed to get bot config:", err.message);
     return null;
   }
 };
@@ -86,10 +88,10 @@ ${trackingUrl}${orderData.payment_url ? `\n\n💳 *Link Pembayaran:*\n${orderDat
 Terima kasih telah berbelanja! 🙏`;
 
     await wa.sendMessage(phone, message, deviceId);
-    console.log(`[WA] Order confirmation sent to ${phone}`);
+    logger.info(`[WA] Order confirmation sent to ${phone}`);
   } catch (err) {
     // Don't block checkout if WA fails
-    console.error("[WA] Failed to send order confirmation:", err.message);
+    logger.error("[WA] Failed to send order confirmation:", err.message);
   }
 };
 
@@ -124,9 +126,9 @@ ${itemsList}
 Segera proses pesanan ini! 🚀`;
 
     await wa.sendMessage(adminPhone, message, deviceId);
-    console.log(`[WA] Admin notification sent to ${adminPhone}`);
+    logger.info(`[WA] Admin notification sent to ${adminPhone}`);
   } catch (err) {
-    console.error("[WA] Failed to send admin notification:", err.message);
+    logger.error("[WA] Failed to send admin notification:", err.message);
   }
 };
 
@@ -160,9 +162,9 @@ ${trackingUrl}
 Terima kasih! 🙏`;
 
     await wa.sendMessage(phone, message, deviceId);
-    console.log(`[WA] Payment success notification sent to ${phone}`);
+    logger.info(`[WA] Payment success notification sent to ${phone}`);
   } catch (err) {
-    console.error("[WA] Failed to send payment success notification:", err.message);
+    logger.error("[WA] Failed to send payment success notification:", err.message);
   }
 };
 
@@ -208,9 +210,9 @@ ${statusMsg}
 ${trackingUrl}`;
 
     await wa.sendMessage(phone, message, deviceId);
-    console.log(`[WA] Status update (${newStatus}) sent to ${phone}`);
+    logger.info(`[WA] Status update (${newStatus}) sent to ${phone}`);
   } catch (err) {
-    console.error("[WA] Failed to send status update:", err.message);
+    logger.error("[WA] Failed to send status update:", err.message);
   }
 };
 
@@ -273,9 +275,9 @@ ${itemsList}
 Segera ambil pesanan di toko! 🏃‍♂️`;
 
     await wa.sendMessage(phone, message, deviceId);
-    console.log(`[WA] Driver assignment notification sent to ${phone}`);
+    logger.info(`[WA] Driver assignment notification sent to ${phone}`);
   } catch (err) {
-    console.error("[WA] Failed to send driver notification:", err.message);
+    logger.error("[WA] Failed to send driver notification:", err.message);
   }
 };
 

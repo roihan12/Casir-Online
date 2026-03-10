@@ -10,6 +10,8 @@ const {
 } = require("../utils/redisUtils");
 const { formatDecimal, formatObjectDecimals } = require("../utils/formatHelper");
 const whatsappService = require("./whatsappService");
+const { logger } = require("../utils/logger");
+
 
 // Service untuk membuka shift baru
 const openShift = async (data, auditInfo) => {
@@ -240,7 +242,7 @@ const closeShift = async (data, auditInfo) => {
           }
       }
   } catch (err) {
-      console.error("[ShiftWA] Failed to send shift closure report:", err.message);
+      logger.error("[ShiftWA] Failed to send shift closure report:", err.message);
   }
   
   // Cache shift detail (masih bermanfaat untuk laporan)
@@ -460,7 +462,7 @@ const getShiftById = async (shiftId) => {
       throw new ResponseError(404, "Shift tidak ditemukan");
     }
 
-    console.log("shift", shift);
+    logger.info("shift", shift);
 
     // Hitung total berdasarkan metode pembayaran
     const paymentSummary = {};

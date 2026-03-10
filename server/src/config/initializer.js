@@ -1,24 +1,26 @@
 // config/initializer.js
 const { redisClient, healthCheck, cleanup } = require("./redis");
+const { logger } = require("../utils/logger");
+
 
 const initialize = async () => {
   // Redis health check
   const redisStatus = await healthCheck();
   if (!redisStatus) {
-    console.error("Redis health check failed!");
+    logger.error("Redis health check failed!");
   } else {
-    console.log("Redis connection successful");
+    logger.info("Redis connection successful");
   }
 
   // Tangani shutdown gracefully
   process.on("SIGTERM", async () => {
-    console.log("SIGTERM signal received");
+    logger.info("SIGTERM signal received");
     await cleanup();
     process.exit(0);
   });
 
   process.on("SIGINT", async () => {
-    console.log("SIGINT signal received");
+    logger.info("SIGINT signal received");
     await cleanup();
     process.exit(0);
   });

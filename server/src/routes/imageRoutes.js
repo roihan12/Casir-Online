@@ -5,12 +5,14 @@ const { authenticate } = require("../middleware/authMiddleware");
 const { hasPermission } = require("../middleware/permissionMiddleware");
 
 const { upload, handleMulterError } = require("../middleware/uploadMiddleware");
+const { uploadLimiter } = require("../middleware/rateLimiter");
 
 // Upload a single image to a product
 router.post(
   "/products/:id/images",
   authenticate,
   hasPermission(["produk:manage"]),
+  uploadLimiter,
   upload.single("image"),
   handleMulterError,
   imageController.uploadProdukImage

@@ -9,6 +9,8 @@ const {
 } = require("../utils/redisUtils");
 const { formatUserData } = require("../services/authService");
 const { runWithRlsContext } = require("../utils/rlsContext");
+const { logger } = require("../utils/logger");
+
 
 const authenticate = async (req, res, next) => {
   try {
@@ -242,7 +244,7 @@ const updateLastActivity = async (sessionId) => {
       where: { id: sessionId },
       data: { lastActivity: new Date() },
     }).catch(err => {
-      console.error("Error updating last activity:", err.message);
+      logger.error("Error updating last activity:", err.message);
     });
     
     // Clean up old entries from cache periodically

@@ -6,6 +6,8 @@
 const { Pool } = require("pg");
 const { db } = require("../config/db");
 const logger = require("../utils/logger");
+const { logger } = require("../utils/logger");
+
 
 class ViewRefreshService {
   constructor() {
@@ -25,7 +27,7 @@ class ViewRefreshService {
    * Start the listener for materialized view refresh notifications
    */
   async startListener() {
-    console.log("iscall");
+    logger.info("iscall");
     try {
       logger.info("Starting view refresh notification listener");
 

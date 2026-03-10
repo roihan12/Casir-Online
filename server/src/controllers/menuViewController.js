@@ -1,4 +1,6 @@
 const menuService = require('../services/menuService');
+const { logger } = require("../utils/logger");
+
 
 /**
  * Controller untuk mengelola akses ke view menu dan role
@@ -16,7 +18,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error getting menu hierarchy:', error);
+      logger.error('Error getting menu hierarchy:', error);
       return res.status(500).json({
         success: false,
         message: 'Gagal mendapatkan hierarki menu',
@@ -36,7 +38,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error getting role menu summary:', error);
+      logger.error('Error getting role menu summary:', error);
       return res.status(500).json({
         success: false,
         message: 'Gagal mendapatkan ringkasan menu role',
@@ -58,7 +60,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error getting role menu permissions:', error);
+      logger.error('Error getting role menu permissions:', error);
       return res.status(500).json({
         success: false,
         message: 'Gagal mendapatkan izin akses menu',
@@ -88,7 +90,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error getting available menu by role:', error);
+      logger.error('Error getting available menu by role:', error);
       return res.status(500).json({
         success: false,
         message: 'Gagal mendapatkan menu yang tersedia',
@@ -118,7 +120,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error getting unassigned menu by role:', error);
+      logger.error('Error getting unassigned menu by role:', error);
       return res.status(500).json({
         success: false,
         message: 'Gagal mendapatkan menu yang belum diberikan',
@@ -149,7 +151,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error getting sidebar navigation:', error);
+      logger.error('Error getting sidebar navigation:', error);
       return res.status(500).json({
         success: false,
         message: 'Gagal mendapatkan navigasi sidebar',
@@ -180,7 +182,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error getting role sidebar navigation:', error);
+      logger.error('Error getting role sidebar navigation:', error);
       return res.status(500).json({
         success: false,
         message: 'Gagal mendapatkan navigasi sidebar berdasarkan role',
@@ -200,7 +202,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error getting menu usage statistics:', error);
+      logger.error('Error getting menu usage statistics:', error);
       return res.status(500).json({
         success: false,
         message: 'Gagal mendapatkan statistik penggunaan menu',
@@ -221,7 +223,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error getting most accessed menu:', error);
+      logger.error('Error getting most accessed menu:', error);
       return res.status(500).json({
         success: false,
         message: 'Gagal mendapatkan menu yang paling banyak diakses',
@@ -241,7 +243,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error getting menu JSON:', error);
+      logger.error('Error getting menu JSON:', error);
       return res.status(500).json({
         success: false,
         message: 'Gagal mendapatkan data menu dalam format JSON',
@@ -263,7 +265,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error getting role menu JSON:', error);
+      logger.error('Error getting role menu JSON:', error);
       return res.status(500).json({
         success: false,
         message: 'Gagal mendapatkan data menu dan izin akses dalam format JSON',
@@ -283,7 +285,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error getting menu role system summary:', error);
+      logger.error('Error getting menu role system summary:', error);
       return res.status(500).json({
         success: false,
         message: 'Gagal mendapatkan ringkasan sistem menu dan role',
@@ -307,7 +309,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error getting all menus:', error);
+      logger.error('Error getting all menus:', error);
       return res.status(500).json({
         success: false,
         message: 'Gagal mendapatkan daftar menu',
@@ -328,7 +330,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error getting menu by ID:', error);
+      logger.error('Error getting menu by ID:', error);
       const statusCode = error.status || 500;
       return res.status(statusCode).json({
         success: false,
@@ -354,7 +356,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error creating menu:', error);
+      logger.error('Error creating menu:', error);
       const statusCode = error.status || 500;
       return res.status(statusCode).json({
         success: false,
@@ -381,7 +383,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error updating menu:', error);
+      logger.error('Error updating menu:', error);
       const statusCode = error.status || 500;
       return res.status(statusCode).json({
         success: false,
@@ -408,7 +410,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error deleting menu:', error);
+      logger.error('Error deleting menu:', error);
       const statusCode = error.status || 500;
       return res.status(statusCode).json({
         success: false,
@@ -439,7 +441,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error assigning menu to role:', error);
+      logger.error('Error assigning menu to role:', error);
       const statusCode = error.status || 500;
       return res.status(statusCode).json({
         success: false,
@@ -466,7 +468,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error removing menu from role:', error);
+      logger.error('Error removing menu from role:', error);
       const statusCode = error.status || 500;
       return res.status(statusCode).json({
         success: false,
@@ -493,7 +495,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error bulk assigning menus to role:', error);
+      logger.error('Error bulk assigning menus to role:', error);
       const statusCode = error.status || 500;
       return res.status(statusCode).json({
         success: false,
@@ -515,7 +517,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error getting role menus:', error);
+      logger.error('Error getting role menus:', error);
       const statusCode = error.status || 500;
       return res.status(statusCode).json({
         success: false,
@@ -546,7 +548,7 @@ class MenuViewController {
         data: result
       });
     } catch (error) {
-      console.error('Error getting user menus:', error);
+      logger.error('Error getting user menus:', error);
       return res.status(500).json({
         success: false,
         message: 'Gagal mendapatkan menu user',

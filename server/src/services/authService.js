@@ -1,4 +1,4 @@
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const prisma = require("../config/db");
 const {
   cacheSet,
@@ -11,6 +11,8 @@ const { generateToken } = require("../utils/jwt");
 const { loginUserValidation } = require("../validation/authValidation");
 const { validate } = require("../validation/validation");
 const { ResponseError } = require("../error/responseError");
+const { logger } = require("../utils/logger");
+
 
 /**
  * Helper to get unified permissions for a user across all roles
@@ -199,7 +201,7 @@ const login = async (username, password, ipAddress, userAgent) => {
       throw error;
     }
     // Log error untuk debugging
-    console.error("Login error:", error);
+    logger.error("Login error:", error);
     throw new ResponseError(500, "Internal server error during login");
   }
 };

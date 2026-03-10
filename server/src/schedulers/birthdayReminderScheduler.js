@@ -3,6 +3,8 @@ const dayjs = require("dayjs");
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const whatsappService = require("../services/whatsappService");
+const { logger } = require("../utils/logger");
+
 
 // Helper to format currency/points
 const formatNumber = (amount) => {
@@ -27,16 +29,16 @@ const sendBirthdayWish = async (phone, message, cabangId) => {
         });
 
         if (!botConfig) {
-            console.warn(`[BirthdayReminder] No active BotConfig found for branch ${cabangId}. Skipping whatsapp message.`);
+            logger.warn(`[BirthdayReminder] No active BotConfig found for branch ${cabangId}. Skipping whatsapp message.`);
             return false;
         }
 
         const wService = new whatsappService();
         const response = await wService.sendMessage(`${formattedPhone}@s.whatsapp.net`, message, botConfig.deviceId);
-        console.log(`[BirthdayReminder] Sent to ${formattedPhone}`);
+        logger.info(`[BirthdayReminder] Sent to ${formattedPhone}`);
         return true;
     } catch (error) {
-        console.error(`[BirthdayReminder] Failed to send message to ${phone}:`, error.message);
+        logger.error(`[BirthdayReminder] Failed to send message to ${phone}:`, error.message);
         return false;
     }
 };
@@ -45,7 +47,7 @@ const sendBirthdayWish = async (phone, message, cabangId) => {
  * Check for customers whose birthday is today
  */
 const checkBirthdayAndGiveReward = async () => {
-    console.log('[BirthdayReminder] Running checkBirthdayAndGiveReward job...');
+    logger.info('[BirthdayReminder] Running checkBirthdayAndGiveReward job...');
     try {
         const today = new Date();
         const currentMonth = today.getMonth() + 1; // 1-12
@@ -128,7 +130,7 @@ const checkBirthdayAndGiveReward = async () => {
                     pointsAddedInfo = rewardsConfig.messageTemplate.replace('{points}', formatNumber(rewardsConfig.rewardPoints));
 
                 } catch (pointError) {
-                   console.error(`[BirthdayReminder] Failed to add points for ${pelanggan.namaPelanggan}:`, pointError.message);
+                   logger.error(`[BirthdayReminder] Failed to add points for ${pelanggan.namaPelanggan}:`, pointError.message);
                    // Just fallback to generic greeting if no points
                    pointsAddedInfo = "Semoga panjang umur, sehat selalu, dan dilapangkan rezekinya. Amin. 🥳🎂";
                 }
@@ -141,7 +143,7 @@ const checkBirthdayAndGiveReward = async () => {
             }
         }
     } catch (error) {
-        console.error('[BirthdayReminder] Error in checkBirthdayAndGiveReward:', error);
+        logger.error('[BirthdayReminder] Error in checkBirthdayAndGiveReward:', error);
     }
 };
 
@@ -151,7 +153,7 @@ const checkBirthdayAndGiveReward = async () => {
 const setupBirthdayReminderScheduler = () => {
   // Jalankan pembuatan ucapan ulang tahun setiap hari pukul 09:00 pagi
   cron.schedule("0 9 * * *", checkBirthdayAndGiveReward);
-  console.log('[BirthdayReminder] Scheduler ucapan ulang tahun berhasil diatur (09:00 AM)');
+  logger.info('[BirthdayReminder] Scheduler ucapan ulang tahun berhasil diatur (09:00 AM)');
 };
 
 module.exports = {

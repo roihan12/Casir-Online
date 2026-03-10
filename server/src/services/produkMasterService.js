@@ -14,6 +14,8 @@ const {
   cacheDeletePattern,
 } = require("../utils/redisUtils");
 const ProductDashboardService = require("./productDashboardService");
+const { logger } = require("../utils/logger");
+
 
 // Helper function to convert any string/boolean value to proper boolean
 const convertToBoolean = (value) => {
@@ -390,7 +392,7 @@ const updateProdukMaster = async (
           await deleteFilesFromSupabase(filePathsToDelete);
         } catch (error) {
           // Log error but don't fail the transaction
-          console.error("Error deleting images from Supabase:", error);
+          logger.error("Error deleting images from Supabase:", error);
         }
       }
     }
@@ -466,7 +468,7 @@ const deleteProdukMaster = async (id, { userId, ipAddress }) => {
         await deleteFilesFromSupabase(filePathsToDelete);
       } catch (error) {
         // Log error but don't fail the transaction
-        console.error("Error deleting images from Supabase:", error);
+        logger.error("Error deleting images from Supabase:", error);
       }
     }
 
@@ -659,7 +661,7 @@ const deleteProdukImage = async (imageId, { userId, ipAddress } = {}) => {
     try {
       await deleteFilesFromSupabase(image.filePath);
     } catch (error) {
-      console.error("Error deleting file from Supabase:", error);
+      logger.error("Error deleting file from Supabase:", error);
     }
 
     // Create audit log entry if user info is provided

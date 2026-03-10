@@ -24,7 +24,7 @@ const cacheSet = async (key, data, ttlSeconds = 86400) => {
     
     return await redisClient.setex(key, ttlSeconds, serializedData);
   } catch (error) {
-    console.error(`Cache set error for key "${key}":`, error);
+    logger.error(`Cache set error for key "${key}":`, error);
     throw error;
   }
 };
@@ -50,7 +50,7 @@ const cacheGet = async (key) => {
       return value;
     });
   } catch (error) {
-    console.error(`Cache get error for key "${key}":`, error);
+    logger.error(`Cache get error for key "${key}":`, error);
     throw error;
   }
 };
@@ -102,7 +102,7 @@ const cacheDeletePatternScan = async (pattern, batchCount = 100) => {
 
       cursor = nextCursor;
     } catch (error) {
-      console.error(`Error in cacheDeletePatternScan for pattern "${pattern}":`, error);
+      logger.error(`Error in cacheDeletePatternScan for pattern "${pattern}":`, error);
       throw error;
     }
   } while (cursor !== "0");
@@ -173,7 +173,7 @@ const cacheOrFetch = async (key, fetchFunction, ttlSeconds = 86400) => {
 
     return data;
   } catch (error) {
-    console.error(`Error in cacheOrFetch for key ${key}:`, error);
+    logger.error(`Error in cacheOrFetch for key ${key}:`, error);
     // Fallback to fetching data directly if caching fails
     return await fetchFunction();
   }

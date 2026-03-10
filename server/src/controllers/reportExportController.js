@@ -3,6 +3,8 @@ const ExportStreamService = require("../services/exportStreamService");
 const { PrismaClient } = require("@prisma/client");
 const { ResponseError } = require("../error/responseError");
 const { exportBranchReportSchema } = require("../validation/reportExportValidation");
+const { logger } = require("../utils/logger");
+
 
 const prisma = new PrismaClient();
 
@@ -216,7 +218,7 @@ const exportReportUnified = async (req, res, next) => {
     if (!res.headersSent) {
       next(err);
     } else {
-      console.error("Streaming export error:", err);
+      logger.error("Streaming export error:", err);
       res.end();
     }
   }

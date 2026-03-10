@@ -1,6 +1,8 @@
 const prisma = require("../config/db");
 const { cacheOrFetch, createCacheKey } = require("../utils/redisUtils");
 const { startOfDay, endOfDay, parseISO } = require("date-fns");
+const { logger } = require("../utils/logger");
+
 
 /**
  * Service for Shift Performance & Staff Reporting
@@ -76,7 +78,7 @@ class ShiftReportService {
           },
         });
 
-        console.log(shifts);
+        logger.info(shifts);
 
         // Calculate metrics
         const totalShifts = shifts.length;

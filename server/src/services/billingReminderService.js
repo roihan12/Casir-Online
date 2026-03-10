@@ -3,6 +3,8 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const whatsappService = require('./whatsappService');
 const dayjs = require('dayjs');
+const { logger } = require("../utils/logger");
+
 
 // Helper to format currency
 const formatCurrency = (amount) => {
@@ -33,17 +35,17 @@ const sendReminder = async (phone, message, cabangId) => {
         });
 
         if (!botConfig) {
-            console.warn(`[BillingReminder] No active BotConfig found for branch ${cabangId}. Skipping whatsapp message.`);
+            logger.warn(`[BillingReminder] No active BotConfig found for branch ${cabangId}. Skipping whatsapp message.`);
             return false;
         }
 
         // We use the first connected device if device_id is required, 
         // or just let the whatsapp service use the default configured logic
         const response = await whatsappService.sendMessage(`${formattedPhone}@s.whatsapp.net`, message, botConfig.deviceId);
-        console.log(`[BillingReminder] Sent to ${formattedPhone}:`, response);
+        logger.info(`[BillingReminder] Sent to ${formattedPhone}:`, response);
         return true;
     } catch (error) {
-        console.error(`[BillingReminder] Failed to send message to ${phone}:`, error.message);
+        logger.error(`[BillingReminder] Failed to send message to ${phone}:`, error.message);
         return false;
     }
 };
@@ -53,7 +55,7 @@ const sendReminder = async (phone, message, cabangId) => {
  * Check for Hutang (Debt) nearing due date
  */
 const checkHutangJatuhTempo = async () => {
-    console.log('[BillingReminder] Running checkHutangJatuhTempo job...');
+    logger.info('[BillingReminder] Running checkHutangJatuhTempo job...');
     try {
         const today = dayjs().startOf('day');
         // Define targets: Today, Tomorrow (H-1), and 3 Days from now (H-3)
@@ -103,7 +105,7 @@ const checkHutangJatuhTempo = async () => {
             }
         }
     } catch (error) {
-        console.error('[BillingReminder] Error in checkHutangJatuhTempo:', error);
+        logger.error('[BillingReminder] Error in checkHutangJatuhTempo:', error);
     }
 };
 
@@ -111,7 +113,7 @@ const checkHutangJatuhTempo = async () => {
  * Check for Kredit (Installments) nearing due date
  */
 const checkKreditJatuhTempo = async () => {
-    console.log('[BillingReminder] Running checkKreditJatuhTempo job...');
+    logger.info('[BillingReminder] Running checkKreditJatuhTempo job...');
     try {
         const today = dayjs().startOf('day');
         const startOfToday = today.toDate();
@@ -175,7 +177,7 @@ const checkKreditJatuhTempo = async () => {
              }
         }
     } catch (error) {
-        console.error('[BillingReminder] Error in checkKreditJatuhTempo:', error);
+        logger.error('[BillingReminder] Error in checkKreditJatuhTempo:', error);
     }
 };
 
@@ -183,17 +185,17 @@ const checkKreditJatuhTempo = async () => {
  * Initialize all cron jobs
  */
 const initCronJobs = () => {
-    console.log('[BillingReminder] Initializing cron jobs...');
+    logger.info('[BillingReminder] Initializing cron jobs...');
     
     // Run every day at 08:00 AM (server time/local time)
     // 0 8 * * *
     cron.schedule('0 8 * * *', async () => {
-        console.log('[BillingReminder] Triggering daily billing check (08:00 AM)');
+        logger.info('[BillingReminder] Triggering daily billing check (08:00 AM)');
         await checkHutangJatuhTempo();
         await checkKreditJatuhTempo();
     });
 
-    console.log('[BillingReminder] Cron jobs initialized. Scheduled for 08:00 daily.');
+    logger.info('[BillingReminder] Cron jobs initialized. Scheduled for 08:00 daily.');
 };
 
 module.exports = {

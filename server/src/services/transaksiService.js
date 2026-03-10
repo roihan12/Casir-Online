@@ -13,6 +13,7 @@ const {
   cacheDeletePattern,
 } = require("../utils/redisUtils");
 const receiptService = require("./receiptService");
+const { logger } = require("../utils/logger");
 
 // Service untuk transaksi
 const createTransaksi = async (data, auditInfo) => {
@@ -501,7 +502,7 @@ const addPembayaran = async (data, auditInfo) => {
     // Invalidate related cache
     await invalidateRelatedCache(transactionData);
 
-    console.log("cabang_id", transactionData.cabang_id);
+    logger.info("cabang_id", transactionData.cabang_id);
 
     // Get branch receipt configuration
     const receiptConfig = await prisma.receiptConfig.findFirst({
@@ -510,7 +511,7 @@ const addPembayaran = async (data, auditInfo) => {
 
     // Return transaction data with receipt if generated
 
-    console.log(transactionData);
+    logger.info(transactionData);
     return {
       transactionData,
       receipt: receiptConfig,
@@ -576,7 +577,7 @@ const createQrisPayment = async (data, auditInfo) => {
     throw new ResponseError(400, "Transaksi sudah dibatalkan");
   }
 
-  console.log(transaksi.transaksi_detail);
+  logger.info(transaksi.transaksi_detail);
 
   // Check if there's already a pending QRIS payment for this transaction
   if (transaksi.pembayaran && transaksi.pembayaran.length > 0) {
@@ -585,7 +586,7 @@ const createQrisPayment = async (data, auditInfo) => {
     // If the payment was created recently (within 15 minutes), return it instead of creating a new one
     const paymentAge = Date.now() - new Date(existingPayment.created_at).getTime();
     if (paymentAge < 15 * 60 * 1000 && existingPayment.bukti_bayar_url) {
-      console.log("Returning existing QRIS payment for transaction:", transaksi.nomor_transaksi);
+      logger.info("Returning existing QRIS payment for transaction:", transaksi.nomor_transaksi);
       return {
         pembayaran: existingPayment,
         qris_data: {

@@ -88,7 +88,7 @@ export const createUserWithModulePermissions = async (
 
   // 3. Create user
   const plainPassword = 'password123';
-  const bcrypt = await import('bcrypt');
+  const bcrypt = await import('bcryptjs');
   const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
   const user = await prisma.user.create({

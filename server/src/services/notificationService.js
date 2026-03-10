@@ -3,6 +3,8 @@ const { ResponseError } = require("../error/responseError");
 const nodemailer = require("nodemailer"); // Untuk pengiriman email
 const ejs = require("ejs");
 const path = require("path");
+const { logger } = require("../utils/logger");
+
 
 // Mendapatkan atau membuat konfigurasi notifikasi untuk cabang
 const getOrCreateNotificationConfig = async (cabangId) => {
@@ -235,7 +237,7 @@ const sendEmailNotification = async (notification, produk, config) => {
 
     return true;
   } catch (error) {
-    console.error("Failed to send email notification:", error);
+    logger.error("Failed to send email notification:", error);
     return false;
   }
 };
@@ -695,7 +697,7 @@ const sendStockTransferRequestNotification = async (transfer) => {
     });
 
     if (admins.length === 0) {
-      console.log('No admins found with stock transfer approval permission');
+      logger.info('No admins found with stock transfer approval permission');
       return { success: false, message: 'No admins to notify' };
     }
 
@@ -705,7 +707,7 @@ const sendStockTransferRequestNotification = async (transfer) => {
       .filter((email) => email);
 
     if (recipients.length === 0) {
-      console.log('No email addresses found for admins');
+      logger.info('No email addresses found for admins');
       return { success: false, message: 'No email addresses found' };
     }
 
@@ -771,7 +773,7 @@ const sendStockTransferRequestNotification = async (transfer) => {
 
     return { success: true, recipients: recipients.length };
   } catch (error) {
-    console.error('Error sending stock transfer request notification:', error);
+    logger.error('Error sending stock transfer request notification:', error);
     return { success: false, error: error.message };
   }
 };
@@ -826,7 +828,7 @@ const sendStockTransferApprovedNotification = async (transfer) => {
       .filter((email) => email);
 
     if (recipients.length === 0) {
-      console.log('No recipients found for approved notification');
+      logger.info('No recipients found for approved notification');
       return { success: false, message: 'No recipients found' };
     }
 
@@ -901,7 +903,7 @@ const sendStockTransferApprovedNotification = async (transfer) => {
 
     return { success: true, recipients: recipients.length };
   } catch (error) {
-    console.error('Error sending stock transfer approved notification:', error);
+    logger.error('Error sending stock transfer approved notification:', error);
     return { success: false, error: error.message };
   }
 };
@@ -956,7 +958,7 @@ const sendStockTransferRejectedNotification = async (transfer) => {
       .filter((email) => email);
 
     if (recipients.length === 0) {
-      console.log('No recipients found for rejected notification');
+      logger.info('No recipients found for rejected notification');
       return { success: false, message: 'No recipients found' };
     }
 
@@ -1031,7 +1033,7 @@ const sendStockTransferRejectedNotification = async (transfer) => {
 
     return { success: true, recipients: recipients.length };
   } catch (error) {
-    console.error('Error sending stock transfer rejected notification:', error);
+    logger.error('Error sending stock transfer rejected notification:', error);
     return { success: false, error: error.message };
   }
 };

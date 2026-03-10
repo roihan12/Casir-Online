@@ -1,8 +1,10 @@
 const cron = require("node-cron");
 const prisma = require("../config/db");
+const { logger } = require("../utils/logger");
+
 
 const generateRekapHarian = async () => {
-  console.log('[Absensi-Scheduler] Running generateRekapHarian job...');
+  logger.info('[Absensi-Scheduler] Running generateRekapHarian job...');
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -59,12 +61,12 @@ const generateRekapHarian = async () => {
       });
     }
   } catch (error) {
-    console.error('[Absensi-Scheduler] Error in generateRekapHarian:', error);
+    logger.error('[Absensi-Scheduler] Error in generateRekapHarian:', error);
   }
 };
 
 const alertBelumAbsen = async () => {
-  console.log('[Absensi-Scheduler] Running alertBelumAbsen job...');
+  logger.info('[Absensi-Scheduler] Running alertBelumAbsen job...');
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -103,12 +105,12 @@ const alertBelumAbsen = async () => {
       }
     }
   } catch (error) {
-    console.error('[Absensi-Scheduler] Error in alertBelumAbsen:', error);
+    logger.error('[Absensi-Scheduler] Error in alertBelumAbsen:', error);
   }
 };
 
 const generateKuotaCuti = async () => {
-  console.log('[Absensi-Scheduler] Running generateKuotaCuti job...');
+  logger.info('[Absensi-Scheduler] Running generateKuotaCuti job...');
   try {
     const currentYear = new Date().getFullYear();
     const activeUsers = await prisma.user.findMany({
@@ -137,12 +139,12 @@ const generateKuotaCuti = async () => {
       });
     }
   } catch (error) {
-    console.error('[Absensi-Scheduler] Error in generateKuotaCuti:', error);
+    logger.error('[Absensi-Scheduler] Error in generateKuotaCuti:', error);
   }
 };
 
 const generateSlipGajiDraft = async () => {
-  console.log('[Absensi-Scheduler] Running generateSlipGajiDraft job...');
+  logger.info('[Absensi-Scheduler] Running generateSlipGajiDraft job...');
   try {
     const now = new Date();
     // Generate untuk bulan ini
@@ -185,9 +187,9 @@ const generateSlipGajiDraft = async () => {
         }
       }
     }
-    console.log(`[Absensi-Scheduler] Draft created for ${periodeStr}`);
+    logger.info(`[Absensi-Scheduler] Draft created for ${periodeStr}`);
   } catch (error) {
-    console.error('[Absensi-Scheduler] Error in generateSlipGajiDraft:', error);
+    logger.error('[Absensi-Scheduler] Error in generateSlipGajiDraft:', error);
   }
 };
 
@@ -204,7 +206,7 @@ const setupAbsensiScheduler = () => {
   // 4. Generate Slip Gaji Draft (monthly on the 25th at 5:00 AM)
   cron.schedule("0 5 25 * *", generateSlipGajiDraft);
 
-  console.log('[Absensi-Scheduler] Setup completed');
+  logger.info('[Absensi-Scheduler] Setup completed');
 };
 
 module.exports = {

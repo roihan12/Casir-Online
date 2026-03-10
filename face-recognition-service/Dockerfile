@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # Install Python dependencies
+RUN pip install --no-cache-dir onnxruntime==1.17.3
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Download InsightFace models on build

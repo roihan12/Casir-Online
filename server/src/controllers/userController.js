@@ -1,5 +1,7 @@
 const userService = require("../services/userService");
 const { ResponseError } = require("../error/responseError");
+const { logger } = require("../utils/logger");
+
 
 const getAllUsers = async (req, res, next) => {
   try {
@@ -298,7 +300,7 @@ const invalidateCache = async (req, res, next) => {
       message: "Cache invalidated successfully",
     });
   } catch (error) {
-    console.error("Error invalidating cache:", error);
+    logger.error("Error invalidating cache:", error);
     next(error);
   }
 };

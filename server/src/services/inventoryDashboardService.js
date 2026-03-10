@@ -1,6 +1,8 @@
 const { Prisma } = require("@prisma/client");
 const prisma = require("../config/db");
 const { ResponseError } = require("../error/responseError");
+const { logger } = require("../utils/logger");
+
 
 /**
  * Retrieves inventory dashboard data from the materialized view or calculates it directly if needed
@@ -76,7 +78,7 @@ const getInventoryDashboardData = async (cabangId, period = 30) => {
 
     // Process data to handle BigInt conversions before returning
     if (!viewData || viewData.length === 0) {
-      console.warn(
+      logger.warn(
         "No data found in inventory_dashboard_view, falling back to direct calculation"
       );
       return await calculateDashboardData(cabangId, period);
@@ -104,7 +106,7 @@ const getInventoryDashboardData = async (cabangId, period = 30) => {
       return formatAggregatedDashboardData(processedData, period);
     }
   } catch (error) {
-    console.error("Error getting inventory dashboard data:", error);
+    logger.error("Error getting inventory dashboard data:", error);
     // Fallback to direct calculation for any error
     return await calculateDashboardData(cabangId, period);
   }
@@ -186,7 +188,7 @@ status_style  from get_transfer_antar_cabang(${cabangId ? cabangId : null}::TEXT
 
     return combinedData;
   } catch (error) {
-    console.error("Error getting inventory dashboard data:", error);
+    logger.error("Error getting inventory dashboard data:", error);
     throw new ResponseError(500, "Internal Server Error");
   }
 }
@@ -418,7 +420,7 @@ const safeBigIntToNumber = (value) => {
   return Number(value);
 };
 const calculateDashboardData = async (cabangId, period = 30) => {
-  console.log(
+  logger.info(
     `Fallback: calculating dashboard data directly for branch ${cabangId} over ${period} days period`
   );
 
@@ -703,7 +705,7 @@ const calculateDashboardData = async (cabangId, period = 30) => {
       },
     };
   } catch (error) {
-    console.error("Error in calculateDashboardData:", error);
+    logger.error("Error in calculateDashboardData:", error);
     // Return minimal data to avoid breaking the UI
     return {
       summaryData: {
@@ -1143,7 +1145,7 @@ const getHighStockMovementData = async (cabangId, period = 30, interval = 'day')
       topProducts: processedTopProducts
     };
   } catch (error) {
-    console.error('Error getting stock movement data:', error);
+    logger.error('Error getting stock movement data:', error);
     throw new ResponseError(500, 'Failed to retrieve stock movement data');
   }
 };
@@ -1184,7 +1186,7 @@ const getInventoryActivities = async (cabangId, limit = 50) => {
 
     return processedActivities;
   } catch (error) {
-    console.error('Error getting inventory activities:', error);
+    logger.error('Error getting inventory activities:', error);
     throw new ResponseError(500, 'Failed to retrieve inventory activities');
   }
 };
@@ -1217,7 +1219,7 @@ const getInventoryValueByCategory = async (cabangId) => {
 
     return processedInventoryValue;
   } catch (error) {
-    console.error('Error getting inventory value by category:', error);
+    logger.error('Error getting inventory value by category:', error);
     throw new ResponseError(500, 'Failed to retrieve inventory value by category');
   }
 };
@@ -1334,7 +1336,7 @@ const getStockMovementData = async (cabangId, period = 30, interval = 'day') => 
 
     return formattedData;
   } catch (error) {
-    console.error("Error getting stock movement data:", error);
+    logger.error("Error getting stock movement data:", error);
     throw new ResponseError(500, "Failed to get stock movement data");
   }
 };
@@ -1422,7 +1424,7 @@ const getBranchTransferData = async (cabangId, period = 7) => {
 
     return branchTransferData;
   } catch (error) {
-    console.error("Error in getBranchTransferData:", error);
+    logger.error("Error in getBranchTransferData:", error);
     
     // Check if it's a known error type
     if (error instanceof Error) {
@@ -1459,7 +1461,7 @@ const getInventoryHealthScore = async (cabangId) => {
 
     return inventoryHealthScore;
   } catch (error) {
-    console.error("Error getting inventory health score:", error);
+    logger.error("Error getting inventory health score:", error);
     throw new ResponseError(500, "Failed to retrieve inventory health score");
   }
 };

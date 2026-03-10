@@ -16,6 +16,8 @@ const {
   cacheOrFetch,
   cacheDeletePattern,
 } = require("../utils/redisUtils");
+const { logger } = require("../utils/logger");
+
 
 class PermissionService {
   /**
@@ -467,7 +469,7 @@ class PermissionService {
    */
   async bulkAssignPermissionsToRole(roleId, permissionIds, auditInfo) {
 
-    console.log(roleId, permissionIds, auditInfo);
+    logger.info(roleId, permissionIds, auditInfo);
 
     // Check if role exists
     const role = await prisma.role.findUnique({

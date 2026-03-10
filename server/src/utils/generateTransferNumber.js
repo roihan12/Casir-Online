@@ -1,3 +1,5 @@
+const { logger } = require("./logger");
+
 async function generateTransferNumber({
   cabangAsalId,
   cabangTujuanId,
@@ -5,7 +7,7 @@ async function generateTransferNumber({
   sequence = 1,
 }) {
 
-  console.log(cabangAsalId, cabangTujuanId, tanggalKirim, sequence);
+  logger.info(cabangAsalId, cabangTujuanId, tanggalKirim, sequence);
 
   // Validate input parameters
   if (!cabangAsalId || !cabangTujuanId) {

@@ -8,6 +8,8 @@ const { createAuditLog } = require("../utils/auditLog");
 const path = require("path");
 const { supabase, bucketName } = require("../config/supabase");
 const { cacheDelete, createCacheKey } = require("../utils/redisUtils");
+const { logger } = require("../utils/logger");
+
 
 // Cache key constants (copied from userService)
 const CACHE_KEYS = {
@@ -27,7 +29,7 @@ const invalidateUserCache = async (userId) => {
     // Delete all list caches that might contain this user
     await cacheDelete(CACHE_KEYS.USER_LIST + "*");
   } catch (error) {
-    console.error("Error invalidating user cache:", error);
+    logger.error("Error invalidating user cache:", error);
   }
 };
 
@@ -86,7 +88,7 @@ const uploadUserAvatar = async (userId, file, context, cabangId) => {
           await deleteFilesFromSupabase([oldAvatarPath]);
         }
       } catch (error) {
-        console.error("Error deleting old avatar:", error);
+        logger.error("Error deleting old avatar:", error);
         // Lanjutkan proses meskipun gagal menghapus avatar lama
       }
     }
@@ -158,7 +160,7 @@ const deleteUserAvatar = async (userId, context, cabangId) => {
         await deleteFilesFromSupabase([avatarPath]);
       }
     } catch (error) {
-      console.error("Error parsing avatar URL:", error);
+      logger.error("Error parsing avatar URL:", error);
     }
 
     // Update user data di database

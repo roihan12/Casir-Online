@@ -1,27 +1,21 @@
-# Use Node.js LTS as the base image
-FROM node:18-alpine
+FROM node:18-alpine AS builder
 
-# Set working directory
-WORKDIR /usr/src/app
-
-# Copy package.json and package-lock.json from server directory
+WORKDIR /app
 COPY package*.json ./
-
-# Install dependencies
-RUN npm ci --only=production
-
-# Copy the rest of the server code
+RUN npm ci
 COPY . .
-
-# Generate Prisma client
 RUN npx prisma generate
 
-# Expose port
-EXPOSE 3000
+FROM node:18-alpine
 
-# Set environment variables
+WORKDIR /app
+# Copy files with proper ownership
+COPY --chown=node:node --from=builder /app ./
+
 ENV NODE_ENV=production
-ENV PORT=3000
 
-# Start the application
+# Switch to non-root user
+USER node
+
+EXPOSE 3000
 CMD ["node", "server.js"]

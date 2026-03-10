@@ -1,6 +1,8 @@
 const prisma = require("../config/db");
 const { ResponseError } = require("../error/responseError");
 const { sanitizeBigInt } = require("../utils/bigintSerializer");
+const { logger } = require("../utils/logger");
+
 
 const getInventoryHealthReport = async (filters) => {
   const {
@@ -74,8 +76,8 @@ const getInventoryHealthReport = async (filters) => {
   query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
   params.push(numLimit, offset);
 
-  console.log(query);
-  console.log(params);
+  logger.info(query);
+  logger.info(params);
 
   const products = await prisma.$queryRawUnsafe(query, ...params);
 

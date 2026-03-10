@@ -1,4 +1,6 @@
 const userAvatarService = require("../services/userAvatarService");
+const { logger } = require("../utils/logger");
+
 
 /**
  * Controller untuk upload avatar user
@@ -43,7 +45,7 @@ const uploadAvatar = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error uploading avatar:", error);
+    logger.error("Error uploading avatar:", error);
     return res.status(error.statusCode || 500).json({
       success: false,
       message: error.message || "Failed to upload avatar",
@@ -71,7 +73,7 @@ const deleteAvatar = async (req, res) => {
       data: updatedUser,
     });
   } catch (error) {
-    console.error("Error deleting avatar:", error);
+    logger.error("Error deleting avatar:", error);
     return res.status(error.statusCode || 500).json({
       success: false,
       message: error.message || "Failed to delete avatar",

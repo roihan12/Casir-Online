@@ -1,3 +1,5 @@
+const { logger } = require("../utils/logger");
+
 /**
  * Middleware to check branch access
  * Works with both formatted (roles/cabang) and raw (userRoles/userCabang) user objects
@@ -58,7 +60,7 @@ const cabangAccess = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error("CabangMiddleware Error:", error.message);
+    logger.error("CabangMiddleware Error:", error.message);
     return res.status(500).json({
       success: false,
       message: "Internal server error",

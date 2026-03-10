@@ -1,5 +1,7 @@
 const { GoogleGenAI } = require('@google/genai');
 const { ResponseError } = require("../error/responseError");
+const { logger } = require("../utils/logger");
+
 
 const extractInvoiceOCR = async (fileBuffer, mimeType) => {
   try {
@@ -68,13 +70,13 @@ const extractInvoiceOCR = async (fileBuffer, mimeType) => {
       const extractedData = JSON.parse(responseText);
       return extractedData;
     } catch (parseError) {
-      console.error("Failed to parse OCR response:", responseText);
+      logger.error("Failed to parse OCR response:", responseText);
       throw new ResponseError(500, "Gagal memproses hasil OCR ke format data");
     }
 
   } catch (error) {
     if (error instanceof ResponseError) throw error;
-    console.error("OCR Service Error:", error);
+    logger.error("OCR Service Error:", error);
     throw new ResponseError(500, "Terjadi kesalahan saat mengekstrak gambar dengan AI");
   }
 };

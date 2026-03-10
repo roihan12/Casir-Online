@@ -388,7 +388,7 @@ const generateReturnPdf = async (req, res, next) => {
         };
     }
 
-    console.log("RETURN DATA", returnData)
+    logger.info("RETURN DATA", returnData)
 
     // Map items
     const items = returnData.items.map(item => ({
@@ -558,6 +558,8 @@ const generatePOFromTransaction = async (req, res, next) => {
     const fs = require('fs');
     const ejs = require('ejs');
     const puppeteer = require('puppeteer');
+const { logger } = require("../utils/logger");
+
     
     const templatePath = path.join(__dirname, "../../templates/po_transaction_template.ejs");
     
@@ -585,7 +587,7 @@ const generatePOFromTransaction = async (req, res, next) => {
         subtotal: item.subtotal,
     }));
 
-    console.log(transaction);
+    logger.info(transaction);
 
     const html = await ejs.renderFile(templatePath, {
       cabangName: transaction.branchName || 'Cabang',

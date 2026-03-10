@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const whatsappController = require('../controllers/whatsappController');
 const verifyWebhookSignature = require('../middleware/webhookSignatureMiddleware');
+const { messageLimiter } = require('../middleware/rateLimiter');
 
 // ==================== CONFIGURATION ====================
 
@@ -17,16 +18,16 @@ router.post('/logout', whatsappController.logoutBot);
 // ==================== MESSAGING ====================
 
 // Send text message (with optional customer lookup)
-router.post('/send/:customerId?', whatsappController.sendMessage);
+router.post('/send/:customerId?', messageLimiter, whatsappController.sendMessage);
 
 // Send image message
-router.post('/send-image', whatsappController.sendImage);
+router.post('/send-image', messageLimiter, whatsappController.sendImage);
 
 // Send location
-router.post('/send-location', whatsappController.sendLocation);
+router.post('/send-location', messageLimiter, whatsappController.sendLocation);
 
 // Send poll
-router.post('/send-poll', whatsappController.sendPoll);
+router.post('/send-poll', messageLimiter, whatsappController.sendPoll);
 
 // React to message
 router.post('/message/:messageId/react', whatsappController.reactMessage);

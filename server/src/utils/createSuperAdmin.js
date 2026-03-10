@@ -1,10 +1,12 @@
 const { PrismaClient } = require("@prisma/client");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
+const { logger } = require("./logger");
+
 const prisma = new PrismaClient();
 
 async function createSuperAdmin() {
   try {
-    console.log("Starting super admin user creation...");
+    logger.info("Starting super admin user creation...");
 
     // 1. Create a "super_admin" role if it doesn't exist
     const superAdminRole = await prisma.role.upsert({
@@ -15,7 +17,7 @@ async function createSuperAdmin() {
         deskripsi: "Role dengan akses penuh ke seluruh fitur sistem",
       },
     });
-    console.log("Super Admin role created or found:", superAdminRole.id);
+    logger.info("Super Admin role created or found:", superAdminRole.id);
 
     // 2. Create a default "Pusat" branch if it doesn't exist
     const pusatBranch = await prisma.cabang.upsert({
@@ -33,7 +35,7 @@ async function createSuperAdmin() {
         status: "aktif",
       },
     });
-    console.log("Pusat branch created or found:", pusatBranch.id);
+    logger.info("Pusat branch created or found:", pusatBranch.id);
 
     // 3. Create the super admin user
     const hashedPassword = await bcrypt.hash("superadmin123", 10);
@@ -50,7 +52,7 @@ async function createSuperAdmin() {
         status: "aktif",
       },
     });
-    console.log("Super admin user created or found:", superAdmin.id);
+    logger.info("Super admin user created or found:", superAdmin.id);
 
     // 4. Link the user to the branch (UserCabang)
     const userCabang = await prisma.userCabang.upsert({
@@ -69,7 +71,7 @@ async function createSuperAdmin() {
         isPrimary: true,
       },
     });
-    console.log("User-branch relationship created or found:", userCabang.id);
+    logger.info("User-branch relationship created or found:", userCabang.id);
 
     // 5. Assign the Super Admin role to the user (UserRole)
     const userRole = await prisma.userRole.upsert({
@@ -84,16 +86,16 @@ async function createSuperAdmin() {
         cabangId: pusatBranch.id,
       },
     });
-    console.log("User-role relationship created or found:", userRole.id);
+    logger.info("User-role relationship created or found:", userRole.id);
 
-    console.log("Super admin user setup completed successfully!");
-    console.log("-------------------------------------");
-    console.log("Login credentials:");
-    console.log("Username: superadmin");
-    console.log("Password: superadmin123");
-    console.log("-------------------------------------");
+    logger.info("Super admin user setup completed successfully!");
+    logger.info("-------------------------------------");
+    logger.info("Login credentials:");
+    logger.info("Username: superadmin");
+    logger.info("Password: superadmin123");
+    logger.info("-------------------------------------");
   } catch (error) {
-    console.error("Error creating super admin:", error);
+    logger.error("Error creating super admin:", error);
   } finally {
     await prisma.$disconnect();
   }

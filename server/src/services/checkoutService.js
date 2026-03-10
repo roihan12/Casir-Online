@@ -6,6 +6,8 @@ const promoService = require("./promoService");
 const taxService = require("./taxService");
 const { haversineDistance, calculateDeliveryFee } = require("../utils/haversine");
 const orderNotification = require("./orderNotificationService");
+const { logger } = require("../utils/logger");
+
 
 /**
  * Helper: Run checkout operations with RLS context
@@ -78,7 +80,7 @@ const createOnlineOrder = async (data) => {
     order_source = "ECATALOG",
   } = data;
 
-  console.log("Data dari WA: ", data);
+  logger.info("Data dari WA: ", data);
 
   // 1. Verify branch exists
   const cabang = await prisma.cabang.findFirst({
@@ -185,11 +187,11 @@ const createOnlineOrder = async (data) => {
           }
         } catch (promoErr) {
           // Skip invalid promo codes but don't block checkout
-          console.warn(`Promo code ${code} invalid:`, promoErr.message);
+          logger.warn(`Promo code ${code} invalid:`, promoErr.message);
         }
       }
     } catch (err) {
-      console.error("Error validating promo codes:", err);
+      logger.error("Error validating promo codes:", err);
     }
   }
 
@@ -238,7 +240,7 @@ const createOnlineOrder = async (data) => {
   try {
     pajak = await taxService.calculateTax(subtotalAfterDiskon, cabang_id);
   } catch (taxErr) {
-    console.warn("Tax calculation failed, using 0:", taxErr.message);
+    logger.warn("Tax calculation failed, using 0:", taxErr.message);
   }
 
   // Biaya tambahan (flat packaging fee)
@@ -548,7 +550,7 @@ const createOnlineOrder = async (data) => {
           }
         }
       } catch (err) {
-        console.error("Loyalty point earning failed:", err.message);
+        logger.error("Loyalty point earning failed:", err.message);
       }
     })();
   }
@@ -771,7 +773,7 @@ const cancelOrder = async (transaksiId, alasan, cabangId) => {
           pendingPayment.payment_reference
         );
       } catch (err) {
-        console.warn("Failed to cancel on Midtrans:", err.message);
+        logger.warn("Failed to cancel on Midtrans:", err.message);
       }
     }
   });

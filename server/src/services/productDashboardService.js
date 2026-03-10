@@ -7,6 +7,8 @@ const {
   cacheOrFetch,
   cacheDeletePattern,
 } = require("../utils/redisUtils");
+const { logger } = require("../utils/logger");
+
 
 /**
  * Service untuk mengelola data dashboard produk
@@ -226,7 +228,7 @@ class ProductDashboardService {
       
       return { success: true, message: "Materialized views refreshed successfully" };
     } catch (error) {
-      console.error("Error refreshing materialized views:", error);
+      logger.error("Error refreshing materialized views:", error);
       return { success: false, message: "Failed to refresh materialized views", error };
     }
   }

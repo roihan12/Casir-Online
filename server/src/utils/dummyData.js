@@ -1,11 +1,13 @@
 const { faker } = require("@faker-js/faker");
 const { PrismaClient } = require("@prisma/client");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const { generateBranchId } = require("./generateBranchId");
 const ExcelJS = require("exceljs");
 const path = require("path");
 const crypto = require("crypto");
 const { create } = require("domain");
+const { logger } = require("./logger");
+
 
 class DummyDataGenerator {
   constructor() {
@@ -196,7 +198,7 @@ class DummyDataGenerator {
 
   // Read products from Excel file
   async readProductsFromExcel(filePath) {
-    console.log("📊 Reading products from Excel...");
+    logger.info("📊 Reading products from Excel...");
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.readFile(filePath);
 
@@ -314,13 +316,13 @@ class DummyDataGenerator {
       }
     });
 
-    console.log(`📚 Read ${products.length} products from Excel file`);
+    logger.info(`📚 Read ${products.length} products from Excel file`);
     return products;
   }
 
   // Generate categories from Excel data
   async generateCategoriesFromExcel(excelProducts) {
-    console.log("🏷️ Generating categories from Excel data...");
+    logger.info("🏷️ Generating categories from Excel data...");
 
     // Extract unique categories
     const uniqueCategories = [
@@ -335,13 +337,13 @@ class DummyDataGenerator {
       status: "aktif",
     }));
 
-    console.log(`📦 Generated ${categories.length} categories from Excel data`);
+    logger.info(`📦 Generated ${categories.length} categories from Excel data`);
     return categories;
   }
 
   // Generate suppliers from Excel data
   async generateSuppliersFromExcel(excelProducts, branches) {
-    console.log("🧑‍💼 Generating suppliers from Excel data...");
+    logger.info("🧑‍💼 Generating suppliers from Excel data...");
 
     // Extract unique suppliers
     const uniqueSuppliers = [
@@ -370,7 +372,7 @@ class DummyDataGenerator {
       };
     });
 
-    console.log(`🏢 Generated ${suppliers.length} suppliers from Excel data`);
+    logger.info(`🏢 Generated ${suppliers.length} suppliers from Excel data`);
     return suppliers;
   }
 
@@ -382,7 +384,7 @@ class DummyDataGenerator {
     suppliers,
     batchSize = 5000
   ) {
-    console.log("🚚 Generating products from Excel data in batches...");
+    logger.info("🚚 Generating products from Excel data in batches...");
 
     // Create a category map for quick lookups
     const categoryMap = {};
@@ -411,7 +413,7 @@ class DummyDataGenerator {
       const start = batchIndex * batchSize;
       const end = Math.min(start + batchSize, totalProducts);
 
-      console.log(
+      logger.info(
         `⏳ Processing batch ${batchIndex + 1}/${totalBatches} (${start} to ${
           end - 1
         })`
@@ -493,7 +495,7 @@ class DummyDataGenerator {
       }
     }
 
-    console.log(
+    logger.info(
       `✅ Generated ${productMasters.length} product masters, ${products.length} branch products, and ${produkSuppliers.length} product-supplier relationships`
     );
     return { productMasters, products, produkSuppliers };
@@ -836,20 +838,20 @@ class DummyDataGenerator {
 
           // Generate branches
           const branches = await this.generateBranches();
-          console.log("🏢 Generated branches:", branches.length);
+          logger.info("🏢 Generated branches:", branches.length);
 
           // Generate users
           const { users, userRoles, userBranches } = await this.generateUsers(
             branches,
             existingRoles
           );
-          console.log("👥 Generated users:", users.length);
+          logger.info("👥 Generated users:", users.length);
 
           let categories, productMasters, products, suppliers, produkSuppliers;
 
           // Either generate products from Excel or use faker
           if (useExcel && excelFilePath) {
-            console.log(`🔍 Using Excel data from: ${excelFilePath}`);
+            logger.info(`🔍 Using Excel data from: ${excelFilePath}`);
 
             // Read products from Excel
             const excelProducts = await this.readProductsFromExcel(
@@ -876,7 +878,7 @@ class DummyDataGenerator {
             products = productData.products;
             produkSuppliers = productData.produkSuppliers;
           } else {
-            console.log("🎲 Using faker to generate product data");
+            logger.info("🎲 Using faker to generate product data");
             categories = await this.generateCategories();
             suppliers = await this.generateSuppliers(branches, 10); // Generate 10 suppliers with faker
             productMasters = await this.generateProductMasters(categories);
@@ -888,11 +890,11 @@ class DummyDataGenerator {
             );
           }
 
-          console.log("📦 Generated categories:", categories.length);
-          console.log("🏢 Generated suppliers:", suppliers.length);
-          console.log("📦 Generated product masters:", productMasters.length);
-          console.log("📦 Generated branch products:", products.length);
-          console.log(
+          logger.info("📦 Generated categories:", categories.length);
+          logger.info("🏢 Generated suppliers:", suppliers.length);
+          logger.info("📦 Generated product masters:", productMasters.length);
+          logger.info("📦 Generated branch products:", products.length);
+          logger.info(
             "🔗 Generated product-supplier relationships:",
             produkSuppliers.length
           );
@@ -900,7 +902,7 @@ class DummyDataGenerator {
           // Generate transactions
           const { transactions, transactionDetails } =
             await this.generateTransactions(branches, users, products);
-          console.log("💰 Generated transactions:", transactions.length);
+          logger.info("💰 Generated transactions:", transactions.length);
 
           // Bulk insert data
           await tx.cabang.createMany({ data: branches });
@@ -933,21 +935,21 @@ class DummyDataGenerator {
         }
       );
 
-      console.log("✅ Dummy data generated successfully");
-      console.log("\n📋 Predefined User Credentials:");
-      console.log("1. Super Admin:");
-      console.log("   Username: superadmin");
-      console.log("   Password: superadmin");
-      console.log("2. Branch Admin:");
-      console.log("   Username: admincabang");
-      console.log("   Password: admincabang");
-      console.log("3. Cashier:");
-      console.log("   Username: kasir");
-      console.log("   Password: kasir");
+      logger.info("✅ Dummy data generated successfully");
+      logger.info("\n📋 Predefined User Credentials:");
+      logger.info("1. Super Admin:");
+      logger.info("   Username: superadmin");
+      logger.info("   Password: superadmin");
+      logger.info("2. Branch Admin:");
+      logger.info("   Username: admincabang");
+      logger.info("   Password: admincabang");
+      logger.info("3. Cashier:");
+      logger.info("   Username: kasir");
+      logger.info("   Password: kasir");
 
       return result;
     } catch (error) {
-      console.error("❌ Error generating dummy data:", error);
+      logger.error("❌ Error generating dummy data:", error);
       throw error;
     }
   }

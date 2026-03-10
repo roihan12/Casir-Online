@@ -2,6 +2,8 @@ const prisma = require("../config/db");
 const { ResponseError } = require("../error/responseError");
 const { generateTransferNumber } = require("../utils/generateTransferNumber");
 const notificationService = require("./notificationService");
+const { logger } = require("../utils/logger");
+
 
 // Mendapatkan daftar transfer stok dengan filter
 const getStockTransfers = async (filters) => {
@@ -149,7 +151,7 @@ const createStockTransfer = async (data, auditInfo) => {
   if (!data) {
     throw new ResponseError(400, "Request data is required")
   }
-  console.log("masuk", data)
+  logger.info("masuk", data)
 
   const { cabangAsalId, cabangTujuanId, tanggalKirim, keterangan, items } = data;
 
@@ -187,7 +189,7 @@ const createStockTransfer = async (data, auditInfo) => {
 
   const nomorTransfer = await generateTransferNumber({cabangAsalId, cabangTujuanId, tanggalKirim});
 
-  console.log("nomor transfer", nomorTransfer)
+  logger.info("nomor transfer", nomorTransfer)
 
   // Lakukan transaksi untuk memastikan semua operasi berhasil
   const result = await prisma.$transaction(async (prisma) => {
@@ -598,7 +600,7 @@ const submitForApproval = async (transferId, data, auditInfo) => {
     });
     await notificationService.sendStockTransferRequestNotification(transferWithItems);
   } catch (notifError) {
-    console.error("Failed to send stock transfer request notification:", notifError);
+    logger.error("Failed to send stock transfer request notification:", notifError);
     // Continue execution even if notification fails
   }
 
@@ -710,7 +712,7 @@ const approveStockTransfer = async (transferId, data, auditInfo) => {
     });
     await notificationService.sendStockTransferApprovedNotification(transferWithItems);
   } catch (notifError) {
-    console.error("Failed to send stock transfer approved notification:", notifError);
+    logger.error("Failed to send stock transfer approved notification:", notifError);
     // Continue execution even if notification fails
   }
 
@@ -822,7 +824,7 @@ const rejectStockTransfer = async (transferId, data, auditInfo) => {
     });
     await notificationService.sendStockTransferRejectedNotification(transferWithItems);
   } catch (notifError) {
-    console.error("Failed to send stock transfer rejected notification:", notifError);
+    logger.error("Failed to send stock transfer rejected notification:", notifError);
     // Continue execution even if notification fails
   }
 

@@ -5,6 +5,8 @@ const {
   uploadFileToSupabase,
   deleteFilesFromSupabase,
 } = require("../utils/uploadToSupabase");
+const { logger } = require("../utils/logger");
+
 
 // Get all product requests with filtering and pagination
 const getAllProdukRequests = async ({
@@ -843,7 +845,7 @@ const deleteProdukRequest = async (id, { userId, ipAddress }) => {
       try {
         await deleteFilesFromSupabase(filePaths);
       } catch (error) {
-        console.error("Error deleting attachments:", error);
+        logger.error("Error deleting attachments:", error);
         // Continue with deletion even if file deletion fails
       }
     }
@@ -895,7 +897,7 @@ const deleteRequestAttachment = async (attachmentId, { userId, ipAddress }) => {
     try {
       await deleteFilesFromSupabase(attachment.filePath);
     } catch (error) {
-      console.error("Error deleting file from Supabase:", error);
+      logger.error("Error deleting file from Supabase:", error);
     }
 
     // Delete the attachment record

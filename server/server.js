@@ -28,12 +28,19 @@ async function bootstrap() {
       cors: {
         origin: function (origin, callback) {
           if (!origin) return callback(null, true);
-          if (/^https:\/\/localhost:\d+$/.test(origin) || 
-              /^https:\/\/127\.0\.0\.1:\d+$/.test(origin) || 
-              /^https:\/\/192\.168\.\d+\.\d+:\d+$/.test(origin)) {
+          if (/^https?:\/\/localhost(:\d+)?$/.test(origin) || 
+              /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin) || 
+              /^https?:\/\/192\.168\.\d+\.\d+(:\d+)?$/.test(origin) ||
+              /^https?:\/\/172\.\d+\.\d+\.\d+(:\d+)?$/.test(origin)) {
             return callback(null, true);
           }
-          callback(new Error('Not allowed by CORS'));
+          if (process.env.ALLOWED_ORIGINS) {
+            const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
+            if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+              return callback(null, true);
+            }
+          }
+          callback(new Error(`Not allowed by CORS: ${origin}`));
         },
         methods: ["GET", "POST"],
         credentials: true

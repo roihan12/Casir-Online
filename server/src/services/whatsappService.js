@@ -1,5 +1,7 @@
 const axios = require('axios');
 const formData = require('form-data');
+const { logger } = require("../utils/logger");
+
 
 /**
  * WhatsApp Service for go-whatsapp-web-multidevice integration
@@ -45,7 +47,7 @@ class WhatsappService {
       return response.data;
     } catch (error) {
       const message = error.response?.data?.message || error.message;
-      console.error(`WhatsApp Service Error: ${error}`);
+      logger.error(`WhatsApp Service Error: ${error}`);
       throw new Error(message);
     }
   }

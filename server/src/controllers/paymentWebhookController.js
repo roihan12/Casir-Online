@@ -43,7 +43,7 @@ const handleMidtransWebhook = async (req, res, next) => {
     // 2. Process the notification via Midtrans service
     const result = await midtransService.handleNotification(notification);
 
-    console.log("result", result);
+    logger.info("result", result);
 
     if (!result || !result.order_id) {
       return res.status(200).json({ status: "ok" });
@@ -106,7 +106,7 @@ const handleMidtransWebhook = async (req, res, next) => {
       });
     });
 
-    console.log("transaksi FULL", transaksi);
+    logger.info("transaksi FULL", transaksi);
 
     if (!transaksi) {
       logger.warn("Webhook: transaksi not found after RLS set", {

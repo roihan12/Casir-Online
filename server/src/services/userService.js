@@ -1,4 +1,4 @@
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const prisma = require("../config/db");
 const { validate } = require("../validation/validation");
 const { ResponseError } = require("../error/responseError");
@@ -450,7 +450,7 @@ const updateUser = async (id, userData, auditInfo, avatarFile = null) => {
           // Update avatar URL for the user update
           updateData.avatarUrl = updatedUserWithAvatar.avatarUrl;
         } catch (error) {
-          console.error("Error uploading avatar during user update:", error);
+          logger.error("Error uploading avatar during user update:", error);
           // Continue with user update even if avatar upload fails
         }
       }
@@ -617,7 +617,7 @@ const updateUser = async (id, userData, auditInfo, avatarFile = null) => {
       try {
         await invalidateUserCache(id);
       } catch (error) {
-        console.error("Error invalidating cache:", error);
+        logger.error("Error invalidating cache:", error);
       }
 
       return sanitizeUserData(updatedUser);
@@ -903,6 +903,8 @@ const uploadUserAvatar = async (id, fileData, auditInfo) => {
 const deleteUserAvatar = async (id, auditInfo) => {
   // Import dynamically to avoid circular dependency
   const { deleteUserAvatar: deleteAvatar } = require("./userAvatarService");
+const { logger } = require("../utils/logger");
+
   return await deleteAvatar(id, auditInfo, auditInfo.cabangId);
 };
 
@@ -1029,7 +1031,7 @@ const invalidateUserCache = async (userId) => {
     // Invalidate dashboard cache
     await userDashboardService.invalidateUserCache();
   } catch (error) {
-    console.error("Error invalidating user cache:", error);
+    logger.error("Error invalidating user cache:", error);
   }
 };
 

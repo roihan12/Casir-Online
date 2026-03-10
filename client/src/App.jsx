@@ -132,7 +132,7 @@ import TemplatePage from "./features/whatsapp/pages/TemplatePage";
 import BroadcastPage from "./features/whatsapp/pages/BroadcastPage";
 import OrderPage from "./features/whatsapp/pages/OrderPage";
 import AnalysisPage from "./features/whatsapp/pages/AnalysisPage";
-import AIAgentPage from "./features/whatsapp/pages/AIAgentPage";
+import AiAgentPage from "./features/whatsapp/pages/AiAgentPage";
 import JadwalPage from "./features/work-schedule/pages/JadwalPage";
 
 import { ToastProvider } from "./app/providers/ToastContext";
@@ -734,7 +734,7 @@ function App() {
               <Route path="broadcast" element={<BroadcastPage />} />
               <Route path="orders" element={<OrderPage />} />
               <Route path="analytics" element={<AnalysisPage />} />
-              <Route path="ai-agent" element={<AIAgentPage />} />
+              <Route path="ai-agent" element={<AiAgentPage />} />
               <Route index element={<Navigate to="/whatsapp/config" replace />} />
             </Route>
 

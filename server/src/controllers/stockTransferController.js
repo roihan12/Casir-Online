@@ -12,6 +12,8 @@ const {
   approveStockTransferValidation,
   rejectStockTransferValidation,
 } = require("../validation/stockTransferValidation");
+const { logger } = require("../utils/logger");
+
 
 // Controller untuk mendapatkan daftar transfer stok
 const getStockTransfers = async (req, res, next) => {
@@ -65,7 +67,7 @@ const createStockTransfer = async (req, res, next) => {
 
     const request = validate(createStockTransferValidation, req.body);
 
-    console.log("ini request", request)
+    logger.info("ini request", request)
     // Get user information for audit log
     const userId = req.user.id;
     const namaLengkap = req.user.namaLengkap;

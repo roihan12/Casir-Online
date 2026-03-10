@@ -3,8 +3,9 @@ const router = express.Router();
 const authController = require("../controllers/authController");
 const { authenticate } = require("../middleware/authMiddleware");
 const { upload, handleMulterUpload } = require("../middleware/uploadMiddleware");
+const { loginLimiter } = require("../middleware/rateLimiter");
 
-router.post("/login", authController.login);
+router.post("/login", loginLimiter, authController.login);
 router.post("/logout", authenticate, authController.logout);
 router.get("/profile", authenticate, authController.getProfile);
 router.put("/profile", authenticate, authController.updateProfile);

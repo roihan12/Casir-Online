@@ -18,6 +18,8 @@ const {
   cacheOrFetch,
   cacheDeletePattern,
 } = require("../utils/redisUtils");
+const { logger } = require("../utils/logger");
+
 
 /**
  * Create a new promo with raw SQL query
@@ -146,7 +148,7 @@ const createPromo = async (data, context) => {
       recordId: promo.promo_id,
       oldValues: null,
       newValues: validData,
-    }).catch((error) => console.error("Audit log creation failed:", error));
+    }).catch((error) => logger.error("Audit log creation failed:", error));
 
     // Invalidate cache
     await cacheDeletePattern("promo-list:*");
@@ -342,7 +344,7 @@ const updatePromo = async (id, data, context) => {
       recordId: promo.promo_id,
       oldValues: oldData,
       newValues: validData,
-    }).catch((error) => console.error("Audit log creation failed:", error));
+    }).catch((error) => logger.error("Audit log creation failed:", error));
 
     // Invalidate cache
     await cacheDelete(createCacheKey("promo", id));
@@ -416,7 +418,7 @@ const deletePromo = async (id, context) => {
       recordId: id,
       oldValues: oldData,
       newValues: null,
-    }).catch((error) => console.error("Audit log creation failed:", error));
+    }).catch((error) => logger.error("Audit log creation failed:", error));
 
     // Invalidate cache
     await cacheDelete(createCacheKey("promo", id));
@@ -497,8 +499,8 @@ const getAllPromos = async (filters) => {
 
   const whereClause = conditions.join(" AND ");
 
-  console.log(whereClause);
-  console.log(params);
+  logger.info(whereClause);
+  logger.info(params);
 
   // Get data with JOIN to related tables
   const data = await prisma.$queryRawUnsafe(
@@ -681,7 +683,7 @@ const changePromoStatus = async (id, status, context) => {
       recordId: promo.promo_id,
       oldValues: { status: oldData.status },
       newValues: { status: promo.status },
-    }).catch((error) => console.error("Audit log creation failed:", error));
+    }).catch((error) => logger.error("Audit log creation failed:", error));
 
     // Invalidate cache
     await cacheDelete(createCacheKey("promo", id));

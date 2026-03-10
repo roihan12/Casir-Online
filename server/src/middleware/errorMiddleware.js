@@ -8,12 +8,12 @@ const errorMiddleware = async (err, req, res, next) => {
   }
 
   // Always log to console for immediate visibility in terminal
-  console.error("\n========== ERROR ==========");
-  console.error("Path:", req.method, req.path);
-  console.error("Message:", err.message);
-  console.error("Stack:", err.stack);
-  console.error("User ID:", req.user?.id);
-  console.error("===========================\n");
+  logger.error("\n========== ERROR ==========");
+  logger.error("Path:", req.method, req.path);
+  logger.error("Message:", err.message);
+  logger.error("Stack:", err.stack);
+  logger.error("User ID:", req.user?.id);
+  logger.error("===========================\n");
 
   // Log error with request context for debugging (also goes to file)
   logger.error("Request error", {

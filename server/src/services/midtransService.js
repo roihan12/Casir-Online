@@ -2,6 +2,8 @@ const axios = require("axios");
 const { v4: uuidv4 } = require("uuid");
 const { ResponseError } = require("../error/responseError");
 require("dotenv").config();
+const { logger } = require("../utils/logger");
+
 
 // Midtrans configuration
 const MIDTRANS_SERVER_KEY = process.env.MIDTRANS_SERVER_KEY;
@@ -34,7 +36,7 @@ const generateQRIS = async (params) => {
       store_name,
     } = params;
 
-    console.log(params);
+    logger.info(params);
 
     // Calculate the sum of all item prices * quantities
     // Midtrans requires integer values for IDR (no decimals)
@@ -84,7 +86,7 @@ const generateQRIS = async (params) => {
       custom_field1: store_name || "Store",
     };
 
-    console.log(getAuthHeader());
+    logger.info(getAuthHeader());
 
     // Make the API request to Midtrans
     const response = await axios({
@@ -98,7 +100,7 @@ const generateQRIS = async (params) => {
       data: payload,
     });
 
-    console.log("Midtrans response:", JSON.stringify(response.data, null, 2));
+    logger.info("Midtrans response:", JSON.stringify(response.data, null, 2));
 
     // Check for successful response
     if (response.status === 200 && response.data) {
@@ -117,9 +119,9 @@ const generateQRIS = async (params) => {
 
         if (qrisAction) {
           qrisUrl = qrisAction.url;
-          console.log("Found QRIS URL:", qrisUrl);
+          logger.info("Found QRIS URL:", qrisUrl);
         } else {
-          console.log("Actions available:", response.data.actions.map(a => a.name));
+          logger.info("Actions available:", response.data.actions.map(a => a.name));
         }
       }
 
@@ -135,14 +137,14 @@ const generateQRIS = async (params) => {
         qr_string: response.data.qr_string, // QR code string for frontend rendering
       };
 
-      console.log("Returning result:", result);
+      logger.info("Returning result:", result);
 
       return result;
     } else {
       throw new Error("Failed to generate QRIS code");
     }
   } catch (error) {
-    console.error(
+    logger.error(
       "Midtrans QRIS error:",
       error.response ? error.response.data : error.message
     );
@@ -150,7 +152,7 @@ const generateQRIS = async (params) => {
     // Handle 406/409 conflict errors - the order might already exist
     if (error.response?.status === 406 || error.response?.status === 409) {
       const orderId = params.transaction_id;
-      console.log("Order might already exist, checking status for:", orderId);
+      logger.info("Order might already exist, checking status for:", orderId);
 
       try {
         // Try to get the status of the existing order
@@ -173,7 +175,7 @@ const generateQRIS = async (params) => {
             }
           }
 
-          console.log("Found existing QRIS order:", statusData.order_id);
+          logger.info("Found existing QRIS order:", statusData.order_id);
 
           // Return the existing order data
           return {
@@ -192,7 +194,7 @@ const generateQRIS = async (params) => {
           };
         }
       } catch (statusError) {
-        console.error("Failed to get existing order status:", statusError);
+        logger.error("Failed to get existing order status:", statusError);
       }
 
       // If we couldn't get the existing order, throw the original error
@@ -225,7 +227,7 @@ const getTransactionStatus = async (order_id) => {
     // Return the transaction status data
     return response.data;
   } catch (error) {
-    console.error(
+    logger.error(
       "Midtrans status check error:",
       error.response ? error.response.data : error.message
     );
@@ -253,7 +255,7 @@ const cancelTransaction = async (order_id) => {
     // Return the cancellation status
     return response.data;
   } catch (error) {
-    console.error(
+    logger.error(
       "Midtrans cancel error:",
       error.response ? error.response.data : error.message
     );
@@ -271,7 +273,7 @@ const handleNotification = async (notification) => {
     // Verify the transaction status with Midtrans
     const statusResponse = await getTransactionStatus(notification.order_id);
     
-    console.log("statusResponse", statusResponse);
+    logger.info("statusResponse", statusResponse);
 
     // Check if the signature is valid (for production environments)
     // In production, implement proper signature verification
@@ -280,8 +282,8 @@ const handleNotification = async (notification) => {
     const transactionStatus = statusResponse.transaction_status;
     const fraudStatus = statusResponse.fraud_status;
 
-    console.log("transactionStatus", transactionStatus);
-    console.log("fraudStatus", fraudStatus);
+    logger.info("transactionStatus", transactionStatus);
+    logger.info("fraudStatus", fraudStatus);
 
     let paymentStatus;
 
@@ -313,7 +315,7 @@ const handleNotification = async (notification) => {
       fraud_status: statusResponse.fraud_status,
     };
   } catch (error) {
-    console.error("Midtrans notification error:", error);
+    logger.error("Midtrans notification error:", error);
     throw new ResponseError(500, "Failed to process payment notification");
   }
 };
@@ -402,7 +404,7 @@ const generatePaymentLink = async (params) => {
       throw new Error("Failed to generate payment link");
     }
   } catch (error) {
-    console.error(
+    logger.error(
       "Midtrans Payment Link error:",
       error.response ? error.response.data : error.message
     );

@@ -1,6 +1,8 @@
 const prisma = require("../config/db");
 const { cacheOrFetch, createCacheKey } = require("../utils/redisUtils");
 const { sanitizeBigInt } = require("../utils/bigintSerializer");
+const { logger } = require("../utils/logger");
+
 
 /**
  * Service for retrieving financial reports using materialized views with Redis caching
@@ -792,7 +794,7 @@ class FinancialReportService {
         message: `Financial materialized views (${viewType}) refreshed successfully`,
       };
     } catch (error) {
-      console.error("Error refreshing financial materialized views:", error);
+      logger.error("Error refreshing financial materialized views:", error);
       return {
         success: false,
         message: "Failed to refresh financial materialized views",

@@ -7,6 +7,7 @@ const {
   upload,
   handleMulterUpload,
 } = require("../middleware/uploadMiddleware");
+const { uploadLimiter } = require("../middleware/rateLimiter");
 
 // All users can view produk master
 router.get("/", authenticate, hasPermission(["produk:read"]), produkMasterController.getAllProdukMaster);
@@ -17,6 +18,7 @@ router.post(
   "/",
   authenticate,
   hasPermission(["produk:manage"]),
+  uploadLimiter,
   handleMulterUpload(upload.array("produkImages", 10)),
   produkMasterController.createProdukMaster
 );
@@ -25,6 +27,7 @@ router.post(
   "/:id",
   authenticate,
   hasPermission(["produk:manage"]),
+  uploadLimiter,
   handleMulterUpload(upload.array("produkImages", 10)),
   produkMasterController.uploadProdukImages
 );
@@ -33,6 +36,7 @@ router.put(
   "/:id",
   authenticate,
   hasPermission(["produk:manage"]),
+  uploadLimiter,
   handleMulterUpload(upload.array("produkImages", 10)),
   produkMasterController.updateProdukMaster
 );

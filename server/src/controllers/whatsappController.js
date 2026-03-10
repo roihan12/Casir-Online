@@ -65,12 +65,12 @@ exports.getStatus = async (req, res) => {
         try {
           const createResponse = await whatsappService.createDevice(botConfig.device_id);
         } catch (e) {
-          console.error('Error creating device:', e);
+          logger.error('Error creating device:', e);
         }
       }
 
     } catch (e) {
-      console.error('Error getting devices:', e.message);
+      logger.error('Error getting devices:', e.message);
     }
 
 
@@ -84,7 +84,7 @@ exports.getStatus = async (req, res) => {
         const loginResponse = await whatsappService.appLogin(myDevice.id);
 
         // Log the full response for debugging
-        console.log('Login QR Response:', JSON.stringify(loginResponse, null, 2));
+        logger.info('Login QR Response:', JSON.stringify(loginResponse, null, 2));
 
         // Extract QR code - try multiple possible response structures
         if (loginResponse && loginResponse.results) {
@@ -95,8 +95,8 @@ exports.getStatus = async (req, res) => {
              qrDuration = loginResponse.data.qr_duration;
         }
       } catch (e) {
-        console.error('Error fetching QR:', e.message);
-        console.error('Full error:', e);
+        logger.error('Error fetching QR:', e.message);
+        logger.error('Full error:', e);
       }
     }
 
@@ -621,8 +621,8 @@ exports.reactMessage = async (req, res) => {
 exports.webhook = async (req, res) => {
   try {
     const data = req.body;
-    console.log('WhatsApp Webhook Event:', data.event);
-    console.log('WhatsApp Webhook Payload:', data);
+    logger.info('WhatsApp Webhook Event:', data.event);
+    logger.info('WhatsApp Webhook Payload:', data);
 
     // Get IO instance for real-time push to frontend
     const io = req.app.get('io');
@@ -654,7 +654,7 @@ exports.webhook = async (req, res) => {
         break;
 
       default:
-        console.log('Unhandled webhook event:', data.event);
+        logger.info('Unhandled webhook event:', data.event);
         // Still emit unknown events
         if (io) {
           io.emit('whatsapp_message', data);
@@ -664,7 +664,7 @@ exports.webhook = async (req, res) => {
     // Always respond quickly (webhook timeout is 10 seconds)
     res.json({ status: 'ok' });
   } catch (error) {
-    console.error('Webhook Error:', error);
+    logger.error('Webhook Error:', error);
     // Still return 200 to prevent webhook retries (if error is logged/handled)
     res.status(500).json({ message: error.message });
   }
@@ -735,7 +735,7 @@ async function handleMessage(payload, deviceId, io) {
     });
   } catch (err) {
     if (err.code !== 'P2002') { // ignore duplicate messageId conflicts
-        console.error("Failed to log WhatsappMessage to DB:", err);
+        logger.error("Failed to log WhatsappMessage to DB:", err);
     }
   }
 
@@ -750,7 +750,7 @@ async function handleMessage(payload, deviceId, io) {
           activeBotConfig = configRows[0];
       }
   } catch (e) {
-      console.error("Failed to fetch bot config in webhook:", e);
+      logger.error("Failed to fetch bot config in webhook:", e);
   }
 
   // --- AI Customer Service & Self-Ordering Logic ---
@@ -811,7 +811,7 @@ async function handleMessage(payload, deviceId, io) {
               }
 
           } catch (aiErr) {
-              console.error("AI Handling error:", aiErr);
+              logger.error("AI Handling error:", aiErr);
               replyMessage = "Mohon maaf, layanan AI CS kami sedang sibuk/gangguan. Mohon ketik *CS* untuk dibantu admin.";
           }
       }
@@ -820,6 +820,8 @@ async function handleMessage(payload, deviceId, io) {
       if (replyMessage) {
           try {
               const whatsappService = require('../services/whatsappService');
+const { logger } = require("../utils/logger");
+
               // const wService = new whatsappService();
               
               let formattedPhone = fromPhone;
@@ -833,7 +835,7 @@ async function handleMessage(payload, deviceId, io) {
 
               await whatsappService.sendMessage(formattedPhone, replyMessage, botDeviceId);
           } catch (replyErr) {
-              console.error("Failed to send auto-reply via webhook:", replyErr);
+              logger.error("Failed to send auto-reply via webhook:", replyErr);
           }
       }
   }
@@ -865,7 +867,7 @@ async function handleMessage(payload, deviceId, io) {
   //   }
   // } catch (err) {
   //   // Customer lookup failed, continue without it
-  //   console.error('Customer lookup failed:', err.message);
+  //   logger.error('Customer lookup failed:', err.message);
   // }
 
   // // Store message in database
@@ -886,13 +888,13 @@ async function handleMessage(payload, deviceId, io) {
   //       branchId: branchId
   //     }
   //   });
-  //   console.log(`Message stored: ${id} from ${from_name || fromPhone}`);
+  //   logger.info(`Message stored: ${id} from ${from_name || fromPhone}`);
   // } catch (dbError) {
   //   // Ignore duplicate errors (idempotent processing)
   //   if (dbError.code === 'P2002' || dbError.message?.includes('unique constraint')) {
-  //     console.log(`Duplicate message ignored: ${id}`);
+  //     logger.info(`Duplicate message ignored: ${id}`);
   //   } else {
-  //     console.error('Error saving message to DB:', dbError);
+  //     logger.error('Error saving message to DB:', dbError);
   //   }
   // }
 
@@ -912,7 +914,7 @@ async function handleMessage(payload, deviceId, io) {
 async function handleMessageAck(payload, deviceId, io) {
   const { ids, chat_id, from, receipt_type, receipt_type_description } = payload;
 
-  console.log(`Message ACK: ${receipt_type} for ${ids.length} message(s)`);
+  logger.info(`Message ACK: ${receipt_type} for ${ids.length} message(s)`);
 
   // Update message status in database
   try {
@@ -927,7 +929,7 @@ async function handleMessageAck(payload, deviceId, io) {
       }
     });
   } catch (dbError) {
-    console.error('Error updating message ACK status:', dbError);
+    logger.error('Error updating message ACK status:', dbError);
   }
 
   // Push to connected clients
@@ -946,7 +948,7 @@ async function handleMessageAck(payload, deviceId, io) {
 async function handleMessageReaction(payload, deviceId, io) {
   const { id, chat_id, from, from_name, reaction, reacted_message_id } = payload;
 
-  console.log(`Message reaction: ${reaction} on message ${reacted_message_id}`);
+  logger.info(`Message reaction: ${reaction} on message ${reacted_message_id}`);
 
   // Store or update reaction in database (optional)
   // You could add a reactions table or store it in message metadata
@@ -967,7 +969,7 @@ async function handleMessageReaction(payload, deviceId, io) {
 async function handleMessageRevoked(payload, deviceId, io) {
   const { id, chat_id, from, from_name, revoked_message_id, revoked_from_me } = payload;
 
-  console.log(`Message revoked: ${revoked_message_id}`);
+  logger.info(`Message revoked: ${revoked_message_id}`);
 
   // Mark message as deleted in database
   try {
@@ -981,7 +983,7 @@ async function handleMessageRevoked(payload, deviceId, io) {
       }
     });
   } catch (dbError) {
-    console.error('Error marking message as deleted:', dbError);
+    logger.error('Error marking message as deleted:', dbError);
   }
 
   // Push to connected clients
@@ -1000,7 +1002,7 @@ async function handleMessageRevoked(payload, deviceId, io) {
 async function handleMessageEdited(payload, deviceId, io) {
   const { id, chat_id, from, from_name, timestamp, original_message_id, body } = payload;
 
-  console.log(`Message edited: ${original_message_id}`);
+  logger.info(`Message edited: ${original_message_id}`);
 
   // Update message in database
   try {
@@ -1015,7 +1017,7 @@ async function handleMessageEdited(payload, deviceId, io) {
       }
     });
   } catch (dbError) {
-    console.error('Error updating edited message:', dbError);
+    logger.error('Error updating edited message:', dbError);
   }
 
   // Push to connected clients
@@ -1034,7 +1036,7 @@ async function handleMessageEdited(payload, deviceId, io) {
 async function handleGroupParticipants(payload, deviceId, io) {
   const { chat_id, type, jids } = payload;
 
-  console.log(`Group participants: ${type} ${jids.length} member(s) in ${chat_id}`);
+  logger.info(`Group participants: ${type} ${jids.length} member(s) in ${chat_id}`);
 
   // You could store group metadata or trigger notifications
 

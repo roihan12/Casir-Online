@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require("multer");
 const ocrController = require("../controllers/ocrController");
 const { authenticate } = require("../middleware/authMiddleware");
+const { uploadLimiter } = require("../middleware/rateLimiter");
 
 // Setup multer untuk memory storage agar file langsung di forward tanpa simpan server lokal
 const upload = multer({
@@ -24,6 +25,7 @@ router.use(authenticate);
 // POST - Extract Invoice Data
 router.post(
   "/extract-invoice",
+  uploadLimiter,
   upload.single("image"),
   ocrController.extractInvoice
 );

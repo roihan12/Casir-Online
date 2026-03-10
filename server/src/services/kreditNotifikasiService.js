@@ -2,6 +2,8 @@ const prisma = require("../config/db");
 const { ResponseError } = require("../error/responseError");
 const nodemailer = require("nodemailer");
 const moment = require("moment");
+const { logger } = require("../utils/logger");
+
 
 /**
  * Membuat pesan default berdasarkan jenis notifikasi
@@ -177,7 +179,7 @@ const sendKreditNotifikasi = async (notifikasiId) => {
           break;
       }
     } catch (error) {
-      console.error(`Error sending ${metode} notification:`, error);
+      logger.error(`Error sending ${metode} notification:`, error);
     }
   }
 
@@ -236,7 +238,7 @@ const sendEmailNotifikasi = async (notifikasi) => {
     await transporter.sendMail(mailOptions);
     return true;
   } catch (error) {
-    console.error("Error sending email:", error);
+    logger.error("Error sending email:", error);
     return false;
   }
 };
@@ -591,7 +593,7 @@ const sendPendingNotifications = async () => {
       const sentNotification = await sendKreditNotifikasi(notification.id);
       sentNotifications.push(sentNotification);
     } catch (error) {
-      console.error(`Error sending notification ${notification.id}:`, error);
+      logger.error(`Error sending notification ${notification.id}:`, error);
     }
   }
   

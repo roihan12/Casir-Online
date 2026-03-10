@@ -1,4 +1,6 @@
 const Redis = require("ioredis");
+const { logger } = require("../utils/logger");
+
 
 // // Baca konfigurasi dari environment variable
 // const redisConfig = {
@@ -30,7 +32,7 @@ const healthCheck = async () => {
     await redisClient.ping();
     return true;
   } catch (error) {
-    console.error("Redis health check failed:", error);
+    logger.error("Redis health check failed:", error);
     return false;
   }
 };
@@ -39,28 +41,28 @@ redisClient.set
 
 // Event listeners
 redisClient.on("error", (err) => {
-  console.error("Redis connection error:", err);
+  logger.error("Redis connection error:", err);
 });
 
 redisClient.on("connect", () => {
-  console.log("Connected to Redis");
+  logger.info("Connected to Redis");
 });
 
 redisClient.on("ready", () => {
-  console.log("Redis client ready");
+  logger.info("Redis client ready");
 });
 
 redisClient.on("reconnecting", () => {
-  console.log("Redis client reconnecting");
+  logger.info("Redis client reconnecting");
 });
 
 redisClient.on("end", () => {
-  console.log("Redis connection ended");
+  logger.info("Redis connection ended");
 });
 
 // Fungsi untuk membersihkan resources saat aplikasi dihentikan
 const cleanup = async () => {
-  console.log("Closing Redis connection...");
+  logger.info("Closing Redis connection...");
   await redisClient.quit();
 };
 

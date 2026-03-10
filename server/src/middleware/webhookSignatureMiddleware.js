@@ -1,4 +1,6 @@
 const crypto = require('crypto');
+const { logger } = require("../utils/logger");
+
 
 /**
  * Verify webhook signature from go-whatsapp-web-multidevice
@@ -14,12 +16,12 @@ const verifyWebhookSignature = (req, res, next) => {
 
   // For development: Skip verification if explicitly disabled
   if (process.env.WHATSAPP_WEBHOOK_SKIP_VERIFICATION === 'true') {
-    console.warn('WHATSAPP_WEBHOOK_SKIP_VERIFICATION is enabled - skipping signature verification (NOT RECOMMENDED FOR PRODUCTION)');
+    logger.warn('WHATSAPP_WEBHOOK_SKIP_VERIFICATION is enabled - skipping signature verification (NOT RECOMMENDED FOR PRODUCTION)');
     return next();
   }
 
   if (!signature) {
-    console.error('Webhook signature missing - request from:', req.ip);
+    logger.error('Webhook signature missing - request from:', req.ip);
     return res.status(401).json({ error: 'Signature missing' });
   }
 
@@ -28,7 +30,7 @@ const verifyWebhookSignature = (req, res, next) => {
   const payload = req.rawBody || JSON.stringify(req.body);
 
   if (!payload) {
-    console.error('Unable to get raw body for signature verification');
+    logger.error('Unable to get raw body for signature verification');
     return res.status(400).json({ error: 'Unable to verify signature' });
   }
 
@@ -49,16 +51,16 @@ const verifyWebhookSignature = (req, res, next) => {
     );
 
     if (!signatureValid) {
-      console.error('Invalid webhook signature');
-      console.error('Expected:', `sha256=${expectedSignature}`);
-      console.error('Received:', signature);
+      logger.error('Invalid webhook signature');
+      logger.error('Expected:', `sha256=${expectedSignature}`);
+      logger.error('Received:', signature);
       return res.status(401).json({ error: 'Invalid signature' });
     }
 
     // Signature valid - proceed to next middleware
     next();
   } catch (error) {
-    console.error('Error verifying webhook signature:', error);
+    logger.error('Error verifying webhook signature:', error);
     return res.status(500).json({ error: 'Signature verification failed' });
   }
 };

@@ -3,6 +3,8 @@ const dayjs = require("dayjs");
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const whatsappService = require("../services/whatsappService");
+const { logger } = require("../utils/logger");
+
 
 /**
  * Check for employees who are late for their shift and haven't opened a shift yet.
@@ -11,7 +13,7 @@ const whatsappService = require("../services/whatsappService");
  * We will check users who haven't opened a shift before 10 AM.
  */
 const checkLateAttendance = async () => {
-    console.log('[HR-Alert] Running checkLateAttendance job...');
+    logger.info('[HR-Alert] Running checkLateAttendance job...');
     try {
         const todayStr = dayjs().format("YYYY-MM-DD");
         const todayStart = dayjs().startOf('day').toDate();
@@ -57,9 +59,9 @@ const checkLateAttendance = async () => {
                         
                         try {
                             await wService.sendMessage(formattedPhone, alertMsg, config.deviceId);
-                            console.log(`[HR-Alert] Sent late attendance warning to ${cashier.namaLengkap}`);
+                            logger.info(`[HR-Alert] Sent late attendance warning to ${cashier.namaLengkap}`);
                         } catch (err) {
-                            console.error(`[HR-Alert] Failed to send to ${cashier.namaLengkap}: ${err.message}`);
+                            logger.error(`[HR-Alert] Failed to send to ${cashier.namaLengkap}: ${err.message}`);
                         }
                     }
 
@@ -68,7 +70,7 @@ const checkLateAttendance = async () => {
             }
         }
     } catch (error) {
-        console.error('[HR-Alert] Error in checkLateAttendance:', error);
+        logger.error('[HR-Alert] Error in checkLateAttendance:', error);
     }
 };
 
@@ -78,7 +80,7 @@ const checkLateAttendance = async () => {
 const setupHRScheduler = () => {
   // Check every day at 10:00 AM if cashiers haven't opened shift
   cron.schedule("0 10 * * *", checkLateAttendance);
-  console.log('[HR-Alert] Scheduler peringatan absensi berhasil diatur (10:00 AM)');
+  logger.info('[HR-Alert] Scheduler peringatan absensi berhasil diatur (10:00 AM)');
 };
 
 module.exports = {

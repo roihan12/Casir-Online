@@ -10,6 +10,8 @@ const {
 } = require("../utils/redisUtils");
 const { invalidateTransaksiCache } = require("./transaksiService");
 const whatsappService = require('./whatsappService');
+const { logger } = require("../utils/logger");
+
 
 // Helper to format currency
 const formatCurrency = (amount) => {
@@ -43,7 +45,7 @@ const sendReceipt = async (phone, message, cabangId) => {
         await wService.sendMessage(`${formattedPhone}@s.whatsapp.net`, message, botConfig.deviceId);
         return true;
     } catch (error) {
-        console.error(`[WhatsappReceipt] Failed to send receipt to ${phone}:`, error.message);
+        logger.error(`[WhatsappReceipt] Failed to send receipt to ${phone}:`, error.message);
         return false;
     }
 };
@@ -161,7 +163,7 @@ const createPembayaranHutang = async (data, auditInfo) => {
             `Salam hormat,\n*${hutang.cabang.namaCabang}*`;
         
         // Fire and forget, don't await so it doesn't block the API response
-        sendReceipt(hutang.pelanggan.telepon, receiptMsg, hutang.cabangId).catch(err => console.error(err));
+        sendReceipt(hutang.pelanggan.telepon, receiptMsg, hutang.cabangId).catch(err => logger.error(err));
     }
 
     // Return complete payment info
@@ -213,7 +215,7 @@ const createPembayaranHutang = async (data, auditInfo) => {
     if (error instanceof ResponseError) {
       throw error;
     }
-    console.error("Error in createPembayaranHutang:", error);
+    logger.error("Error in createPembayaranHutang:", error);
     throw new ResponseError(500, "Terjadi kesalahan saat memproses pembayaran hutang");
   }
 };

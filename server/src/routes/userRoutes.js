@@ -7,6 +7,7 @@ const {
   upload,
   handleMulterUpload,
 } = require("../middleware/uploadMiddleware");
+const { uploadLimiter } = require("../middleware/rateLimiter");
 
 // Dynamic permissions for user management
 router.use(authenticate);
@@ -33,6 +34,7 @@ router.get(
 router.post(
   "/",
   hasPermission(["user:create"]),
+  uploadLimiter,
   handleMulterUpload(upload.single("avatar")),
   userController.createUser
 );
@@ -40,6 +42,7 @@ router.post(
 router.put(
   "/:id",
   hasPermission(["user:update"]),
+  uploadLimiter,
   handleMulterUpload(upload.single("avatar")),
   userController.updateUser
 );
@@ -75,6 +78,7 @@ router.post(
 router.post(
   "/:id/avatar",
   hasPermission(["user:update"]),
+  uploadLimiter,
   handleMulterUpload(upload.single("avatar")),
   userController.uploadUserAvatar
 );

@@ -1,4 +1,6 @@
 const userDashboardService = require("../services/userDashboardService");
+const { logger } = require("../utils/logger");
+
 
 /**
  * Controller untuk mendapatkan data dashboard user
@@ -13,7 +15,7 @@ const getUserDashboard = async (req, res) => {
       data: dashboardData,
     });
   } catch (error) {
-    console.error("Error getting user dashboard:", error);
+    logger.error("Error getting user dashboard:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to get user dashboard data",
@@ -34,7 +36,7 @@ const getUserStats = async (req, res) => {
       data: stats,
     });
   } catch (error) {
-    console.error("Error getting user stats:", error);
+    logger.error("Error getting user stats:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to get user statistics",
@@ -57,7 +59,7 @@ const getRoleDistribution = async (req, res) => {
       data: distribution,
     });
   } catch (error) {
-    console.error("Error getting role distribution:", error);
+    logger.error("Error getting role distribution:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to get role distribution",
@@ -80,7 +82,7 @@ const getUsersPerCabang = async (req, res) => {
       data: usersPerCabang,
     });
   } catch (error) {
-    console.error("Error getting users per cabang:", error);
+    logger.error("Error getting users per cabang:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to get users per cabang",
@@ -103,7 +105,7 @@ const getBreakdownUserPerCabang = async (req, res) => {
       data: breakdown,
     });
   } catch (error) {
-    console.error("Error getting breakdown per cabang:", error);
+    logger.error("Error getting breakdown per cabang:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to get breakdown per cabang",
@@ -124,7 +126,7 @@ const getRecentLogins = async (req, res) => {
       data: recentLogins,
     });
   } catch (error) {
-    console.error("Error getting recent logins:", error);
+    logger.error("Error getting recent logins:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to get recent logins",
@@ -151,7 +153,7 @@ const getUserActivities = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error getting user activities:", error);
+    logger.error("Error getting user activities:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to get user activities",
@@ -172,7 +174,7 @@ const getUserPerformance = async (req, res) => {
       data: performance,
     });
   } catch (error) {
-    console.error("Error getting user performance:", error);
+    logger.error("Error getting user performance:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to get user performance",
@@ -195,7 +197,7 @@ const getActiveAdminCabang = async (req, res) => {
       data: activeAdmins,
     });
   } catch (error) {
-    console.error("Error getting active admin cabang:", error);
+    logger.error("Error getting active admin cabang:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to get active admin cabang",

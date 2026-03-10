@@ -28,3 +28,21 @@ dist-ssr
 .trae/
 claude/*
 venv/*
+
+# Production files (DO NOT COMMIT)
+.env.production
+.env.production.local
+nginx/ssl/*.pem
+nginx/ssl/*.key
+nginx/ssl/*.crt
+backups/
+*.backup
+
+# Monitoring data
+monitoring/prometheus/data/
+monitoring/grafana/data/
+monitoring/loki/data/
+monitoring/alertmanager/data/
+
+# Docker volumes data
+docker-volumes/

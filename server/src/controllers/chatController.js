@@ -81,15 +81,17 @@ class ChatController {
           // You might need to cast req.user layout if dashboardService expects it
           posData = await DashboardService.getDashboardData(user, cabangId === "global" ? null : cabangId);
 
-          console.log("POS Data:", JSON.stringify(posData, null, 2));
+          logger.info("POS Data:", JSON.stringify(posData, null, 2));
 
 
       } catch (err) {
-          console.warn("Failed fetching POS Data Context:", err.message);
+          logger.warn("Failed fetching POS Data Context:", err.message);
       }
 
       // 3. Lempar ke Gemini
       const geminiService = require("../services/geminiService");
+const { logger } = require("../utils/logger");
+
       if (!geminiService.askPosAssistant) {
           throw new Error("Sistem Asisten AI belum diimplementasikan di GeminiService");
       }
@@ -109,7 +111,7 @@ class ChatController {
         }
       });
     } catch (error) {
-        console.error("Ask AI Error:", error);
+        logger.error("Ask AI Error:", error);
         next(error);
     }
   }

@@ -10,6 +10,8 @@ const {
   cacheDeletePattern,
   cacheDeletePatternScan,
 } = require("../utils/redisUtils");
+const { logger } = require("../utils/logger");
+
 
 /**
  * Create a new product-supplier relationship
@@ -776,7 +778,7 @@ const getSupplierPriceHistory = async (
       },
     };
   } catch (error) {
-    console.error("Error fetching supplier price history:", error);
+    logger.error("Error fetching supplier price history:", error);
     throw new ResponseError(
       500,
       "Gagal mengambil riwayat harga supplier: " + error.message

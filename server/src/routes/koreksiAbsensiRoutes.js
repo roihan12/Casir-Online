@@ -3,6 +3,7 @@ const router = express.Router();
 const koreksiAbsensiController = require("../controllers/koreksiAbsensiController");
 const { hasPermission } = require("../middleware/permissionMiddleware");
 const { authenticate } = require("../middleware/authMiddleware");
+const { attendanceLimiter } = require("../middleware/rateLimiter");
 
 // ========== KOREKSI ABSENSI (Attendance Correction) MANAGEMENT ==========
 
@@ -11,12 +12,14 @@ router.use(authenticate);
 // POST - Submit a new correction request (any authenticated user can submit)
 router.post(
   "/",
+  attendanceLimiter,
   koreksiAbsensiController.createKoreksi
 );
 
 // POST - Submit a manual attendance request (forgot to clock in)
 router.post(
   "/manual",
+  attendanceLimiter,
   koreksiAbsensiController.createAbsensiManual
 );
 

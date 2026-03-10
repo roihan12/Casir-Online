@@ -1,5 +1,7 @@
 const { cacheGet, cacheSet, createCacheKey } = require("../utils/redisUtils");
 const prisma = require("../config/db");
+const { logger } = require("../utils/logger");
+
 
 // Cache permissions for 1 hour
 const PERMISSIONS_CACHE_TTL = 3600;
@@ -110,7 +112,7 @@ const hasPermission = (requiredPermissions, options = {}) => {
 
       next();
     } catch (error) {
-      console.error("Permission check error:", error);
+      logger.error("Permission check error:", error);
       return res.status(500).json({
         success: false,
         message: "Internal server error during permission check",

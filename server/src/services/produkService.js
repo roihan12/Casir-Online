@@ -10,6 +10,8 @@ const {
   cacheOrFetch,
   cacheDeletePattern,
 } = require("../utils/redisUtils");
+const { logger } = require("../utils/logger");
+
 
 // Get all products with pagination and filtering
 const getAllProduk = async ({
@@ -1510,7 +1512,7 @@ const getLowStockProducts = async (cabangId, { page = 1, limit = 10 }) => {
           });
         } catch (error) {
           // Log error dan lanjutkan ke produk berikutnya
-          console.error(`Error adding product ${productMaster.id} to branch ${cabangId}:`, error);
+          logger.error(`Error adding product ${productMaster.id} to branch ${cabangId}:`, error);
           skippedProducts.push({
             produkMasterId: productMaster.id,
             namaProduk: productMaster.namaProduk,

@@ -1,5 +1,7 @@
 const prisma = require("../config/db");
 const { ResponseError } = require("../error/responseError");
+const { logger } = require("../utils/logger");
+
 
 // Default tax config
 const DEFAULT_TAX_CONFIG = {
@@ -154,7 +156,7 @@ const updateTaxConfigBulk = async (targetCabangIds, taxConfig, auditInfo) => {
       if (!cabang) {
         // Skip invalid branches or throw error depending on requirement
         // For now we skip but log it
-        console.warn(`Branch with ID ${cabangId} not found during bulk update`);
+        logger.warn(`Branch with ID ${cabangId} not found during bulk update`);
         continue;
       }
 

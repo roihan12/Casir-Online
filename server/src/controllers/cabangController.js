@@ -1,4 +1,6 @@
 const cabangService = require("../services/cabangService");
+const { logger } = require("../utils/logger");
+
 
 const getAllCabang = async (req, res, next) => {
   try {
@@ -6,7 +8,7 @@ const getAllCabang = async (req, res, next) => {
     const pageXOffset = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 10;
 
-    console.log(pageXOffset, limit);
+    logger.info(pageXOffset, limit);
     
     const cabangList = await cabangService.getAllCabang(user.id, pageXOffset, limit);
 

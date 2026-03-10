@@ -1,5 +1,7 @@
 const permissionService = require("../services/permissionService");
 const roleService = require("../services/roleService");
+const { logger } = require("../utils/logger");
+
 
 /**
  * Middleware untuk mengecek permission
@@ -51,7 +53,7 @@ const checkPermissions = (requiredPermissions, requireAll = true) => {
 
       next();
     } catch (error) {
-      console.error("Permission check error:", error);
+      logger.error("Permission check error:", error);
       return res.status(500).json({
         status: "error",
         message: "Terjadi kesalahan saat memeriksa izin akses",
@@ -93,7 +95,7 @@ const checkModuleAccess = (modules, requireAll = true) => {
 
       next();
     } catch (error) {
-      console.error("Module access check error:", error);
+      logger.error("Module access check error:", error);
       return res.status(500).json({
         status: "error",
         message: "Terjadi kesalahan saat memeriksa akses modul",
@@ -146,7 +148,7 @@ const checkRoles = (roles, requireAll = false) => {
 
       next();
     } catch (error) {
-      console.error("Role check error:", error);
+      logger.error("Role check error:", error);
       return res.status(500).json({
         status: "error",
         message: "Terjadi kesalahan saat memeriksa role",

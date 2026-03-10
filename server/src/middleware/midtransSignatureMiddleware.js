@@ -1,4 +1,6 @@
 const crypto = require("crypto");
+const { logger } = require("../utils/logger");
+
 
 /**
  * Middleware to verify Midtrans webhook signature
@@ -9,7 +11,7 @@ const verifyMidtransSignature = (req, res, next) => {
     const serverKey = process.env.MIDTRANS_SERVER_KEY;
 
     if (!serverKey) {
-      console.error("MIDTRANS_SERVER_KEY is not configured");
+      logger.error("MIDTRANS_SERVER_KEY is not configured");
       return res.status(500).json({
         success: false,
         message: "Payment gateway not configured",
@@ -27,7 +29,7 @@ const verifyMidtransSignature = (req, res, next) => {
     }
 
     if (!signature_key) {
-      console.warn("Midtrans webhook received without signature", { order_id });
+      logger.warn("Midtrans webhook received without signature", { order_id });
       return res.status(400).json({
         success: false,
         message: "Missing signature key",
@@ -42,7 +44,7 @@ const verifyMidtransSignature = (req, res, next) => {
       .digest("hex");
 
     if (expectedSignature !== signature_key) {
-      console.warn("Invalid Midtrans signature detected", {
+      logger.warn("Invalid Midtrans signature detected", {
         order_id,
         received_signature: signature_key.substring(0, 20) + "...",
       });
@@ -55,7 +57,7 @@ const verifyMidtransSignature = (req, res, next) => {
     // Signature verified, proceed to controller
     next();
   } catch (error) {
-    console.error("Midtrans signature verification error:", error);
+    logger.error("Midtrans signature verification error:", error);
     return res.status(500).json({
       success: false,
       message: "Signature verification failed",

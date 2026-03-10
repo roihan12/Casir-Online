@@ -13,7 +13,7 @@ const schema = z.object({
   systemPrompt: z.string().min(10, 'System prompt minimal 10 karakter'),
 });
 
-const AIAgentPage = () => {
+const AiAgentPage = () => {
   const [testInput, setTestInput] = useState('');
   const [testOutput, setTestOutput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -177,4 +177,4 @@ const AIAgentPage = () => {
   );
 };
 
-export default AIAgentPage;
+export default AiAgentPage;

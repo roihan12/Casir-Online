@@ -5,6 +5,7 @@ const {
 } = require("../middleware/authMiddleware");
 const {upload} = require("../middleware/uploadMiddleware");
 const {hasPermission} = require("../middleware/permissionMiddleware");
+const { uploadLimiter } = require("../middleware/rateLimiter");
 
 const router = express.Router();
 
@@ -24,6 +25,7 @@ router.get("/:id", hasPermission(["produk:read"]), produkRequestController.getPr
 router.post(
   "/",
   hasPermission(["produk:create"]),
+  uploadLimiter,
   upload.array("attachments", 5), // Max 5 attachments
   produkRequestController.createProdukRequest
 );
@@ -45,6 +47,7 @@ router.post("/:id/complete", hasPermission(["produk:update"]), produkRequestCont
 router.put(
   "/:id",
   hasPermission(["produk:update"]),
+  uploadLimiter,
   upload.array("attachments", 5), // Max 5 attachments
   produkRequestController.updateProdukRequest
 );

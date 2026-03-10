@@ -1,4 +1,6 @@
 const prisma = require("../config/db");
+const { logger } = require("./logger");
+
 
 const findLastSequenceForBranch = async (branchAbbr) => {
   try {
@@ -33,7 +35,7 @@ const findLastSequenceForBranch = async (branchAbbr) => {
     // Convert sequence to number
     return parseInt(match[1], 10);
   } catch (error) {
-    console.error("Error finding last branch sequence:", error);
+    logger.error("Error finding last branch sequence:", error);
     return 0;
   }
 };

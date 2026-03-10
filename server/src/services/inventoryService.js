@@ -6,6 +6,8 @@ const ejs = require("ejs");
 const puppeteer = require("puppeteer");
 const path = require("path");
 const fs = require("fs");
+const { logger } = require("../utils/logger");
+
 
 
 // Service untuk pencatatan pergerakan stok
@@ -775,7 +777,7 @@ const generatePDFReport = async (data, format) => {
   try {
     html = await ejs.renderFile(templatePath, templateData);
   } catch (error) {
-    console.error("Error rendering template:", error);
+    logger.error("Error rendering template:", error);
     throw new ResponseError(500, `Error rendering template: ${error.message}`);
   }
 
@@ -802,7 +804,7 @@ const generatePDFReport = async (data, format) => {
 
     return pdfBuffer;
   } catch (error) {
-    console.error("Error generating PDF:", error);
+    logger.error("Error generating PDF:", error);
     throw new ResponseError(500, `Error generating PDF: ${error.message}`);
   } finally {
     if (browser) {
