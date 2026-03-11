@@ -1,0 +1,284 @@
+services:
+  # ====================
+  # Application Services
+  # ====================
+
+  # NGINX Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: casir-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/certs:ro
+      - nginx_cache:/var/cache/nginx
+    depends_on:
+      - server
+    networks:
+      - casir-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  # Server (Express.js API)
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=production
+    container_name: casir-server
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=${DATABASE_URL}
+      - DIRECT_URL=${DIRECT_URL}
+      - REDIS_URL=${REDIS_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-1d}
+      - MIDTRANS_SERVER_KEY=${MIDTRANS_SERVER_KEY}
+      - MIDTRANS_CLIENT_KEY=${MIDTRANS_CLIENT_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - WHATSAPP_SERVICE_URL=http://whatsapp:5000
+      - WHATSAPP_WEBHOOK_SECRET=${WHATSAPP_WEBHOOK_SECRET}
+      - WHATSAPP_BASIC_AUTH_USERNAME=${WHATSAPP_BASIC_AUTH_USERNAME:-admin}
+      - WHATSAPP_BASIC_AUTH_PASSWORD=${WHATSAPP_BASIC_AUTH_PASSWORD}
+      - FACE_RECOGNITION_SERVICE_URL=http://face-recognition:8001
+      - SENTRY_DSN=${SENTRY_DSN}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+    depends_on:
+      - whatsapp
+      - face-recognition
+    networks:
+      - casir-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.8'
+          memory: 600M
+        reservations:
+          cpus: '0.2'
+          memory: 256M
+
+  # ====================
+  # External Services
+  # ====================
+
+  # WhatsApp Web Service
+  whatsapp:
+    image: aldinokemal2104/go-whatsapp-web-multidevice:latest
+    container_name: casir-whatsapp
+    restart: unless-stopped
+    volumes:
+      - whatsapp_data:/app/storages
+    environment:
+      - WHATSAPP_WEBHOOK=http://host.docker.internal:3000/api/whatsapp/webhook
+      - WHATSAPP_WEBHOOK_SECRET=${WHATSAPP_WEBHOOK_SECRET}
+      - WHATSAPP_WEBHOOK_EVENTS=message,message.ack,message.reaction,message.edited,message.revoked,group.participants
+      - WHATSAPP_WEBHOOK_INSECURE_SKIP_VERIFY=false
+      - APP_BASIC_AUTH=${WHATSAPP_BASIC_AUTH_USERNAME:-admin}:${WHATSAPP_BASIC_AUTH_PASSWORD}
+      - APP_PORT=5000
+      - APP_DEBUG=false
+      - APP_OS=Chrome
+      - APP_ACCOUNT_VALIDATION=false
+    networks:
+      - casir-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 400M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+  # Face Recognition Service
+  face-recognition:
+    build:
+      context: ./face-recognition-service
+      dockerfile: Dockerfile
+    container_name: casir-face-recognition
+    restart: unless-stopped
+    volumes:
+      - face_models:/root/.insightface/models
+      - face_uploads:/app/uploads
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+    networks:
+      - casir-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8001/api/face/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 500M
+        reservations:
+          cpus: '0.1'
+          memory: 256M
+
+  # ====================
+  # Monitoring Stack
+  # ====================
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: casir-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - casir-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: casir-grafana
+    restart: unless-stopped
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=https://grafana.local
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    networks:
+      - casir-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 156M
+
+  loki:
+    image: grafana/loki:2.9.8
+    container_name: casir-loki
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/loki/loki.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - casir-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 156M
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: casir-promtail
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/promtail/promtail.yml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - casir-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: casir-node-exporter
+    restart: unless-stopped
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/host'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host:ro
+    networks:
+      - casir-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
+
+networks:
+  casir-network:
+    driver: bridge
+
+volumes:
+  # Application volumes
+  whatsapp_data:
+    driver: local
+  face_models:
+    driver: local
+  face_uploads:
+    driver: local
+  nginx_cache:
+    driver: local
+
+  # Monitoring volumes
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  loki_data:
+    driver: local

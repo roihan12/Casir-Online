@@ -1,0 +1,72 @@
+name: Casir-Online Backend Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'server/**'
+      - 'face-recognition-service/**'
+      - 'nginx/**'
+      - 'docker-compose.vps.yml'
+
+jobs:
+  test:
+    name: Run Integration Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './server/package-lock.json'
+
+      - name: Install Dependencies
+        working-directory: ./server
+        run: npm ci
+
+      - name: Generate Prisma Client
+        working-directory: ./server
+        run: npm run prisma:generate
+
+      - name: Run Integration Tests (Vitest + Testcontainers)
+        working-directory: ./server
+        # Note: the testcontainers/postgresql package requires Docker. 
+        # GitHub Actions runners already have Docker installed and running.
+        run: npm run test
+        env:
+          NODE_ENV: test
+
+  deploy:
+    name: Deploy to VPS
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Execute SSH Commands
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          # Increase timeout for large image pulls
+          timeout: 400s
+          script: |
+            cd Casir-Online
+            
+            # Pull latest changes from main
+            git config --global pull.rebase false
+            git pull origin main
+            
+            # Restart docker containers using the VPS-specific compose file
+            # Rebuild is added to ensure any new dependencies are installed or code is updated
+            docker compose -f docker-compose.vps.yml up -d --build
+            
+            # Remove dangling images to free up space
+            docker image prune -f
