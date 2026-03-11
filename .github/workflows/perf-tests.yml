@@ -1,0 +1,27 @@
+name: Performance Tests (k6)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  performance-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run local k6 scenario (Load Test)
+      uses: grafana/k6-action@v0.3.1
+      with:
+        filename: tests/performance/scenarios/load-test.js
+        flags: --insecure-skip-tls-verify
+        
+    - name: Run local k6 scenario (Spike Test)
+      uses: grafana/k6-action@v0.3.1
+      with:
+        filename: tests/performance/scenarios/spike-test.js
+        flags: --insecure-skip-tls-verify
