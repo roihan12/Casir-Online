@@ -58,6 +58,8 @@ services:
       - SENTRY_DSN=${SENTRY_DSN}
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+    volumes:
+      - server_logs:/app/logs  
     depends_on:
       - whatsapp
       - face-recognition
@@ -298,6 +300,8 @@ networks:
 
 volumes:
   # Application volumes
+  server_logs:
+    driver: local
   whatsapp_data:
     driver: local
   face_models:
