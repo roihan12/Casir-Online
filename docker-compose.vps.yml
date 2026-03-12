@@ -12,7 +12,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - /etc/letsencrypt/live/api-casir.roihansori.com:/etc/nginx/certs:ro
+      - ./nginx/ssl:/etc/nginx/certs:ro
       - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
       - nginx_cache:/var/cache/nginx
     depends_on:
