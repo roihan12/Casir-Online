@@ -2,7 +2,7 @@ import { io } from "socket.io-client";
 
 // Get base URL without /api suffix
 // Assuming REACT_APP_API_URL is something like "http://localhost:3000/api" or "/api"
-const API_URL = import.meta.env?.VITE_API_URL || "/api";
+const API_URL = import.meta.env?.VITE_API_BASE_URL || "/api";
 const SOCKET_URL = API_URL === "/api" ? "/" : API_URL.replace(/\/api\/?$/, '');
 
 console.log('Connecting to socket at:', SOCKET_URL);
