@@ -1,5 +1,7 @@
 const whatsappService = require('../services/whatsappService');
 const { PrismaClient } = require('@prisma/client');
+const { logger } = require("../utils/logger");
+
 const prisma = new PrismaClient();
 
 /**
