@@ -92,13 +92,13 @@ services:
     volumes:
       - whatsapp_data:/app/storages
     environment:
-      - WHATSAPP_WEBHOOK=http://host.docker.internal:3000/api/whatsapp/webhook
+      - WHATSAPP_WEBHOOK=http://server:3000/api/whatsapp/webhook
       - WHATSAPP_WEBHOOK_SECRET=${WHATSAPP_WEBHOOK_SECRET}
       - WHATSAPP_WEBHOOK_EVENTS=message,message.ack,message.reaction,message.edited,message.revoked,group.participants
       - WHATSAPP_WEBHOOK_INSECURE_SKIP_VERIFY=false
       - APP_BASIC_AUTH=${WHATSAPP_BASIC_AUTH_USERNAME:-admin}:${WHATSAPP_BASIC_AUTH_PASSWORD}
       - APP_PORT=5000
-      - APP_DEBUG=false
+      - APP_DEBUG=true
       - APP_OS=Chrome
       - APP_ACCOUNT_VALIDATION=false
     networks:
