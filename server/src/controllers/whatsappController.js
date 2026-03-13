@@ -62,7 +62,8 @@ exports.getStatus = async (req, res) => {
       const devices = response.data || response.results || response || [];
 
       myDevice = devices.find(d => d.id === botConfig.device_id || d.uuid === botConfig.device_id);
-
+      logger.info('My Device:', JSON.stringify(myDevice, null, 2));
+    
       if (myDevice === undefined || myDevice === null) {
         try {
           const createResponse = await whatsappService.createDevice(botConfig.device_id);
