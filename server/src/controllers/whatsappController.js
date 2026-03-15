@@ -856,6 +856,26 @@ exports.loginQR = async (req, res) => {
       });
     }
 
+    let qrCode = result?.results?.qr_link || '';
+
+    if (qrCode) {
+      if (process.env.NODE_ENV === 'production') {
+        // Production: rewrite ke proxy (browser tidak bisa akses internal docker URL)
+        const whatsappBaseUrl = process.env.WHATSAPP_SERVICE_URL || 'http://whatsapp:5000';
+        const qrPath = qrCode.replace(whatsappBaseUrl, '');
+    qrCode = `/api/whatsapp/qr-proxy?path=${encodeURIComponent(qrPath)}`;
+    logger.info(`[PROD] QR proxy: ${result.results.qr_link} -> ${qrCode}`);
+  } else {
+    // Development: ganti internal host ke localhost agar browser bisa akses langsung
+    const whatsappBaseUrl = process.env.WHATSAPP_SERVICE_URL || 'http://whatsapp:5000';
+    qrCode = qrCode.replace(whatsappBaseUrl, 'http://localhost:5000');
+    logger.info(`[DEV] QR localhost: ${result.results.qr_link} -> ${qrCode}`);
+  }
+}
+
+result.results.qr_link = qrCode;
+    
+
     return res.status(200).json(result);
 
   } catch (error) {
