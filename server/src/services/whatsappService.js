@@ -49,7 +49,11 @@ class WhatsappService {
       return response.data;
     } catch (error) {
       const message = error.response?.data?.message || error.message;
-      logger.error(`WhatsApp Service Error: ${error}`);
+      logger.error(`WhatsApp Service Error [${config.method?.toUpperCase()} ${config.url}]: ${message}`, {
+        status: error.response?.status,
+        responseData: error.response?.data,
+        stack: error.stack
+      });
       throw new Error(message);
     }
   }
@@ -64,6 +68,14 @@ class WhatsappService {
     return this.request({
       method: 'GET',
       url: `${this.baseUrl}/devices`,
+      headers: this.getHeaders()
+    });
+  }
+
+  async getDevicesId(deviceId) {
+    return this.request({
+      method: 'GET',
+      url: `${this.baseUrl}/devices/${deviceId}`,
       headers: this.getHeaders()
     });
   }

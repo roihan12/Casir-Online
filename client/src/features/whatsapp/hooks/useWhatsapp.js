@@ -4,6 +4,146 @@ import socket from "@common/services/socketService";
 import { useEffect } from "react";
 import toast from "react-hot-toast";
 
+// ==================== BOT CONFIG & LIST HOOKS ====================
+
+/**
+ * Hook for fetching all bot configurations for user's accessible branches
+ * @param {Object} params - Query parameters
+ * @param {string} params.cabangId - Optional: Filter by specific cabang
+ */
+export const useBotConfigs = (params = {}) => {
+  return useQuery({
+    queryKey: ["bot-configs", params],
+    queryFn: () => whatsappService.getBotConfigs(params),
+    staleTime: 60 * 1000,
+  });
+};
+
+/**
+ * Hook for fetching a single bot configuration (backward compatible)
+ * @deprecated Use useBotConfigs() for multi-device support
+ */
+export const useBotConfig = () => {
+  return useQuery({
+    queryKey: ["bot-config"],
+    queryFn: () => whatsappService.getBotConfig(),
+    staleTime: 60 * 1000,
+  });
+};
+
+/**
+ * Hook for creating a new bot configuration
+ */
+export const useCreateBotConfig = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: whatsappService.createBotConfig,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bot-configs"] });
+      toast.success("Bot configuration created successfully");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to create bot configuration");
+    }
+  });
+};
+
+/**
+ * Hook for updating a bot configuration
+ */
+export const useUpdateBotConfig = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: whatsappService.updateBotConfig,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["bot-configs"] });
+      if (variables.id) {
+        queryClient.invalidateQueries({ queryKey: ["bot-config", variables.id] });
+      }
+      toast.success("Bot configuration updated successfully");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to update bot configuration");
+    }
+  });
+};
+
+/**
+ * Hook for deleting a bot configuration
+ */
+export const useDeleteBotConfig = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (botId) => {
+      // Using update with isActive: false for soft delete
+      return await whatsappService.updateBotConfig({ id: botId, isActive: false });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bot-configs"] });
+      toast.success("Bot configuration deleted successfully");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to delete bot configuration");
+    }
+  });
+};
+
+/**
+ * Hook for fetching bot status with QR code
+ * @param {string} botId - Bot configuration ID
+ */
+export const useBotStatus = (botId) => {
+  return useQuery({
+    queryKey: ["bot-status", botId],
+    queryFn: () => whatsappService.getBotStatus(botId),
+    enabled: !!botId,
+    refetchInterval: (query) => {
+      const status = query?.state?.data?.state;
+      if (status === 'connected' || status === 'logged_in') {
+        return false; // Stop auto-polling when connected
+      }
+      return 10000; // Poll every 10 seconds
+    },
+    refetchOnWindowFocus: false,
+  });
+};
+
+/**
+ * Hook for restarting a bot
+ */
+export const useRestartBot = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (botId) => whatsappService.restartBot(botId),
+    onSuccess: (_, botId) => {
+      queryClient.invalidateQueries({ queryKey: ["bot-status", botId] });
+      toast.success("Bot is restarting...");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to restart bot");
+    }
+  });
+};
+
+/**
+ * Hook for logging out a bot
+ */
+export const useLogoutBot = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (botId) => whatsappService.logoutBot(botId),
+    onSuccess: (_, botId) => {
+      queryClient.invalidateQueries({ queryKey: ["bot-status", botId] });
+      toast.success("Bot logged out successfully");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to logout bot");
+    }
+  });
+};
+
+// ==================== CHAT HOOKS ====================
+
 // Hook for fetching all chats
 export const useWhatsappChats = (params = {}) => {
   return useQuery({
@@ -155,6 +295,70 @@ export const useWhatsappStatus = () => {
     return useQuery({
         queryKey: ["whatsapp-status"],
         queryFn: () => whatsappService.getBotStatus(),
-        refetchInterval: 10000 // Check every 10 seconds
+        // Di TanStack Query v5, data dari query terakhir ada di query.state.data
+        refetchInterval: (query) => {
+            const status = query?.state?.data?.state;
+            if (status === 'connected' || status === 'logged_in') {
+                return false; // Stop auto-polling
+            }
+            return 10000; // Poll setiap 10 detik
+        },
+        refetchOnWindowFocus: false // Mencegah refetch saat ganti tab agar tidak spam API
     });
 };
+
+// ==================== DEVICES & AUTHENTICATION ====================
+
+// Hook for fetching all devices
+export const useGetDevices = () => {
+  return useQuery({
+    queryKey: ["whatsapp-devices"],
+    queryFn: () => whatsappService.getDevices(),
+  });
+};
+
+// Hook for creating a new device
+export const useCreateDevice = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (description) => whatsappService.createDevice(description),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["whatsapp-devices"] });
+      toast.success("Perangkat berhasil dibuat");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Gagal membuat perangkat");
+    }
+  });
+};
+
+// Hook for removing a device
+export const useRemoveDevice = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (deviceId) => whatsappService.removeDevice(deviceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["whatsapp-devices"] });
+      toast.success("Perangkat berhasil dihapus");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Gagal menghapus perangkat");
+    }
+  });
+};
+
+// Hook for logging out the main bot device
+// export const useLogoutBot = () => {
+//   const queryClient = useQueryClient();
+//   return useMutation({
+//     mutationFn: () => whatsappService.logoutBot(),
+//     onSuccess: () => {
+//       queryClient.invalidateQueries({ queryKey: ["whatsapp-status"] });
+//       queryClient.invalidateQueries({ queryKey: ["whatsapp-devices"] });
+//       toast.success("Bot berhasil diputuskan (Logout)");
+//     },
+//     onError: (error) => {
+//       toast.error(error.message || "Gagal memutuskan bot");
+//     }
+//   });
+// };

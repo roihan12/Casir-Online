@@ -5,26 +5,79 @@ const fs = require("fs");
 // Buat folder logs jika belum ada
 const logDir = path.join(process.cwd(), "logs");
 if (!fs.existsSync(logDir)) {
-  fs.mkdirSync(logDir);
+  fs.mkdirSync(logDir, { recursive: true });
 }
 
-// Konfigurasi format
-const { combine, timestamp, printf, colorize, json } = winston.format;
+const { combine, timestamp, printf, colorize, json, errors } = winston.format;
 
-// Format khusus untuk console output
-const consoleFormat = printf(({ level, message, timestamp, ...meta }) => {
-  return `[${timestamp}] ${level}: ${message} ${
-    Object.keys(meta).length ? JSON.stringify(meta, null, 2) : ""
-  }`;
+// ============================================================
+// Custom format: otomatis serialize Error objects ke dalam log
+// ============================================================
+const enumerateErrorFormat = winston.format((info) => {
+  // Jika message adalah Error object, extract properties-nya
+  if (info.message instanceof Error) {
+    info.message = {
+      message: info.message.message,
+      stack: info.message.stack,
+      ...(info.message.code && { code: info.message.code }),
+    };
+  }
+
+  // Jika ada error di meta (e.g. logger.error('msg', { error: err }))
+  if (info.error instanceof Error) {
+    info.error = {
+      message: info.error.message,
+      stack: info.error.stack,
+      ...(info.error.code && { code: info.error.code }),
+    };
+  }
+
+  return info;
 });
 
-// Buat logger instance
+// ============================================================
+// Console format: readable, colored, multi-line untuk dev
+// ============================================================
+const consoleFormat = printf(({ level, message, timestamp, service, ...meta }) => {
+  // Base log line
+  let log = `[${timestamp}] ${level} [${service}]: ${message}`;
+
+  // Filter out keys yang tidak perlu ditampilkan
+  const filteredMeta = { ...meta };
+  delete filteredMeta.stack; // stack akan tampil terpisah di bawah
+
+  // Tampilkan meta data jika ada (selain stack)
+  if (Object.keys(filteredMeta).length > 0) {
+    log += `\n  📋 Meta: ${JSON.stringify(filteredMeta, null, 2).split("\n").join("\n  ")}`;
+  }
+
+  // Tampilkan stack trace di baris terpisah supaya mudah dibaca
+  if (meta.stack) {
+    log += `\n  🔍 Stack: ${meta.stack}`;
+  }
+
+  return log;
+});
+
+// ============================================================
+// File format: structured JSON untuk parsing & search
+// ============================================================
+const fileFormat = combine(
+  timestamp({ format: "YYYY-MM-DD HH:mm:ss.SSS Z" }),
+  enumerateErrorFormat(),
+  errors({ stack: true }),
+  json()
+);
+
+// ============================================================
+// Logger instance
+// ============================================================
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || "info",
   defaultMeta: { service: "prisma-service" },
-  format: combine(timestamp(), json()),
+  format: fileFormat,
   transports: [
-    // Log ke file dengan rotasi harian
+    // Error-only log file
     new winston.transports.File({
       filename: path.join(
         logDir,
@@ -34,6 +87,7 @@ const logger = winston.createLogger({
       maxsize: 10485760, // 10MB
       maxFiles: 10,
     }),
+    // Combined log file (semua level)
     new winston.transports.File({
       filename: path.join(
         logDir,
@@ -45,10 +99,16 @@ const logger = winston.createLogger({
   ],
 });
 
-// Tambahkan console transport di development mode
+// Console transport — selalu aktif supaya Docker logs bisa dilihat
 logger.add(
   new winston.transports.Console({
-    format: combine(colorize(), timestamp(), consoleFormat),
+    format: combine(
+      colorize({ all: true }),
+      timestamp({ format: "YYYY-MM-DD HH:mm:ss.SSS Z" }),
+      enumerateErrorFormat(),
+      errors({ stack: true }),
+      consoleFormat
+    ),
   })
 );
 

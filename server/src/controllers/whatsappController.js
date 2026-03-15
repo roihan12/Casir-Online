@@ -1,142 +1,373 @@
 const whatsappService = require('../services/whatsappService');
 const { PrismaClient } = require('@prisma/client');
 const { logger } = require("../utils/logger");
+const axios = require('axios');
 
 const prisma = new PrismaClient();
 
 /**
- * Get active bot configuration
+ * Helper function to get user's accessible cabang IDs
+ * @param {Object} user - User object from request
+ * @returns {Array<string>} Array of cabang IDs
+ */
+const getUserCabangIds = (user) => {
+  const cabangList = user.cabang || user.userCabang || [];
+  return cabangList.map((uc) => uc.cabangId || uc.id);
+};
+
+/**
+ * Helper function to check if user is super admin
+ * @param {Object} user - User object from request
+ * @returns {Boolean}
+ */
+const isSuperAdmin = (user) => {
+  const roles = user.roles || user.userRoles || [];
+  return roles.some(
+    (r) => r.namaRole === 'super_admin' || r.role?.namaRole === 'super_admin'
+  );
+};
+
+/**
+ * Proxy QR code image from internal WhatsApp service to browser
+ * GET /api/whatsapp/qr-proxy?path=/statics/qrcode/scan-qr-xxx.png
+ */
+exports.qrProxy = async (req, res) => {
+  try {
+    const { path: qrPath } = req.query;
+
+    if (!qrPath) {
+      return res.status(400).json({ message: 'QR path is required' });
+    }
+
+    const whatsappBaseUrl = process.env.WHATSAPP_SERVICE_URL || 'http://whatsapp:5000';
+    const username = process.env.WHATSAPP_BASIC_AUTH_USERNAME || 'admin';
+    const password = process.env.WHATSAPP_BASIC_AUTH_PASSWORD || 'admin';
+
+    const imageUrl = `${whatsappBaseUrl}${qrPath}`;
+    logger.info(`QR Proxy fetching: ${imageUrl}`);
+
+    const response = await axios.get(imageUrl, {
+      responseType: 'arraybuffer',
+      timeout: 10000,
+      auth: { username, password }
+    });
+
+    // Forward content-type and image data
+    res.set('Content-Type', response.headers['content-type'] || 'image/png');
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.send(response.data);
+
+  } catch (error) {
+    logger.error(`QR Proxy error: ${error.message}`, { stack: error.stack });
+    res.status(502).json({ message: 'Failed to fetch QR code image' });
+  }
+};
+
+/**
+ * Get bot configuration(s)
+ * If user is super_admin, return all configs. Otherwise, filter by user's cabang access.
+ * If cabangId query param is provided, filter by that specific cabang.
  */
 exports.getConfig = async (req, res) => {
   try {
+    const { user } = req;
+    const { cabangId } = req.query;
+
+    let whereClause = '';
+
+    // Super admin can see all configs, or filter by specific cabang if provided
+    if (isSuperAdmin(user)) {
+      if (cabangId) {
+        whereClause = `WHERE bc.cabang_id = '${cabangId}'`;
+      }
+    } else {
+      // Non-super-admin: filter by their accessible cabangs
+      const userCabangIds = getUserCabangIds(user);
+      if (userCabangIds.length === 0) {
+        return res.json([]);
+      }
+
+      const cabangIdsList = userCabangIds.map(id => `'${id}'`).join(',');
+      whereClause = `WHERE bc.cabang_id IN (${cabangIdsList})`;
+
+      // Further filter if specific cabangId is requested
+      if (cabangId) {
+        if (!userCabangIds.includes(cabangId)) {
+          return res.status(403).json({ message: 'You do not have access to this branch' });
+        }
+        whereClause = `WHERE bc.cabang_id = '${cabangId}'`;
+      }
+    }
+
     const config = await prisma.$queryRawUnsafe(
-      `SELECT bot_config_id, cabang_id, platform_type, is_active, api_key, api_secret, phone_number, webhook_url, welcome_message, catalog_message, order_message, thank_you_message, created_at, updated_at, "name", api_url, device_id
-      FROM bot_config`
-    )
-  
-    res.json(config || {});
+      `SELECT bc.bot_config_id, bc.cabang_id, c.nama_cabang, bc.platform_type, bc.is_active,
+              bc.api_key, bc.api_secret, bc.phone_number, bc.webhook_url,
+              bc.welcome_message, bc.catalog_message, bc.order_message, bc.thank_you_message,
+              bc.created_at, bc.updated_at, bc."name", bc.api_url, bc.device_id
+      FROM bot_config bc
+      LEFT JOIN cabang c ON bc.cabang_id = c.cabang_id
+      ${whereClause}
+      ORDER BY bc.created_at DESC`
+    );
+
+    res.json(config || []);
   } catch (error) {
+    logger.error('Error in getConfig:', error);
     res.status(500).json({ message: error.message });
   }
 };
 
 /**
  * Update or create bot configuration
+ * Validates cabang_id access and ensures cabang_id is provided
  */
 exports.updateConfig = async (req, res) => {
   try {
+    const { user } = req;
     const data = req.body;
-    const config = await prisma.botConfig.upsert({
-      where: { id: data.id || 'default' },
-      update: data,
-      create: data,
-    });
+
+    // Validate cabang_id is provided
+    if (!data.cabangId) {
+      return res.status(400).json({ message: 'cabangId is required' });
+    }
+
+    // Check if user has access to the specified cabang
+    const userCabangIds = getUserCabangIds(user);
+    if (!isSuperAdmin(user) && !userCabangIds.includes(data.cabangId)) {
+      return res.status(403).json({ message: 'You do not have access to this branch' });
+    }
+
+    let config;
+    const configData = {
+      cabangId: data.cabangId,
+      platformType: data.platformType || 'whatsapp',
+      isActive: data.isActive !== undefined ? data.isActive : true,
+      apiKey: data.apiKey,
+      apiSecret: data.apiSecret,
+      phoneNumber: data.phoneNumber,
+      webhookUrl: data.webhookUrl,
+      welcomeMessage: data.welcomeMessage,
+      catalogMessage: data.catalogMessage,
+      orderMessage: data.orderMessage,
+      thankYouMessage: data.thankYouMessage,
+      name: data.name,
+      apiUrl: data.apiUrl,
+      deviceId: data.deviceId,
+    };
+
+    // If updating existing config
+    if (data.id && data.id !== '__temp_id__') {
+      const existingConfig = await prisma.botConfig.findUnique({
+        where: { id: data.id }
+      });
+
+      if (!existingConfig) {
+        return res.status(404).json({ message: 'Bot configuration not found' });
+      }
+
+      // Check access to existing config's cabang
+      if (!isSuperAdmin(user) && !userCabangIds.includes(existingConfig.cabangId)) {
+        return res.status(403).json({ message: 'You do not have access to modify this configuration' });
+      }
+
+      config = await prisma.botConfig.update({
+        where: { id: data.id },
+        data: configData,
+      });
+    } else {
+      // Creating new bot config
+      // Auto-generate deviceId if not provided
+      if (!configData.deviceId) {
+        configData.deviceId = `device-${Math.random().toString(36).substring(2, 11)}-${Date.now()}`;
+
+        await whatsappService.createDevice(configData.deviceId);
+        
+        logger.info(`Auto-generated deviceId for new bot: ${configData.deviceId}`);
+      }
+
+      config = await prisma.botConfig.create({
+        data: configData,
+      });
+    }
+
     res.json(config);
   } catch (error) {
+    logger.error('Error in updateConfig:', error);
     res.status(500).json({ message: error.message });
   }
 };
 
 /**
  * Get bot connection status with QR code if not connected
+ * Accepts botId parameter to fetch status for a specific bot config
+ * GET /api/whatsapp/status?botId={botConfigId}
  */
 exports.getStatus = async (req, res) => {
   try {
-    // Get active config
-    const config = await prisma.$queryRawUnsafe(
-      `SELECT bot_config_id, cabang_id, platform_type, is_active, api_key, api_secret, phone_number, webhook_url, welcome_message, catalog_message, order_message, thank_you_message, created_at, updated_at, "name", api_url, device_id
-      FROM bot_config`
-    )
+    const { user } = req;
+    const { botId } = req.query;
 
-    // Get the first config from array (or handle properly)
-    const botConfig = Array.isArray(config) ? config[0] : config;
+    // If botId is provided, fetch specific bot config
+    // Otherwise, return 400 (multi-device mode requires botId)
+    if (!botId) {
+      return res.status(400).json({
+        message: 'botId parameter is required. Please specify which bot configuration to check.'
+      });
+    }
+
+    // Fetch the specific bot config
+    const botConfig = await prisma.botConfig.findUnique({
+      where: { id: botId },
+      include: { cabang: true }
+    });
 
     if (!botConfig) {
-      return res.status(404).json({ message: 'No active bot configuration found' });
+      return res.status(404).json({ message: 'Bot configuration not found' });
+    }
+
+    // Check if user has access to this bot's cabang
+    const userCabangIds = getUserCabangIds(user);
+    if (!isSuperAdmin(user) && !userCabangIds.includes(botConfig.cabangId)) {
+      return res.status(403).json({ message: 'You do not have access to this bot configuration' });
+    }
+
+    // If no device_id configured, return not_configured status
+    if (!botConfig.deviceId) {
+      return res.json({
+        state: 'not_configured',
+        botId: botConfig.id,
+        deviceId: null,
+        cabangId: botConfig.cabangId,
+        cabangName: botConfig.cabang?.namaCabang,
+        qrDuration: null,
+        qrCode: null,
+        message: 'Device ID belum dikonfigurasi di bot_config'
+      });
     }
 
     // Get devices from Go Service
     let myDevice;
+    let deviceAutoCreated = false;
     try {
       const response = await whatsappService.getDevices();
-      const devices = response.data || response.results || response || [];
+      logger.info(`getDevices raw response: ${JSON.stringify(response, null, 2)}`);
 
-      myDevice = devices.find(d => d.id === botConfig.device_id || d.uuid === botConfig.device_id);
-      logger.info('My Device:', JSON.stringify(myDevice, null, 2));
-    
-      if (myDevice === undefined || myDevice === null) {
-        try {
-          const createResponse = await whatsappService.createDevice(botConfig.device_id);
-          logger.info('Create Device Response:', JSON.stringify(createResponse, null, 2));
-          myDevice = createResponse;
+      myDevice = response.results.find(device => device.id === botConfig.deviceId);
 
-        } catch (e) {
-          logger.error('Error creating device:', e);
-        }
+      if (myDevice === undefined) {
+        const newDeviceId = await whatsappService.createDevice(botConfig.deviceId);
+        logger.info(`New device ID: ${newDeviceId}`);
+        myDevice = newDeviceId.results;
+        await prisma.botConfig.update({
+          where: { id: botConfig.id },
+          data: { deviceId: newDeviceId.results.id }
+        });
       }
 
     } catch (e) {
-      logger.error('Error getting devices:', e.message);
+      logger.warn(`Error getting devices from WhatsApp service: ${e.message}`, { stack: e.stack, response: e.response?.data });
     }
 
+    logger.info(`myDevice: ${JSON.stringify(myDevice, null, 2)}`);
 
-  
-  
+    // If already connected, return status without QR
+    if (myDevice !== undefined && myDevice.state === 'connected') {
+      return res.json({
+        state: 'connected',
+        botId: botConfig.id,
+        deviceId: myDevice.id || myDevice.device,
+        cabangId: botConfig.cabangId,
+        cabangName: botConfig.cabang?.namaCabang,
+        qrDuration: null,
+        qrCode: null,
+        deviceAutoCreated
+      });
+    }
+
+    // Device exists but not connected — get QR code
     let qrCode = null;
     let qrDuration = null;
-    if (myDevice?.state !== 'connected') {
-      try {
-        // Use /app/login endpoint with device_id parameter
-        const loginResponse = await whatsappService.appLogin(myDevice.id);
+    try {
+      const loginResponse = await whatsappService.appLogin(myDevice.id);
+      logger.info(`Login QR Response: ${JSON.stringify(loginResponse, null, 2)}`);
 
-        // Log the full response for debugging
-        logger.info('Login QR Response:', JSON.stringify(loginResponse, null, 2));
+      // Extract QR code from response
+      const qrData = loginResponse?.results || loginResponse?.data || loginResponse;
+      const rawQrLink = qrData?.qr_link;
+      qrDuration = qrData?.qr_duration;
 
-        // Extract QR code - try multiple possible response structures
-        if (loginResponse && loginResponse.results) {
-            qrCode = loginResponse.results.qr_link;
-            qrDuration = loginResponse.results.qr_duration;
-        } else if (loginResponse && loginResponse.data) {
-             qrCode = loginResponse.data.qr_link;
-             qrDuration = loginResponse.data.qr_duration;
-        }
-      } catch (e) {
-        logger.error('Error fetching QR:', e.message);
-        logger.error('Full error:', e);
+      // Rewrite internal Docker URL to proxy URL accessible from browser
+      if (rawQrLink) {
+        const whatsappBaseUrl = process.env.WHATSAPP_SERVICE_URL || 'http://whatsapp:5000';
+        // Extract path from internal URL (e.g. /statics/qrcode/scan-qr-xxx.png)
+        const qrPath = rawQrLink.replace(whatsappBaseUrl, '');
+        // Use server proxy endpoint so browser can access it
+        qrCode = `/api/whatsapp/qr-proxy?path=${encodeURIComponent(qrPath)}`;
+        logger.info(`QR code rewritten: ${rawQrLink} -> ${qrCode}`);
       }
+    } catch (e) {
+      logger.error(`Error fetching QR: ${e.message}`, { stack: e.stack, response: e.response?.data });
     }
 
     const status = {
-      state: myDevice?.state,
-      deviceId: botConfig.device_id,
+      state: myDevice?.state || 'disconnected',
+      botId: botConfig.id,
+      deviceId: myDevice.id || myDevice.device || botConfig.deviceId,
+      cabangId: botConfig.cabangId,
+      cabangName: botConfig.cabang?.namaCabang,
       qrDuration: qrDuration,
-      qrCode: qrCode
+      qrCode: qrCode,
+      deviceAutoCreated
     };
 
     res.json(status);
 
   } catch (error) {
+    logger.error(`Error in getStatus: ${error.message}`, { stack: error.stack });
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
 
 /**
  * Restart/reconnect the bot
  */
 exports.restartBot = async (req, res) => {
   try {
-    const config = await prisma.botConfig.findFirst({ where: { isActive: true } });
+    const { user } = req;
+    const { botId } = req.body;
 
-    if (!config) {
-      return res.status(404).json({ message: 'No active bot configuration found' });
+    // Get bot config
+    let botConfig;
+    if (botId) {
+      botConfig = await prisma.botConfig.findUnique({ where: { id: botId } });
+      if (!botConfig) {
+        return res.status(404).json({ message: 'Bot configuration not found' });
+      }
+      const userCabangIds = getUserCabangIds(user);
+      if (!isSuperAdmin(user) && !userCabangIds.includes(botConfig.cabangId)) {
+        return res.status(403).json({ message: 'You do not have access to this bot configuration' });
+      }
+    } else {
+      const userCabangIds = getUserCabangIds(user);
+      const configs = await prisma.botConfig.findMany({
+        where: { cabangId: { in: userCabangIds }, isActive: true }
+      });
+      if (configs.length === 0) {
+        return res.status(404).json({ message: 'No active bot configuration found for your branch' });
+      }
+      botConfig = configs[0];
     }
 
-    if (config.deviceId) {
-      await whatsappService.reconnect(config.deviceId);
+    if (botConfig.deviceId) {
+      await whatsappService.reconnect(botConfig.deviceId);
     }
 
     res.json({ message: 'Bot reconnecting...' });
   } catch (error) {
+    logger.error('Error in restartBot:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -146,18 +377,38 @@ exports.restartBot = async (req, res) => {
  */
 exports.logoutBot = async (req, res) => {
   try {
-    const config = await prisma.botConfig.findFirst({ where: { isActive: true } });
+    const { user } = req;
+    const { botId } = req.body;
 
-    if (!config) {
-      return res.status(404).json({ message: 'No active bot configuration found' });
+    // Get bot config
+    let botConfig;
+    if (botId) {
+      botConfig = await prisma.botConfig.findUnique({ where: { id: botId } });
+      if (!botConfig) {
+        return res.status(404).json({ message: 'Bot configuration not found' });
+      }
+      const userCabangIds = getUserCabangIds(user);
+      if (!isSuperAdmin(user) && !userCabangIds.includes(botConfig.cabangId)) {
+        return res.status(403).json({ message: 'You do not have access to this bot configuration' });
+      }
+    } else {
+      const userCabangIds = getUserCabangIds(user);
+      const configs = await prisma.botConfig.findMany({
+        where: { cabangId: { in: userCabangIds }, isActive: true }
+      });
+      if (configs.length === 0) {
+        return res.status(404).json({ message: 'No active bot configuration found for your branch' });
+      }
+      botConfig = configs[0];
     }
 
-    if (config.deviceId) {
-      await whatsappService.logout(config.deviceId);
+    if (botConfig.deviceId) {
+      await whatsappService.logout(botConfig.deviceId);
     }
 
     res.json({ message: 'Bot logged out successfully' });
   } catch (error) {
+    logger.error('Error in logoutBot:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -167,8 +418,9 @@ exports.logoutBot = async (req, res) => {
  */
 exports.sendMessage = async (req, res) => {
   try {
+    const { user } = req;
     const { customerId } = req.params;
-    const { message, phone } = req.body;
+    const { message, phone, botId } = req.body;
 
     let targetPhone = phone;
     if (!targetPhone && customerId) {
@@ -180,21 +432,55 @@ exports.sendMessage = async (req, res) => {
       return res.status(400).json({ message: 'Phone number required' });
     }
 
-    const config = await prisma.$queryRawUnsafe(
-      `SELECT device_id
-      FROM bot_config`
-    )
+    // If botId is provided, validate access and get device_id
+    // Otherwise, get active bot config for user's cabang
+    let botConfig;
 
-    // Get the first config from array (or handle properly)
-    const botConfig = Array.isArray(config) ? config[0] : config;
+    if (botId) {
+      // Validate specific bot config
+      botConfig = await prisma.botConfig.findUnique({
+        where: { id: botId }
+      });
 
-    if (!botConfig?.device_id) {
+      if (!botConfig) {
+        return res.status(404).json({ message: 'Bot configuration not found' });
+      }
+
+      // Check cabang access
+      const userCabangIds = getUserCabangIds(user);
+      if (!isSuperAdmin(user) && !userCabangIds.includes(botConfig.cabangId)) {
+        return res.status(403).json({ message: 'You do not have access to this bot configuration' });
+      }
+    } else {
+      // Get active bot config for user's cabang(s)
+      const userCabangIds = getUserCabangIds(user);
+      if (userCabangIds.length === 0) {
+        return res.status(403).json({ message: 'No branch access configured' });
+      }
+
+      const configs = await prisma.botConfig.findMany({
+        where: {
+          cabangId: { in: userCabangIds },
+          isActive: true
+        }
+      });
+
+      if (configs.length === 0) {
+        return res.status(404).json({ message: 'No active bot configuration found for your branch' });
+      }
+
+      // Use the first active config (could be enhanced to prioritize by some criteria)
+      botConfig = configs[0];
+    }
+
+    if (!botConfig.deviceId) {
       return res.status(500).json({ message: 'Bot not configured or device missing' });
     }
 
-    const result = await whatsappService.sendMessage(targetPhone, message, botConfig.device_id);
+    const result = await whatsappService.sendMessage(targetPhone, message, botConfig.deviceId);
     res.json(result);
   } catch (error) {
+    logger.error('Error in sendMessage:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -204,14 +490,36 @@ exports.sendMessage = async (req, res) => {
  */
 exports.sendImage = async (req, res) => {
   try {
-    const { phone, caption } = req.body;
+    const { user } = req;
+    const { phone, caption, botId } = req.body;
 
     if (!req.file && !req.body.image) {
       return res.status(400).json({ message: 'Image file required' });
     }
 
-    const config = await prisma.botConfig.findFirst({ where: { isActive: true } });
-    if (!config?.deviceId) {
+    // Get bot config
+    let botConfig;
+    if (botId) {
+      botConfig = await prisma.botConfig.findUnique({ where: { id: botId } });
+      if (!botConfig) {
+        return res.status(404).json({ message: 'Bot configuration not found' });
+      }
+      const userCabangIds = getUserCabangIds(user);
+      if (!isSuperAdmin(user) && !userCabangIds.includes(botConfig.cabangId)) {
+        return res.status(403).json({ message: 'You do not have access to this bot configuration' });
+      }
+    } else {
+      const userCabangIds = getUserCabangIds(user);
+      const configs = await prisma.botConfig.findMany({
+        where: { cabangId: { in: userCabangIds }, isActive: true }
+      });
+      if (configs.length === 0) {
+        return res.status(404).json({ message: 'No active bot configuration found for your branch' });
+      }
+      botConfig = configs[0];
+    }
+
+    if (!botConfig.deviceId) {
       return res.status(500).json({ message: 'Bot not configured or device missing' });
     }
 
@@ -222,12 +530,13 @@ exports.sendImage = async (req, res) => {
       phone,
       imageBuffer,
       filename,
-      config.deviceId,
+      botConfig.deviceId,
       { caption }
     );
 
     res.json(result);
   } catch (error) {
+    logger.error('Error in sendImage:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -237,14 +546,36 @@ exports.sendImage = async (req, res) => {
  */
 exports.sendLocation = async (req, res) => {
   try {
-    const { phone, latitude, longitude, name, address } = req.body;
+    const { user } = req;
+    const { phone, latitude, longitude, name, address, botId } = req.body;
 
     if (!phone || !latitude || !longitude) {
       return res.status(400).json({ message: 'Phone, latitude, and longitude are required' });
     }
 
-    const config = await prisma.botConfig.findFirst({ where: { isActive: true } });
-    if (!config?.deviceId) {
+    // Get bot config
+    let botConfig;
+    if (botId) {
+      botConfig = await prisma.botConfig.findUnique({ where: { id: botId } });
+      if (!botConfig) {
+        return res.status(404).json({ message: 'Bot configuration not found' });
+      }
+      const userCabangIds = getUserCabangIds(user);
+      if (!isSuperAdmin(user) && !userCabangIds.includes(botConfig.cabangId)) {
+        return res.status(403).json({ message: 'You do not have access to this bot configuration' });
+      }
+    } else {
+      const userCabangIds = getUserCabangIds(user);
+      const configs = await prisma.botConfig.findMany({
+        where: { cabangId: { in: userCabangIds }, isActive: true }
+      });
+      if (configs.length === 0) {
+        return res.status(404).json({ message: 'No active bot configuration found for your branch' });
+      }
+      botConfig = configs[0];
+    }
+
+    if (!botConfig.deviceId) {
       return res.status(500).json({ message: 'Bot not configured or device missing' });
     }
 
@@ -252,12 +583,13 @@ exports.sendLocation = async (req, res) => {
       phone,
       parseFloat(latitude),
       parseFloat(longitude),
-      config.deviceId,
+      botConfig.deviceId,
       { name, address }
     );
 
     res.json(result);
   } catch (error) {
+    logger.error('Error in sendLocation:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -324,24 +656,37 @@ exports.deleteTemplate = async (req, res) => {
  */
 exports.getChats = async (req, res) => {
   try {
-    const config = await prisma.$queryRawUnsafe(
-      `SELECT device_id
-      FROM bot_config`
-    )
+    const { user } = req;
+    const { botId } = req.query;
 
-    // Get the first config from array (or handle properly)
-    const botConfig = Array.isArray(config) ? config[0] : config;
-
-
-    if (!botConfig?.device_id) {
-      return res.json([]);
+    // Get bot config
+    let botConfig;
+    if (botId) {
+      botConfig = await prisma.botConfig.findUnique({ where: { id: botId } });
+      if (!botConfig) {
+        return res.status(404).json({ message: 'Bot configuration not found' });
+      }
+      const userCabangIds = getUserCabangIds(user);
+      if (!isSuperAdmin(user) && !userCabangIds.includes(botConfig.cabangId)) {
+        return res.status(403).json({ message: 'You do not have access to this bot configuration' });
+      }
+    } else {
+      const userCabangIds = getUserCabangIds(user);
+      const configs = await prisma.botConfig.findMany({
+        where: { cabangId: { in: userCabangIds }, isActive: true }
+      });
+      if (configs.length === 0 || !configs[0].deviceId) {
+        return res.json([]);
+      }
+      botConfig = configs[0];
     }
 
     const { cursor, limit, search } = req.query;
-    const chats = await whatsappService.getChats(botConfig.device_id, { cursor, limit, search });
+    const chats = await whatsappService.getChats(botConfig.deviceId, { cursor, limit, search });
 
     res.json(chats);
   } catch (error) {
+    logger.error('Error in getChats:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -351,17 +696,34 @@ exports.getChats = async (req, res) => {
  */
 exports.getChatMessages = async (req, res) => {
   try {
-    const config = await prisma.$queryRawUnsafe(
-      `SELECT device_id
-      FROM bot_config`
-    )
+    const { user } = req;
+    const { botId } = req.query;
 
-    // Get the first config from array (or handle properly)
-    const botConfig = Array.isArray(config) ? config[0] : config;
+    // Get bot config
+    let botConfig;
+    if (botId) {
+      botConfig = await prisma.botConfig.findUnique({ where: { id: botId } });
+      if (!botConfig) {
+        return res.status(404).json({ message: 'Bot configuration not found' });
+      }
+      const userCabangIds = getUserCabangIds(user);
+      if (!isSuperAdmin(user) && !userCabangIds.includes(botConfig.cabangId)) {
+        return res.status(403).json({ message: 'You do not have access to this bot configuration' });
+      }
+    } else {
+      const userCabangIds = getUserCabangIds(user);
+      const configs = await prisma.botConfig.findMany({
+        where: { cabangId: { in: userCabangIds }, isActive: true }
+      });
+      if (configs.length === 0 || !configs[0].deviceId) {
+        return res.json([]);
+      }
+      botConfig = configs[0];
+    }
 
     const { cursor, limit, with_media } = req.query;
     const { chatJid } = req.params;
-    const messages = await whatsappService.getChatMessages(chatJid, botConfig.device_id, {
+    const messages = await whatsappService.getChatMessages(chatJid, botConfig.deviceId, {
       cursor,
       limit,
       with_media
@@ -369,6 +731,7 @@ exports.getChatMessages = async (req, res) => {
 
     res.json(messages);
   } catch (error) {
+    logger.error('Error in getChatMessages:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -493,16 +856,39 @@ exports.loginWithCode = async (req, res) => {
  */
 exports.checkUser = async (req, res) => {
   try {
-    const { phones } = req.body;
+    const { user } = req;
+    const { phones, botId } = req.body;
 
     if (!phones) {
       return res.status(400).json({ message: 'Phone number(s) required' });
     }
 
-    const config = await prisma.botConfig.findFirst({ where: { isActive: true } });
-    const result = await whatsappService.checkUser(phones, config?.deviceId);
+    // Get bot config
+    let botConfig;
+    if (botId) {
+      botConfig = await prisma.botConfig.findUnique({ where: { id: botId } });
+      if (!botConfig) {
+        return res.status(404).json({ message: 'Bot configuration not found' });
+      }
+      const userCabangIds = getUserCabangIds(user);
+      if (!isSuperAdmin(user) && !userCabangIds.includes(botConfig.cabangId)) {
+        return res.status(403).json({ message: 'You do not have access to this bot configuration' });
+      }
+    } else {
+      const userCabangIds = getUserCabangIds(user);
+      const configs = await prisma.botConfig.findMany({
+        where: { cabangId: { in: userCabangIds }, isActive: true }
+      });
+      if (configs.length === 0) {
+        return res.status(404).json({ message: 'No active bot configuration found for your branch' });
+      }
+      botConfig = configs[0];
+    }
+
+    const result = await whatsappService.checkUser(phones, botConfig?.deviceId);
     res.json(result);
   } catch (error) {
+    logger.error('Error in checkUser:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -512,12 +898,36 @@ exports.checkUser = async (req, res) => {
  */
 exports.getUserInfo = async (req, res) => {
   try {
+    const { user } = req;
     const { phone } = req.params;
+    const { botId } = req.query;
 
-    const config = await prisma.botConfig.findFirst({ where: { isActive: true } });
-    const result = await whatsappService.getUserInfo(phone, config?.deviceId);
+    // Get bot config
+    let botConfig;
+    if (botId) {
+      botConfig = await prisma.botConfig.findUnique({ where: { id: botId } });
+      if (!botConfig) {
+        return res.status(404).json({ message: 'Bot configuration not found' });
+      }
+      const userCabangIds = getUserCabangIds(user);
+      if (!isSuperAdmin(user) && !userCabangIds.includes(botConfig.cabangId)) {
+        return res.status(403).json({ message: 'You do not have access to this bot configuration' });
+      }
+    } else {
+      const userCabangIds = getUserCabangIds(user);
+      const configs = await prisma.botConfig.findMany({
+        where: { cabangId: { in: userCabangIds }, isActive: true }
+      });
+      if (configs.length === 0) {
+        return res.status(404).json({ message: 'No active bot configuration found for your branch' });
+      }
+      botConfig = configs[0];
+    }
+
+    const result = await whatsappService.getUserInfo(phone, botConfig?.deviceId);
     res.json(result);
   } catch (error) {
+    logger.error('Error in getUserInfo:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -527,15 +937,39 @@ exports.getUserInfo = async (req, res) => {
  */
 exports.getMyContacts = async (req, res) => {
   try {
-    const config = await prisma.botConfig.findFirst({ where: { isActive: true } });
+    const { user } = req;
+    const { botId } = req.query;
 
-    if (!config?.deviceId) {
+    // Get bot config
+    let botConfig;
+    if (botId) {
+      botConfig = await prisma.botConfig.findUnique({ where: { id: botId } });
+      if (!botConfig) {
+        return res.status(404).json({ message: 'Bot configuration not found' });
+      }
+      const userCabangIds = getUserCabangIds(user);
+      if (!isSuperAdmin(user) && !userCabangIds.includes(botConfig.cabangId)) {
+        return res.status(403).json({ message: 'You do not have access to this bot configuration' });
+      }
+    } else {
+      const userCabangIds = getUserCabangIds(user);
+      const configs = await prisma.botConfig.findMany({
+        where: { cabangId: { in: userCabangIds }, isActive: true }
+      });
+      if (configs.length === 0) {
+        return res.status(404).json({ message: 'No active bot configuration found for your branch' });
+      }
+      botConfig = configs[0];
+    }
+
+    if (!botConfig?.deviceId) {
       return res.status(500).json({ message: 'Bot not configured' });
     }
 
-    const result = await whatsappService.getMyContacts(config.deviceId);
+    const result = await whatsappService.getMyContacts(botConfig.deviceId);
     res.json(result);
   } catch (error) {
+    logger.error('Error in getMyContacts:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -545,15 +979,39 @@ exports.getMyContacts = async (req, res) => {
  */
 exports.getMyGroups = async (req, res) => {
   try {
-    const config = await prisma.botConfig.findFirst({ where: { isActive: true } });
+    const { user } = req;
+    const { botId } = req.query;
 
-    if (!config?.deviceId) {
+    // Get bot config
+    let botConfig;
+    if (botId) {
+      botConfig = await prisma.botConfig.findUnique({ where: { id: botId } });
+      if (!botConfig) {
+        return res.status(404).json({ message: 'Bot configuration not found' });
+      }
+      const userCabangIds = getUserCabangIds(user);
+      if (!isSuperAdmin(user) && !userCabangIds.includes(botConfig.cabangId)) {
+        return res.status(403).json({ message: 'You do not have access to this bot configuration' });
+      }
+    } else {
+      const userCabangIds = getUserCabangIds(user);
+      const configs = await prisma.botConfig.findMany({
+        where: { cabangId: { in: userCabangIds }, isActive: true }
+      });
+      if (configs.length === 0) {
+        return res.status(404).json({ message: 'No active bot configuration found for your branch' });
+      }
+      botConfig = configs[0];
+    }
+
+    if (!botConfig?.deviceId) {
       return res.status(500).json({ message: 'Bot not configured' });
     }
 
-    const result = await whatsappService.getMyGroups(config.deviceId);
+    const result = await whatsappService.getMyGroups(botConfig.deviceId);
     res.json(result);
   } catch (error) {
+    logger.error('Error in getMyGroups:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -563,14 +1021,36 @@ exports.getMyGroups = async (req, res) => {
  */
 exports.sendPoll = async (req, res) => {
   try {
-    const { phone, pollName, pollOptions, selectableCount } = req.body;
+    const { user } = req;
+    const { phone, pollName, pollOptions, selectableCount, botId } = req.body;
 
     if (!phone || !pollName || !pollOptions) {
       return res.status(400).json({ message: 'Phone, poll name, and poll options are required' });
     }
 
-    const config = await prisma.botConfig.findFirst({ where: { isActive: true } });
-    if (!config?.deviceId) {
+    // Get bot config
+    let botConfig;
+    if (botId) {
+      botConfig = await prisma.botConfig.findUnique({ where: { id: botId } });
+      if (!botConfig) {
+        return res.status(404).json({ message: 'Bot configuration not found' });
+      }
+      const userCabangIds = getUserCabangIds(user);
+      if (!isSuperAdmin(user) && !userCabangIds.includes(botConfig.cabangId)) {
+        return res.status(403).json({ message: 'You do not have access to this bot configuration' });
+      }
+    } else {
+      const userCabangIds = getUserCabangIds(user);
+      const configs = await prisma.botConfig.findMany({
+        where: { cabangId: { in: userCabangIds }, isActive: true }
+      });
+      if (configs.length === 0) {
+        return res.status(404).json({ message: 'No active bot configuration found for your branch' });
+      }
+      botConfig = configs[0];
+    }
+
+    if (!botConfig.deviceId) {
       return res.status(500).json({ message: 'Bot not configured' });
     }
 
@@ -578,12 +1058,13 @@ exports.sendPoll = async (req, res) => {
       phone,
       pollName,
       pollOptions,
-      config.deviceId,
+      botConfig.deviceId,
       { selectable_count: selectableCount }
     );
 
     res.json(result);
   } catch (error) {
+    logger.error('Error in sendPoll:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -593,21 +1074,44 @@ exports.sendPoll = async (req, res) => {
  */
 exports.reactMessage = async (req, res) => {
   try {
+    const { user } = req;
     const { messageId } = req.params;
-    const { emoji } = req.body;
+    const { emoji, botId } = req.body;
 
     if (!emoji) {
       return res.status(400).json({ message: 'Emoji is required' });
     }
 
-    const config = await prisma.botConfig.findFirst({ where: { isActive: true } });
-    if (!config?.deviceId) {
+    // Get bot config
+    let botConfig;
+    if (botId) {
+      botConfig = await prisma.botConfig.findUnique({ where: { id: botId } });
+      if (!botConfig) {
+        return res.status(404).json({ message: 'Bot configuration not found' });
+      }
+      const userCabangIds = getUserCabangIds(user);
+      if (!isSuperAdmin(user) && !userCabangIds.includes(botConfig.cabangId)) {
+        return res.status(403).json({ message: 'You do not have access to this bot configuration' });
+      }
+    } else {
+      const userCabangIds = getUserCabangIds(user);
+      const configs = await prisma.botConfig.findMany({
+        where: { cabangId: { in: userCabangIds }, isActive: true }
+      });
+      if (configs.length === 0) {
+        return res.status(404).json({ message: 'No active bot configuration found for your branch' });
+      }
+      botConfig = configs[0];
+    }
+
+    if (!botConfig.deviceId) {
       return res.status(500).json({ message: 'Bot not configured' });
     }
 
-    const result = await whatsappService.reactMessage(messageId, emoji, config.deviceId);
+    const result = await whatsappService.reactMessage(messageId, emoji, botConfig.deviceId);
     res.json(result);
   } catch (error) {
+    logger.error('Error in reactMessage:', error);
     res.status(500).json({ message: error.message });
   }
 };

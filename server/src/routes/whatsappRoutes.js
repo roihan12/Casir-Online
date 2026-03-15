@@ -3,16 +3,32 @@ const router = express.Router();
 const whatsappController = require('../controllers/whatsappController');
 const verifyWebhookSignature = require('../middleware/webhookSignatureMiddleware');
 const { messageLimiter } = require('../middleware/rateLimiter');
+const { authenticate } = require('../middleware/authMiddleware');
+
+// Apply authentication to all routes except webhook and qr-proxy
+router.use((req, res, next) => {
+  if (req.path === '/webhook' || req.path === '/qr-proxy') {
+    return next(); // Skip auth for webhook and QR proxy
+  }
+  authenticate(req, res, next);
+});
 
 // ==================== CONFIGURATION ====================
 
+// Get bot configs - filters by user's cabang access or specific cabang via query param
 router.get('/config', whatsappController.getConfig);
+// Create/update bot config - validates cabang_id access
 router.put('/config', whatsappController.updateConfig);
 
 // ==================== BOT STATUS & AUTH ====================
 
+// Get bot status - requires botId query param for specific bot
 router.get('/status', whatsappController.getStatus);
+// QR code proxy - public (no auth needed for QR images)
+router.get('/qr-proxy', whatsappController.qrProxy);
+// Restart bot
 router.post('/restart', whatsappController.restartBot);
+// Logout bot
 router.post('/logout', whatsappController.logoutBot);
 
 // ==================== MESSAGING ====================

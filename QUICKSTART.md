@@ -4,6 +4,8 @@ Quick commands and references for local production setup.
 
 ## 🚀 Initial Setup (One-time)
 
+
+
 ```powershell
 # 1. Install prerequisites
 choco install mkcert docker-desktop git

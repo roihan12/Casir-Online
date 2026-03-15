@@ -127,6 +127,7 @@ import PurchaseCreate from "./features/purchases/pages/PurchaseCreatePage";
 import PurchaseDetail from "./features/purchases/pages/PurchaseDetailPage";
 
 import BotConfigPage from "./features/whatsapp/pages/BotConfigPage";
+import BotListPage from "./features/whatsapp/pages/BotListPage";
 import ChatPage from "./features/whatsapp/pages/ChatPage";
 import TemplatePage from "./features/whatsapp/pages/TemplatePage";
 import BroadcastPage from "./features/whatsapp/pages/BroadcastPage";
@@ -728,14 +729,21 @@ function App() {
                 </ProtectedRoute>
               }
             >
-              <Route path="config" element={<BotConfigPage />} />
+              {/* Index route - shows list of all bots */}
+              <Route index element={<BotListPage />} />
+
+              {/* Bot detail route - manage specific bot */}
+              <Route path=":botId" element={<BotConfigPage />} />
+
+              {/* Legacy config route - redirect to list */}
+              <Route path="config" element={<Navigate to="/whatsapp" replace />} />
+
               <Route path="chats" element={<ChatPage />} />
               <Route path="templates" element={<TemplatePage />} />
               <Route path="broadcast" element={<BroadcastPage />} />
               <Route path="orders" element={<OrderPage />} />
               <Route path="analytics" element={<AnalysisPage />} />
               <Route path="ai-agent" element={<AiAgentPage />} />
-              <Route index element={<Navigate to="/whatsapp/config" replace />} />
             </Route>
 
             {/* Work Schedule */}

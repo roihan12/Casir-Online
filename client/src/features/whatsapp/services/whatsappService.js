@@ -8,13 +8,33 @@ const whatsappService = {
   // ==================== CONFIGURATION ====================
 
   /**
-   * Get WhatsApp bot configuration
-   * @returns {Promise<Object>} Bot configuration
+   * Get WhatsApp bot configurations
+   * Filters by user's cabang access automatically
+   * @param {Object} params - Query parameters
+   * @param {string} params.cabangId - Optional: Filter by specific cabang
+   * @returns {Promise<Array>} List of bot configurations
+   */
+  getBotConfigs: async (params = {}) => {
+    try {
+      const response = await api.get(`/whatsapp/config`, { params });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching WhatsApp bot configs:", error);
+      throw error.response?.data || { message: "Failed to fetch WhatsApp bot configurations" };
+    }
+  },
+
+  /**
+   * Get a single WhatsApp bot configuration
+   * @returns {Promise<Object>} Bot configuration (first active one for user's cabang)
+   * @deprecated Use getBotConfigs() instead for multi-device support
    */
   getBotConfig: async () => {
     try {
       const response = await api.get(`/whatsapp/config`);
-      return response.data;
+      // Return first active config for backward compatibility
+      const configs = Array.isArray(response.data) ? response.data : [];
+      return configs.find(c => c.is_active) || configs[0] || null;
     } catch (error) {
       console.error("Error fetching WhatsApp bot config:", error);
       throw error.response?.data || { message: "Failed to fetch WhatsApp bot configuration" };
@@ -23,7 +43,7 @@ const whatsappService = {
 
   /**
    * Update WhatsApp bot configuration
-   * @param {Object} config - Bot configuration data
+   * @param {Object} config - Bot configuration data (must include cabangId)
    * @returns {Promise<Object>} Updated bot configuration
    */
   updateBotConfig: async (config) => {
@@ -36,15 +56,34 @@ const whatsappService = {
     }
   },
 
+  /**
+   * Create a new WhatsApp bot configuration
+   * @param {Object} config - Bot configuration data (must include cabangId)
+   * @returns {Promise<Object>} Created bot configuration
+   */
+  createBotConfig: async (config) => {
+    try {
+      const response = await api.put(`/whatsapp/config`, { ...config, id: undefined });
+      return response.data;
+    } catch (error) {
+      console.error("Error creating WhatsApp bot config:", error);
+      throw error.response?.data || { message: "Failed to create WhatsApp bot configuration" };
+    }
+  },
+
   // ==================== BOT STATUS & AUTH ====================
 
   /**
    * Get WhatsApp bot status with QR code if not connected
+   * @param {string} botId - Bot configuration ID (required for multi-device)
    * @returns {Promise<Object>} Bot status information
    */
-  getBotStatus: async () => {
+  getBotStatus: async (botId) => {
     try {
-      const response = await api.get(`/whatsapp/status`);
+      if (!botId) {
+        throw new Error('botId is required for multi-device support');
+      }
+      const response = await api.get(`/whatsapp/status`, { params: { botId } });
       return response.data;
     } catch (error) {
       console.error("Error fetching WhatsApp bot status:", error);
@@ -54,11 +93,12 @@ const whatsappService = {
 
   /**
    * Restart/reconnect the WhatsApp bot
+   * @param {string} botId - Bot configuration ID (optional)
    * @returns {Promise<Object>} Restart operation result
    */
-  restartBot: async () => {
+  restartBot: async (botId) => {
     try {
-      const response = await api.post(`/whatsapp/restart`);
+      const response = await api.post(`/whatsapp/restart`, { botId });
       return response.data;
     } catch (error) {
       console.error("Error restarting WhatsApp bot:", error);
@@ -68,11 +108,12 @@ const whatsappService = {
 
   /**
    * Logout the WhatsApp bot
+   * @param {string} botId - Bot configuration ID (optional)
    * @returns {Promise<Object>} Logout operation result
    */
-  logoutBot: async () => {
+  logoutBot: async (botId) => {
     try {
-      const response = await api.post(`/whatsapp/logout`);
+      const response = await api.post(`/whatsapp/logout`, { botId });
       return response.data;
     } catch (error) {
       console.error("Error logging out WhatsApp bot:", error);
@@ -88,6 +129,7 @@ const whatsappService = {
    * @param {Object} data - Message data
    * @param {string} data.message - Message text
    * @param {string} data.phone - Phone number (if customerId not provided)
+   * @param {string} data.botId - Bot configuration ID (optional, will use first active for user's cabang)
    * @returns {Promise<Object>} Sent message result
    */
   sendMessage: async (customerId, data) => {
@@ -106,6 +148,7 @@ const whatsappService = {
    * @param {string} data.phone - Phone number
    * @param {string} data.caption - Image caption (optional)
    * @param {File|string} data.image - Image file or base64 string
+   * @param {string} data.botId - Bot configuration ID (optional)
    * @returns {Promise<Object>} Sent message result
    */
   sendImage: async (data) => {
@@ -117,6 +160,7 @@ const whatsappService = {
         formData.append('image', data.image);
         formData.append('phone', data.phone);
         if (data.caption) formData.append('caption', data.caption);
+        if (data.botId) formData.append('botId', data.botId);
       } else {
         formData = data;
       }
@@ -139,6 +183,7 @@ const whatsappService = {
    * @param {number} data.longitude - Longitude
    * @param {string} data.name - Location name (optional)
    * @param {string} data.address - Location address (optional)
+   * @param {string} data.botId - Bot configuration ID (optional)
    * @returns {Promise<Object>} Sent message result
    */
   sendLocation: async (data) => {
@@ -158,6 +203,7 @@ const whatsappService = {
    * @param {string} data.pollName - Poll question/name
    * @param {Array<string>} data.pollOptions - Poll options
    * @param {number} data.selectableCount - Number of selectable options (optional)
+   * @param {string} data.botId - Bot configuration ID (optional)
    * @returns {Promise<Object>} Sent message result
    */
   sendPoll: async (data) => {
@@ -174,11 +220,12 @@ const whatsappService = {
    * React to a message
    * @param {string} messageId - Message ID
    * @param {string} emoji - Emoji reaction
+   * @param {string} botId - Bot configuration ID (optional)
    * @returns {Promise<Object>} Reaction result
    */
-  reactMessage: async (messageId, emoji) => {
+  reactMessage: async (messageId, emoji, botId) => {
     try {
-      const response = await api.post(`/whatsapp/message/${messageId}/react`, { emoji });
+      const response = await api.post(`/whatsapp/message/${messageId}/react`, { emoji, botId });
       return response.data;
     } catch (error) {
       console.error(`Error reacting to message ${messageId}:`, error);
@@ -256,12 +303,13 @@ const whatsappService = {
    * @param {string} params.cursor - Pagination cursor
    * @param {number} params.limit - Number of chats to return
    * @param {string} params.search - Search term
+   * @param {string} params.botId - Bot configuration ID (optional)
    * @returns {Promise<Array>} List of chats
    */
   getAllChats: async (params = {}) => {
     try {
       const response = await api.get(`/whatsapp/chats`, { params });
-      return response.data.results.data;
+      return response.data.results?.data || response.data;
     } catch (error) {
       console.error("Error fetching WhatsApp chats:", error);
       throw error.response?.data || { message: "Failed to fetch WhatsApp chats" };
@@ -275,6 +323,7 @@ const whatsappService = {
    * @param {string} params.cursor - Pagination cursor
    * @param {number} params.limit - Number of messages to return
    * @param {boolean} params.with_media - Filter only media messages
+   * @param {string} params.botId - Bot configuration ID (optional)
    * @returns {Promise<Array>} List of messages
    */
   getChatMessages: async (chatJid, params = {}) => {
