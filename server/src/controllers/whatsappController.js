@@ -178,9 +178,23 @@ exports.updateConfig = async (req, res) => {
       // Creating new bot config
       // Auto-generate deviceId if not provided
       if (!configData.deviceId) {
-        configData.deviceId = `device-${Math.random().toString(36).substring(2, 11)}-${Date.now()}`;
+        configData.deviceId = `WA-${data.cabangId}`;
 
-        await whatsappService.createDevice(configData.deviceId);
+        try {
+          // Check if device already exists in Go service or create it
+          const allDevices = await whatsappService.getDevices();
+          const existingDevice = allDevices.results?.find(d => d.id === configData.deviceId);
+          
+          if (!existingDevice) {
+            await whatsappService.createDevice(configData.deviceId);
+            logger.info(`Created new device for bot: ${configData.deviceId}`);
+          } else {
+            logger.info(`Using existing device for bot: ${configData.deviceId}`);
+          }
+        } catch (error) {
+          logger.warn(`WhatsApp service error during device creation: ${error.message}`);
+          // Don't fail the whole request, as the bot config itself can still be created
+        }
         
         logger.info(`Auto-generated deviceId for new bot: ${configData.deviceId}`);
       }
@@ -820,9 +834,32 @@ exports.loginQR = async (req, res) => {
       return res.status(400).json({ message: 'Device ID is required' });
     }
 
-    const result = await whatsappService.appLogin(deviceId);
-    res.json(result);
+    let result = await whatsappService.appLogin(deviceId);
+
+    // Device belum ada → auto-create, lalu login ulang
+    if (result?.code === 'DEVICE_NOT_FOUND' || result?.deviceNotFound) {
+      await whatsappService.createDevice(deviceId); // buat device dulu
+      result = await whatsappService.appLogin(deviceId); // retry login
+    }
+
+    // Sudah login
+    if (result?.code === 'ALREADY_LOGGED_IN' || result?.alreadyLoggedIn) {
+      await prisma.botConfig.updateMany({
+        where: { deviceId },
+        data: { isActive: true }
+      });
+
+      return res.status(200).json({
+        code: 'ALREADY_LOGGED_IN',
+        message: 'Device sudah terhubung.',
+        results: { state: 'logged_in', alreadyLoggedIn: true }
+      });
+    }
+
+    return res.status(200).json(result);
+
   } catch (error) {
+    logger.error('loginQR error:', error.message);
     res.status(500).json({ message: error.message });
   }
 };

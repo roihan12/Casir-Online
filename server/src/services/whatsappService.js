@@ -85,22 +85,19 @@ class WhatsappService {
    * POST /devices
    * Body: description (optional)
    */
-  async createDevice(description = '') {
-    const data = new formData();
-    if (description) {
-      data.append('description', description);
+  async createDevice(deviceId = '') {
+  return this.request({
+    method: 'POST',
+    url: `${this.baseUrl}/devices`,
+    headers: {
+      'Content-Type': 'application/json',
+      ...this.getHeaders()
+    },
+    data: {
+      device_id: deviceId
     }
-
-    return this.request({
-      method: 'POST',
-      url: `${this.baseUrl}/devices`,
-      headers: {
-        ...data.getHeaders(),
-        ...this.getHeaders()
-      },
-      data
-    });
-  }
+  });
+}
 
 
 
@@ -207,12 +204,32 @@ class WhatsappService {
    * Use this for single device mode or when device-scoped login is not available
    */
   async appLogin(device_id) {
-    return this.request({
+  try {
+    return await this.request({
       method: 'GET',
       url: `${this.baseUrl}/app/login`,
       headers: this.getHeaders(device_id)
     });
+  } catch (error) {
+
+    if (error.message.includes('already logged in')) {
+      return {
+        code: 'ALREADY_LOGGED_IN',
+        alreadyLoggedIn: true,
+      };
+    }
+
+    if (error.message.includes('device not found')) {
+      return {
+        code: 'DEVICE_NOT_FOUND',
+        deviceNotFound: true,
+        device_id,
+      };
+    }
+
+    throw error;
   }
+}
 
   /**
    * Login with pair code (UI endpoint)

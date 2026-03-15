@@ -338,12 +338,15 @@ const BotListPage = () => {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Fetch bot configurations
-  const { data: bots, isLoading, error } = useBotConfigs();
+  const [selectedCabang, setSelectedCabang] = useState('');
+
+  // Fetch bot configurations with optional branch filter
+  const { data: bots, isLoading, error } = useBotConfigs({ 
+    cabangId: selectedCabang || undefined 
+  });
 
   const { getUserCabang } = useAuth();
   
-
   // Get cabang list from user object
   const cabangList = getUserCabang();
 
@@ -358,7 +361,7 @@ const BotListPage = () => {
   };
 
   const handleManageBot = (bot) => {
-    navigate(`/whatsapp/${bot.bot_config_id}`);
+    navigate(`/whatsapp/${bot.device_id}`);
   };
 
   const handleDeleteBot = (bot) => {
@@ -403,12 +406,28 @@ const BotListPage = () => {
               Manage your WhatsApp bot configurations for each branch
             </p>
           </div>
-          <button
-            onClick={handleCreateBot}
-            className="mt-4 md:mt-0 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-indigo-500/30 flex items-center gap-2"
-          >
-            <FaPlus /> New Bot
-          </button>
+          <div className="flex items-center gap-4 mt-4 md:mt-0">
+             {cabangList?.length > 1 && (
+              <select
+                value={selectedCabang}
+                onChange={(e) => setSelectedCabang(e.target.value)}
+                className="px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              >
+                <option value="">All Branches</option>
+                {cabangList.map((c) => (
+                  <option key={c.id || c.cabangId} value={c.id || c.cabangId}>
+                    {c.namaCabang}
+                  </option>
+                ))}
+              </select>
+            )}
+            <button
+              onClick={handleCreateBot}
+              className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-indigo-500/30 flex items-center gap-2"
+            >
+              <FaPlus /> New Bot
+            </button>
+          </div>
         </div>
 
         {/* Bot List */}

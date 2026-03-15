@@ -467,8 +467,22 @@ const whatsappService = {
    */
   loginQR: async (deviceId) => {
     try {
-      const response = await api.get(`/whatsapp/devices/${deviceId}/login/qr`);
-      return response.data;
+      const response = await api.get(`/whatsapp/devices/${deviceId}/login`);
+     const data = response.data?.results || response.data;
+    if (
+    response.data?.code === 'ALREADY_LOGGED_IN' || 
+    data?.alreadyLoggedIn
+  ) {
+    return {
+      state: 'logged_in',
+      alreadyLoggedIn: true,
+      qr_link: null,
+    };
+  }
+  
+
+  return data;
+  
     } catch (error) {
       console.error(`Error fetching QR for device ${deviceId}:`, error);
       throw error.response?.data || { message: "Failed to fetch QR code" };

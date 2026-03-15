@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -11,68 +11,163 @@ import {
   useUpdateBotConfig,
   useRestartBot,
   useLogoutBot,
-  useGetDevices,
-  useCreateDevice,
-  useRemoveDevice
+  useDeleteBotConfig,  // pastikan hook ini tersedia
 } from '../hooks/useWhatsapp';
 import {
   FaRobot, FaQrcode, FaPlug, FaSave, FaSync,
-  FaCheckCircle, FaExclamationCircle, FaPhoneAlt, FaGlobe, FaCogs,
-  FaMobileAlt, FaPlus, FaTrash, FaArrowLeft
+  FaCheckCircle, FaExclamationCircle, FaPhoneAlt,
+  FaGlobe, FaCogs, FaArrowLeft, FaTrash, FaWifi,
+  FaTimesCircle, FaShieldAlt, FaBell
 } from 'react-icons/fa';
 
+// ─── Validation Schema ────────────────────────────────────────────────────────
 const schema = z.object({
   name: z.string().min(1, 'Nama bot wajib diisi'),
-  phoneNumber: z.string().min(10, 'Nomor telepon tidak valid'),
-  apiUrl: z.string().url('URL Webhook tidak valid').optional().or(z.literal('')),
-  autoReply: z.boolean().default(false),
+  phone_number: z.string().min(10, 'Nomor telepon tidak valid'),
+  webhook_url: z.string().url('URL Webhook tidak valid').optional().or(z.literal('')),
+  is_active: z.boolean().default(false),
 });
 
-const LoadingSkeleton = () => (
-  <div className="animate-pulse space-y-6">
-    <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-1 h-96 bg-gray-200 rounded-2xl"></div>
-      <div className="lg:col-span-2 h-96 bg-gray-200 rounded-2xl"></div>
+// ─── QR Countdown Timer ───────────────────────────────────────────────────────
+const QRCountdown = ({ duration = 30, onExpired }) => {
+  const [seconds, setSeconds] = useState(duration);
+
+  useEffect(() => {
+    setSeconds(duration);
+  }, [duration]);
+
+  useEffect(() => {
+    if (seconds <= 0) {
+      onExpired?.();
+      return;
+    }
+    const t = setTimeout(() => setSeconds(s => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [seconds, onExpired]);
+
+  const pct = (seconds / duration) * 100;
+  const radius = 20;
+  const circ = 2 * Math.PI * radius;
+  const isUrgent = seconds <= 10;
+
+  return (
+    <div className="flex items-center gap-2">
+      <svg width="48" height="48" viewBox="0 0 48 48" className="rotate-[-90deg]">
+        <circle cx="24" cy="24" r={radius} fill="none" stroke="#e5e7eb" strokeWidth="4" />
+        <circle
+          cx="24" cy="24" r={radius}
+          fill="none"
+          stroke={isUrgent ? '#ef4444' : '#6366f1'}
+          strokeWidth="4"
+          strokeDasharray={circ}
+          strokeDashoffset={circ * (1 - pct / 100)}
+          strokeLinecap="round"
+          style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.3s' }}
+        />
+      </svg>
+      <div>
+        <p className={`text-xl font-bold font-mono leading-none ${isUrgent ? 'text-red-500' : 'text-gray-800'}`}>
+          {String(seconds).padStart(2, '0')}s
+        </p>
+        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">QR berlaku</p>
+      </div>
+    </div>
+  );
+};
+
+// ─── Delete Confirmation Modal ────────────────────────────────────────────────
+const DeleteModal = ({ botName, onConfirm, onCancel, isLoading }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
+    <div className="relative bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full animate-fade-in-up">
+      <div className="flex flex-col items-center text-center">
+        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
+          <FaTrash className="text-red-500 text-2xl" />
+        </div>
+        <h3 className="text-xl font-bold text-gray-900 mb-2">Hapus Bot Ini?</h3>
+        <p className="text-gray-500 text-sm mb-1">Anda akan menghapus bot:</p>
+        <p className="font-bold text-gray-800 mb-4 bg-gray-50 px-4 py-2 rounded-lg w-full">
+          "{botName}"
+        </p>
+        <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2 w-full mb-6">
+          Tindakan ini permanen dan tidak bisa dibatalkan.
+        </p>
+        <div className="flex gap-3 w-full">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+          >
+            Batal
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isLoading}
+            className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {isLoading ? <FaSync className="animate-spin text-sm" /> : <FaTrash className="text-sm" />}
+            {isLoading ? 'Menghapus...' : 'Ya, Hapus'}
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 );
 
+// ─── Loading Skeleton ─────────────────────────────────────────────────────────
+const LoadingSkeleton = () => (
+  <div className="animate-pulse">
+    {/* Header */}
+    <div className="flex items-center gap-4 mb-8 pb-6 border-b border-gray-100">
+      <div className="w-9 h-9 bg-gray-200 rounded-xl" />
+      <div className="space-y-2 flex-1">
+        <div className="h-7 bg-gray-200 rounded w-1/3" />
+        <div className="h-4 bg-gray-100 rounded w-1/4" />
+      </div>
+      <div className="h-10 w-32 bg-gray-200 rounded-xl" />
+    </div>
+    {/* Body */}
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+      <div className="lg:col-span-2 h-[480px] bg-gray-100 rounded-2xl" />
+      <div className="lg:col-span-3 space-y-6">
+        <div className="h-72 bg-gray-100 rounded-2xl" />
+        <div className="h-48 bg-gray-100 rounded-2xl" />
+      </div>
+    </div>
+  </div>
+);
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 const BotConfigPage = () => {
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { botId } = useParams();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [qrKey, setQrKey] = useState(0); // untuk reset countdown saat QR refresh
 
+  // ── Guard: no botId ──
   if (!botId) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
-          <FaExclamationCircle className="text-5xl text-red-500 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-red-800 mb-2">Bot ID Required</h3>
-          <p className="text-red-600 mb-4">Please select a bot from the list to manage its configuration.</p>
+      <div className="p-6 max-w-4xl mx-auto mt-12">
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-10 text-center">
+          <FaExclamationCircle className="text-5xl text-red-400 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-red-800 mb-2">Bot ID tidak ditemukan</h3>
+          <p className="text-red-600 text-sm mb-6">Silakan pilih bot dari daftar untuk melanjutkan.</p>
           <button
             onClick={() => navigate('/whatsapp')}
             className="px-6 py-3 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors"
           >
-            Back to Bot List
+            Kembali ke Daftar Bot
           </button>
         </div>
       </div>
     );
   }
 
-  // Fetch Bot Status & QR for specific bot
+  // ── Data Fetching ──
   const { data: status, isLoading: isLoadingStatus, refetch: refetchStatus } = useBotStatus(botId);
 
-  // Show notification when device is auto-created
-  useEffect(() => {
-    if (status?.deviceAutoCreated) {
-      toast.success('Device baru berhasil dibuat! Silakan scan QR code untuk menghubungkan.');
-    }
-  }, [status?.deviceAutoCreated]);
 
-  // Fetch Bot Config for form defaults
+
   const { data: config, isLoading: isLoadingConfig } = useQuery({
     queryKey: ['bot-config', botId],
     queryFn: async () => {
@@ -82,451 +177,483 @@ const BotConfigPage = () => {
     enabled: !!botId,
   });
 
-  // Hooks for Devices & Auth
-  const { data: devicesData, isLoading: isLoadingDevices } = useGetDevices();
-  const createDeviceMutation = useCreateDevice();
-  const removeDeviceMutation = useRemoveDevice();
-  const restartBotMutation = useRestartBot();
+  // ── Mutations ──
+  const updateConfigMutation = useUpdateBotConfig();
   const logoutBotMutation = useLogoutBot();
+  const deleteConfigMutation = useDeleteBotConfig?.(); // opsional, sesuaikan hook
 
-  // Blend primary device state with fetched devices
-  const [devices, setDevices] = useState([]);
-
-  useEffect(() => {
-    const rawDevices = Array.isArray(devicesData) ? devicesData : [];
-    const mainDeviceId = status?.deviceId || config?.deviceId;
-    
-    // Construct mapped device list
-    let mappedDevices = rawDevices.map((d) => ({
-      id: d.device || d.id || d.device_id, // fallback based on API structure
-      name: d.name || d.device || d.id || 'Perangkat',
-      phone: d.phone || d.device || d.id || 'N/A',
-      status: (d.status || d.state || 'disconnected').toLowerCase(),
-      isPrimary: (d.device || d.id || d.device_id) === mainDeviceId
-    }));
-
-    // If API is empty or main device missing from APi due to some sync issue, mock the primary device
-    if (!mappedDevices.find(d => d.isPrimary) && mainDeviceId) {
-      mappedDevices = [
-        { 
-          id: mainDeviceId, 
-          name: 'Primary Device', 
-          phone: status?.phoneNumber || config?.phoneNumber || mainDeviceId, 
-          status: status?.state === 'connected' || status?.state === 'logged_in' ? 'connected' : 'disconnected', 
-          isPrimary: true 
-        },
-        ...mappedDevices
-      ];
-    } else if (mappedDevices.length === 0) {
-       mappedDevices = [
-        { 
-          id: 'dev_1', 
-          name: 'Primary Device', 
-          phone: status?.phoneNumber || config?.phoneNumber, 
-          status: status?.state === 'connected' || status?.state === 'logged_in' ? 'connected' : 'disconnected', 
-          isPrimary: true 
-        }
-       ]
-    }
-
-    setDevices(mappedDevices);
-  }, [devicesData, status, config]);
-
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
+  // ── Form ──
+  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting, isDirty } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: 'Bot WhatsApp Cerdas',
-      phoneNumber: '',
-      apiUrl: '',
-      autoReply: true,
-    }
+      name: '',
+      phone_number: '',
+      webhook_url: '',
+      is_active: false,
+    },
   });
 
-  // Update form when config is loaded
+  // FIX: gunakan snake_case sesuai API response
   useEffect(() => {
     if (config) {
       reset({
-        name: config.name || 'Bot WhatsApp Cerdas',
-        phoneNumber: config.phoneNumber || '',
-        apiUrl: config.apiUrl || '',
-        autoReply: config.isActive || false, 
+        name: config.name || '',
+        phone_number: config.phone_number || '',
+        webhook_url: config.webhook_url || '',
+        is_active: config.is_active ?? false,
       });
     }
   }, [config, reset]);
 
-  // Update Config Mutation
-  const updateConfigMutation = useUpdateBotConfig();
+  const watchedName = watch('name');
+  const watchedIsActive = watch('is_active');
 
-  const handleBack = () => {
-    navigate('/whatsapp');
-  };
+  // ── Derived state ──
+  const isConnected = status?.state === 'connected' || status?.state === 'logged_in';
 
+  // ── Handlers ──
   const handleRefreshQR = async () => {
     setIsRefreshing(true);
+    setQrKey(k => k + 1);
     await refetchStatus();
-    setTimeout(() => setIsRefreshing(false), 1000);
+    setTimeout(() => setIsRefreshing(false), 800);
   };
 
   const onSubmit = (data) => {
-    updateConfigMutation.mutate({
-      id: botId,
-      name: data.name,
-      phoneNumber: data.phoneNumber,
-      apiUrl: data.apiUrl,
-      isActive: data.autoReply,
-      cabangId: config?.cabangId
+    updateConfigMutation.mutate(
+      {
+        id: botId,
+        name: data.name,
+        phone_number: data.phone_number,
+        webhook_url: data.webhook_url,
+        is_active: data.is_active,
+        cabang_id: config?.cabang_id,
+      },
+      {
+        onSuccess: () => toast.success('Konfigurasi berhasil disimpan!'),
+        onError: () => toast.error('Gagal menyimpan konfigurasi.'),
+      }
+    );
+  };
+
+  const handleDelete = () => {
+    deleteConfigMutation?.mutate(botId, {
+      onSuccess: () => {
+        toast.success('Bot berhasil dihapus.');
+        navigate('/whatsapp');
+      },
+      onError: () => toast.error('Gagal menghapus bot.'),
     });
   };
 
-  const handleLogoutMain = () => {
-    if (window.confirm('Yakin ingin memutuskan koneksi perangkat utama (Logout)?')) {
-      logoutBotMutation.mutate(botId);
-    }
+  const handleLogout = () => {
+    logoutBotMutation.mutate(botId, {
+      onSuccess: () => {
+        toast.success('Perangkat berhasil diputus.');
+        refetchStatus();
+      },
+      onError: () => toast.error('Gagal memutus perangkat.'),
+    });
   };
 
-  const handleAddDevice = () => {
-    const desc = window.prompt("Masukkan nama/deskripsi untuk perangkat baru:");
-    if (desc) {
-      createDeviceMutation.mutate(desc);
-    }
-  };
-
-  const handleRemoveDevice = (id) => {
-    if (window.confirm('Yakin ingin menghapus perangkat ini?')) {
-      const device = devices.find(d => d.id === id);
-      if (device?.isPrimary || id === 'dev_1' || id === status?.deviceId || id === config?.deviceId) {
-        toast.error('Gunakan tombol "Putuskan Perangkat Utama" untuk memutuskan perangkat ini.');
-        return;
-      }
-      removeDeviceMutation.mutate(id);
-    }
-  };
-
-  const isConnected = status?.state === 'connected' || status?.state === 'logged_in';
-
+  // ── Loading state ──
   if (isLoadingConfig && !config) {
-    return <div className="p-6 max-w-7xl mx-auto"><LoadingSkeleton /></div>;
+    return <div className="p-6 md:p-10 max-w-6xl mx-auto"><LoadingSkeleton /></div>;
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto min-h-[calc(100vh-4rem)]">
-      
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 pb-6 border-b border-gray-100">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleBack}
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Back to Bot List"
-          >
-            <FaArrowLeft className="text-xl" />
-          </button>
-          <div>
-            <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-indigo-600 flex items-center gap-3">
-              <FaRobot className="text-blue-600" />
-              {config?.name || 'Bot Configuration'}
-            </h1>
-            <p className="mt-2 text-gray-500 font-medium text-sm md:text-base">
-              {config?.nama_cabang || 'Unknown Branch'} • Manage your WhatsApp bot connection and settings
-            </p>
+    <>
+      {showDeleteModal && (
+        <DeleteModal
+          botName={config?.name || watchedName || 'Bot ini'}
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteModal(false)}
+          isLoading={deleteConfigMutation?.isPending}
+        />
+      )}
+
+      <div className="p-4 md:p-8 max-w-6xl mx-auto min-h-[calc(100vh-4rem)]">
+
+        {/* ── Header ── */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 pb-6 border-b border-gray-100 gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/whatsapp')}
+              className="p-2.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors"
+              title="Kembali"
+            >
+              <FaArrowLeft />
+            </button>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-extrabold text-gray-900 leading-none">
+                  {watchedName || config?.name || 'Bot Configuration'}
+                </h1>
+                {/* Live auto-reply status badge */}
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                  watchedIsActive
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : 'bg-gray-100 text-gray-500 border-gray-200'
+                }`}>
+                  {watchedIsActive ? 'Auto-Reply ON' : 'Auto-Reply OFF'}
+                </span>
+              </div>
+              <p className="text-sm text-gray-400 mt-1 font-medium">
+                {config?.nama_cabang || 'Unknown Branch'}
+                {config?.cabang_id && <span className="ml-2 text-gray-300">· {config.cabang_id}</span>}
+              </p>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 font-semibold text-sm transition-colors"
+            >
+              <FaTrash className="text-xs" />
+              Hapus Bot
+            </button>
+            <button
+              type="submit"
+              form="bot-config-form"
+              disabled={isSubmitting || !isDirty}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-bold text-sm transition-colors shadow-sm shadow-indigo-200 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? <FaSync className="animate-spin text-xs" /> : <FaSave className="text-xs" />}
+              {isSubmitting ? 'Menyimpan...' : 'Simpan'}
+            </button>
           </div>
         </div>
 
-        <div className="mt-4 md:mt-0">
-          <div className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full border shadow-sm backdrop-blur-sm transition-all duration-300 ${
-            isConnected
-            ? 'bg-green-50/80 border-green-200 text-green-700'
-            : 'bg-amber-50/80 border-amber-200 text-amber-700'
-          }`}>
-            <div className="relative flex h-3 w-3">
-              {isConnected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
-              <span className={`relative inline-flex rounded-full h-3 w-3 ${isConnected ? 'bg-green-500' : 'bg-amber-500'}`}></span>
-            </div>
-            <span className="font-semibold text-sm">
-              {isConnected ? `Online (${status?.phoneNumber || config?.phone_number})` : 'Menunggu Koneksi'}
-            </span>
-          </div>
-        </div>
-      </div>
+        {/* ── Body Grid ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Connection Widget (Left Column) */}
-        <div className="lg:col-span-4 space-y-6">
-          <div className="bg-white rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden transform transition-all duration-300 hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.1)] group">
-            <div className="bg-gradient-to-r from-gray-50 to-gray-100/50 p-5 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                <FaQrcode className="text-indigo-500" />
-                Status Koneksi
-              </h2>
-              {isConnected && <FaCheckCircle className="text-green-500 text-xl" />}
-            </div>
-            
-            <div className="p-6">
-              {isConnected ? (
-                <div className="flex flex-col items-center justify-center py-6 text-center animate-fade-in-up">
-                  <div className="relative w-24 h-24 mb-6">
-                    <div className="absolute inset-0 bg-green-100 rounded-full animate-ping opacity-20"></div>
-                    <div className="absolute inset-2 bg-green-50 rounded-full"></div>
-                    <FaCheckCircle className="absolute inset-0 m-auto text-green-500 text-5xl" />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-1">Perangkat Terhubung</h3>
-                  <p className="text-sm text-gray-500 bg-gray-50 px-3 py-1 rounded-full font-mono mt-2 mb-6 border border-gray-100">
-                    {status.phoneNumber || 'Terdeteksi'}
-                  </p>
-                  
-                  <button 
-                    onClick={handleLogoutMain}
-                    disabled={logoutBotMutation.isPending}
-                    className="w-full py-2.5 px-4 text-red-600 bg-red-50 hover:bg-red-100 font-semibold rounded-xl transition-colors duration-200 border border-red-100 flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    <FaPlug /> {logoutBotMutation.isPending ? "Memutuskan..." : "Putuskan Perangkat Utama"}
-                  </button>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center animate-fade-in">
-                  <div className="w-56 h-56 bg-white p-3 rounded-2xl shadow-inner border border-gray-100 mb-6 flex items-center justify-center relative overflow-hidden group-hover:border-indigo-200 transition-colors">
-                    {status?.qrCode ? (
-                      <img 
-                        src={status.qrCode} 
-                        alt="Scan QR" 
-                        className="w-full h-full object-contain filter contrast-125"
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center text-gray-400 gap-3">
-                        <FaSync className="animate-spin text-3xl" />
-                        <span className="text-sm font-medium">Melakukan generate QR...</span>
+          {/* ════ LEFT: WhatsApp Connection Panel ════ */}
+          <div className="lg:col-span-2 space-y-5">
+
+            {/* Connection Card */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h2 className="font-bold text-gray-800 flex items-center gap-2 text-sm">
+                  <FaQrcode className="text-indigo-500" />
+                  Koneksi WhatsApp
+                </h2>
+                {/* Connection status pill */}
+                <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${
+                  isConnected
+                    ? 'bg-green-50 text-green-700'
+                    : 'bg-amber-50 text-amber-700'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-amber-500'}`} />
+                  {isConnected ? 'Terhubung' : 'Belum Terhubung'}
+                </span>
+              </div>
+
+              <div className="p-6">
+                {isConnected ? (
+                  /* ── Connected State ── */
+                  <div className="flex flex-col items-center text-center animate-fade-in-up">
+                    <div className="relative mb-5">
+                      <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center">
+                        <FaCheckCircle className="text-green-500 text-4xl" />
                       </div>
-                    )}
-                    
-                    {/* Visual scanning line effect */}
-                    <div className="absolute top-0 left-0 w-full h-1 bg-green-400 opacity-50 shadow-[0_0_10px_2px_rgba(74,222,128,0.5)] animate-scan"></div>
-                  </div>
-                  
-                  <div className="text-center w-full space-y-4">
-                    <div className="bg-indigo-50 text-indigo-800 text-xs px-3 py-2 rounded-lg font-medium flex items-center justify-center gap-2">
-                       <FaExclamationCircle className="text-indigo-600" />
-                       Buka WhatsApp di HP Anda, pilh Tautkan Perangkat.
+                      <span className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full border-2 border-green-200 flex items-center justify-center">
+                        <FaWifi className="text-green-500 text-[10px]" />
+                      </span>
                     </div>
-                    
-                    <button 
-                      onClick={handleRefreshQR}
-                      disabled={isRefreshing || isLoadingStatus}
-                      className="w-full py-2.5 px-4 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+
+                    <h3 className="font-bold text-gray-900 text-base mb-1">Perangkat Terhubung</h3>
+                    <p className="text-xs text-gray-400 font-medium mb-1">Nomor aktif</p>
+                    <p className="font-mono text-sm font-bold text-gray-700 bg-gray-50 border border-gray-100 px-4 py-1.5 rounded-lg mb-6">
+                      {status?.phoneNumber || config?.phone_number || '—'}
+                    </p>
+
+                    <button
+                      onClick={handleLogout}
+                      disabled={logoutBotMutation.isPending}
+                      className="w-full py-2.5 px-4 rounded-xl border border-red-100 text-red-600 bg-red-50 hover:bg-red-100 font-semibold text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                      <FaSync className={`${isRefreshing ? 'animate-spin' : ''} text-gray-500`} /> 
-                      {isRefreshing ? 'Memperbarui...' : 'Perbarui QR Code'}
+                      <FaPlug className="text-xs" />
+                      {logoutBotMutation.isPending ? 'Memutuskan...' : 'Putuskan Koneksi'}
                     </button>
                   </div>
-                </div>
-              )}
+                ) : (
+                  /* ── QR State ── */
+                  <div className="flex flex-col items-center animate-fade-in">
+
+                    {/* Steps */}
+                    <ol className="w-full space-y-2 mb-5 text-xs">
+                      {[
+                        'Buka WhatsApp di HP Anda',
+                        'Pilih menu ⋮ → Perangkat Tertaut',
+                        'Tautkan Perangkat → Scan QR',
+                      ].map((step, i) => (
+                        <li key={i} className="flex items-start gap-2.5">
+                          <span className="mt-0.5 w-4 h-4 rounded-full bg-indigo-100 text-indigo-700 font-bold text-[10px] flex items-center justify-center shrink-0">
+                            {i + 1}
+                          </span>
+                          <span className="text-gray-500 leading-tight">{step}</span>
+                        </li>
+                      ))}
+                    </ol>
+
+                    {/* QR Frame */}
+                    <div className="relative w-52 h-52 bg-white border-2 border-gray-100 rounded-2xl flex items-center justify-center overflow-hidden mb-4 shadow-inner">
+                      {status?.qr_link ? (
+                        <img
+                          src={status.qr_link}
+                          alt="Scan QR Code"
+                          className="w-full h-full object-contain p-2"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center text-gray-300 gap-2">
+                          <FaSync className="animate-spin text-3xl text-indigo-300" />
+                          <span className="text-xs text-gray-400">Membuat QR...</span>
+                        </div>
+                      )}
+                      {/* Scan line animation */}
+                      <div className="absolute left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-indigo-400 to-transparent opacity-70 animate-scan pointer-events-none" />
+                      {/* Corner decorators */}
+                      {['top-2 left-2','top-2 right-2','bottom-2 left-2','bottom-2 right-2'].map((pos, i) => (
+                        <div key={i} className={`absolute ${pos} w-3 h-3 border-indigo-400 ${
+                          i === 0 ? 'border-t-2 border-l-2 rounded-tl' :
+                          i === 1 ? 'border-t-2 border-r-2 rounded-tr' :
+                          i === 2 ? 'border-b-2 border-l-2 rounded-bl' :
+                                    'border-b-2 border-r-2 rounded-br'
+                        }`} />
+                      ))}
+                    </div>
+
+                    {/* Countdown + Refresh row */}
+                    <div className="w-full flex items-center justify-between mb-1">
+                      {status?.qr_link && (
+                        <QRCountdown
+                          key={qrKey}
+                          duration={status?.qr_duration || 30}
+                          onExpired={handleRefreshQR}
+                        />
+                      )}
+                      <button
+                        onClick={handleRefreshQR}
+                        disabled={isRefreshing || isLoadingStatus}
+                        className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-xl transition-colors disabled:opacity-40"
+                      >
+                        <FaSync className={`${isRefreshing ? 'animate-spin' : ''} text-[10px]`} />
+                        {isRefreshing ? 'Memperbarui...' : 'Perbarui QR'}
+                      </button>
+                    </div>
+
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-          
-          <div className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
-             <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl"></div>
-             <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
-             
-             <div className="relative z-10">
-               <h3 className="text-lg font-bold mb-2 flex items-center gap-2">
-                 <FaRobot /> Engine Status
-               </h3>
-               <div className="space-y-3 mt-4 text-sm text-indigo-100">
-                  <div className="flex justify-between items-center border-b border-indigo-500/30 pb-2">
-                    <span>Service Engine</span>
-                    <span className="bg-green-500/20 text-green-100 border border-green-500/30 px-2 py-0.5 rounded text-xs font-semibold">Aktif</span>
-                  </div>
-                  <div className="flex justify-between items-center border-b border-indigo-500/30 pb-2">
-                    <span>Auto Reply</span>
-                    <span className="font-semibold">{config?.isActive ? 'Menyala' : 'Mati'}</span>
-                  </div>
-               </div>
-             </div>
-          </div>
-        </div>
 
-        {/* Configuration Form & Device Multi-Management (Right Column) */}
-        <div className="lg:col-span-8 space-y-8">
-          {/* General Settings */}
-          <div className="bg-white rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden transform transition-all duration-300">
-            <div className="bg-gradient-to-r from-gray-50 to-gray-100/50 p-6 border-b border-gray-100">
-              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                <FaCogs className="text-blue-500" />
-                Pengaturan Umum
-              </h2>
-              <p className="text-sm text-gray-500 mt-1">Konfigurasikan identitas bot dan URL Webhook untuk menghubungkan sistem.</p>
-            </div>
-            
-            <form onSubmit={handleSubmit(onSubmit)} className="p-6 md:p-8 space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                    <FaRobot className="text-gray-400" /> Nama Bot Pendamping
-                  </label>
-                  <input
-                    {...register('name')}
-                    disabled={isSubmitting}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50"
-                    placeholder="Contoh: CS Toko Keren"
-                  />
-                  {errors.name && <p className="text-red-500 text-xs font-medium animate-fade-in">{errors.name.message}</p>}
-                </div>
+            {/* ── Engine Status Card ── */}
+            <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-blue-800 rounded-2xl p-5 text-white shadow-md relative overflow-hidden">
+              {/* Decorative blobs */}
+              <div className="absolute -top-6 -right-6 w-24 h-24 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute -bottom-6 -left-4 w-20 h-20 bg-white/10 rounded-full blur-xl pointer-events-none" />
 
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                    <FaPhoneAlt className="text-gray-400" /> Nomor Bot Utama
-                  </label>
-                  <input
-                    {...register('phoneNumber')}
-                    disabled={isSubmitting}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 font-mono"
-                    placeholder="Contoh: 62812345678"
-                  />
-                  {errors.phoneNumber && <p className="text-red-500 text-xs font-medium animate-fade-in">{errors.phoneNumber.message}</p>}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                  <FaGlobe className="text-gray-400" /> Webhook URL <span className="text-xs font-normal text-gray-400">(Opsional)</span>
-                </label>
-                <input
-                  {...register('apiUrl')}
-                  disabled={isSubmitting}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 font-mono text-sm"
-                  placeholder="https://domain-anda.com/api/webhook"
-                />
-                <p className="text-xs text-gray-500 mt-1">Gunakan ini jika Anda memiliki server eksternal untuk endpoint balasan kustom.</p>
-                {errors.apiUrl && <p className="text-red-500 text-xs font-medium animate-fade-in">{errors.apiUrl.message}</p>}
-              </div>
-
-              <div className="pt-4 border-t border-gray-100">
-                <div className="relative flex items-start py-4 px-5 bg-blue-50/50 rounded-xl border border-blue-100/50 cursor-pointer hover:bg-blue-50 transition-colors group">
-                  <div className="flex items-center h-6">
-                    <input
-                      id="autoReply"
-                      type="checkbox"
-                      {...register('autoReply')}
-                      disabled={isSubmitting}
-                      className="w-5 h-5 text-blue-600 rounded bg-white border-gray-300 focus:ring-blue-500 focus:ring-2 focus:ring-offset-2 transition-all cursor-pointer"
-                    />
-                  </div>
-                  <div className="ml-3 text-sm flex-1">
-                    <label htmlFor="autoReply" className="font-bold text-gray-800 cursor-pointer group-hover:text-blue-700 transition-colors">
-                      Aktifkan Auto-Reply & Broadcast
-                    </label>
-                    <p className="text-gray-500 mt-1">Mengizinkan engine membaca pesan masuk dan mengirim balasan template secara otomatis, serta membuka gerbang sinkronasi data untuk broadcast list.</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-6 mt-4">
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-8 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 flex items-center gap-3 shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 disabled:opacity-70 disabled:transform-none disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? (
-                    <><FaSync className="animate-spin" /> Menyimpan...</>
-                  ) : (
-                    <><FaSave className="text-lg" /> Simpan Perubahan</>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-
-          {/* Device Multi-Management */}
-          {isLoadingDevices && !devices.length ? (
-            <div className="py-8"><FaSync className="animate-spin text-3xl text-purple-500 mx-auto" /></div>
-          ) : (
-            <div className="bg-white rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden mt-8">
-              <div className="bg-gradient-to-r from-gray-50 to-gray-100/50 p-6 border-b border-gray-100 flex justify-between items-center">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                    <FaMobileAlt className="text-purple-500" />
-                    Manajemen Perangkat
-                  </h2>
-                  <p className="text-sm text-gray-500 mt-1">Gunakan WhatsApp di berbagai perangkat tertaut.</p>
-                </div>
-                <button 
-                  onClick={handleAddDevice}
-                  disabled={createDeviceMutation.isPending}
-                  className="hidden md:flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-lg font-semibold transition-colors border border-purple-200 disabled:opacity-50"
-                >
-                  <FaPlus /> {createDeviceMutation.isPending ? "Menambahkan..." : "Tambah Perangkat"}
-                </button>
-              </div>
-              
-              <div className="p-6">
-                <div className="space-y-4">
-                  {devices.map((device) => (
-                    <div key={device.id} className="flex items-center justify-between p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition-colors group">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${device.state === 'logged_in' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-                          <FaMobileAlt className="text-2xl" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                             <h4 className="font-bold text-gray-800">{device.display_name}</h4>
-
-                          </div>
-                          <p className="text-sm text-gray-500 font-mono mt-0.5">{device.jid?.replace('@s.whatsapp.net', '') || 'Nomor tidak diketahui'}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1.5 hidden md:flex">
-                          <span className={`w-2 h-2 rounded-full ${device.state === 'logged_in' ? 'bg-green-500' : 'bg-gray-400'}`}></span>
-                          <span className="text-xs font-medium text-gray-600">{device.state === 'logged_in' ? 'Terhubung' : 'Terputus'}</span>
-                        </div>
-                        <button 
-                           onClick={() => handleRemoveDevice(device.id)}
-                           disabled={removeDeviceMutation.isPending && removeDeviceMutation.variables === device.id}
-                           className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                           title="Hapus Perangkat"
-                        >
-                          {removeDeviceMutation.isPending && removeDeviceMutation.variables === device.id ? <FaSync className="animate-spin" /> : <FaTrash />}
-                        </button>
-                      </div>
+              <div className="relative z-10">
+                <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
+                  <FaShieldAlt className="text-indigo-300" /> Status Engine
+                </h3>
+                <div className="space-y-3">
+                  {[
+                    {
+                      label: 'Service Engine',
+                      value: 'Aktif',
+                      valueClass: 'bg-green-500/20 text-green-200 border border-green-500/30',
+                    },
+                    {
+                      label: 'Koneksi WA',
+                      value: isConnected ? 'Online' : 'Offline',
+                      valueClass: isConnected
+                        ? 'bg-green-500/20 text-green-200 border border-green-500/30'
+                        : 'bg-red-500/20 text-red-200 border border-red-500/30',
+                    },
+                    {
+                      label: 'Auto Reply',
+                      value: watchedIsActive ? 'Menyala' : 'Mati',
+                      valueClass: watchedIsActive
+                        ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30'
+                        : 'bg-white/10 text-white/60 border border-white/20',
+                    },
+                  ].map(({ label, value, valueClass }) => (
+                    <div key={label} className="flex items-center justify-between text-sm border-b border-white/10 pb-2.5 last:border-0 last:pb-0">
+                      <span className="text-indigo-200 text-xs">{label}</span>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${valueClass}`}>{value}</span>
                     </div>
                   ))}
                 </div>
-                
-                <button 
-                  onClick={handleAddDevice}
-                  disabled={createDeviceMutation.isPending}
-                  className="mt-6 w-full md:hidden flex items-center justify-center gap-2 px-4 py-3 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-xl font-bold transition-colors border border-purple-200 disabled:opacity-50"
-                >
-                  <FaPlus /> {createDeviceMutation.isPending ? "Menambahkan..." : "Tambah Perangkat Lain"}
-                </button>
               </div>
             </div>
-          )}
+          </div>
+
+          {/* ════ RIGHT: Configuration Form ════ */}
+          <div className="lg:col-span-3">
+            <form id="bot-config-form" onSubmit={handleSubmit(onSubmit)}>
+
+              {/* General Settings */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
+                <div className="px-6 py-4 border-b border-gray-100">
+                  <h2 className="font-bold text-gray-800 flex items-center gap-2 text-sm">
+                    <FaCogs className="text-blue-500" />
+                    Identitas Bot
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Nama dan nomor utama yang digunakan bot ini.</p>
+                </div>
+
+                <div className="p-6 space-y-5">
+                  {/* Name */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-600 flex items-center gap-1.5 uppercase tracking-wide">
+                      <FaRobot className="text-gray-400" /> Nama Bot
+                    </label>
+                    <input
+                      {...register('name')}
+                      placeholder="Contoh: CS Toko Keren"
+                      className={`w-full px-4 py-3 rounded-xl border text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none ${
+                        errors.name ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                      }`}
+                    />
+                    {errors.name && (
+                      <p className="text-xs text-red-500 flex items-center gap-1 animate-fade-in">
+                        <FaExclamationCircle className="text-[10px]" /> {errors.name.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Phone */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-600 flex items-center gap-1.5 uppercase tracking-wide">
+                      <FaPhoneAlt className="text-gray-400" /> Nomor Utama
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-mono border-r border-gray-200 pr-3">+</span>
+                      <input
+                        {...register('phone_number')}
+                        placeholder="62812345678"
+                        className={`w-full pl-10 pr-4 py-3 rounded-xl border text-sm font-mono bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none ${
+                          errors.phone_number ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                        }`}
+                      />
+                    </div>
+                    {errors.phone_number && (
+                      <p className="text-xs text-red-500 flex items-center gap-1 animate-fade-in">
+                        <FaExclamationCircle className="text-[10px]" /> {errors.phone_number.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Webhook Settings */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
+                <div className="px-6 py-4 border-b border-gray-100">
+                  <h2 className="font-bold text-gray-800 flex items-center gap-2 text-sm">
+                    <FaGlobe className="text-emerald-500" />
+                    Webhook & Integrasi
+                    <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Opsional</span>
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Hubungkan ke server eksternal untuk balasan kustom.</p>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Webhook URL</label>
+                    <input
+                      {...register('webhook_url')}
+                      placeholder="https://domain-anda.com/api/webhook"
+                      className={`w-full px-4 py-3 rounded-xl border text-sm font-mono bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none ${
+                        errors.webhook_url ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                      }`}
+                    />
+                    {errors.webhook_url && (
+                      <p className="text-xs text-red-500 flex items-center gap-1 animate-fade-in">
+                        <FaExclamationCircle className="text-[10px]" /> {errors.webhook_url.message}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-400">Kosongkan jika tidak menggunakan server eksternal.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Auto-Reply Toggle */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100">
+                  <h2 className="font-bold text-gray-800 flex items-center gap-2 text-sm">
+                    <FaBell className="text-amber-500" />
+                    Perilaku Bot
+                  </h2>
+                </div>
+
+                <div className="p-6">
+                  <label
+                    htmlFor="is_active"
+                    className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all ${
+                      watchedIsActive
+                        ? 'border-indigo-200 bg-indigo-50/50'
+                        : 'border-gray-200 bg-gray-50/50 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="pt-0.5">
+                      <input
+                        id="is_active"
+                        type="checkbox"
+                        {...register('is_active')}
+                        className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-gray-800 text-sm">Aktifkan Auto-Reply & Broadcast</p>
+                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                        Engine akan membaca pesan masuk dan mengirim balasan template secara otomatis. Sinkronisasi data untuk broadcast list juga akan aktif.
+                      </p>
+                    </div>
+                    {watchedIsActive && (
+                      <span className="shrink-0 mt-0.5 text-xs font-bold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">
+                        ON
+                      </span>
+                    )}
+                  </label>
+                </div>
+              </div>
+
+              {/* Unsaved changes hint */}
+              {isDirty && (
+                <div className="mt-4 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 px-4 py-2.5 rounded-xl animate-fade-in">
+                  <FaExclamationCircle className="shrink-0" />
+                  Ada perubahan yang belum disimpan. Klik <strong>Simpan</strong> di pojok kanan atas.
+                </div>
+              )}
+
+            </form>
+          </div>
+
         </div>
       </div>
-      
-      {/* Required CSS for custom animations inside tailwind layers (could be in index.css, placing here via inline style for safety since no access to index.css) */}
+
+      {/* ── CSS Animations ── */}
       <style>{`
         @keyframes scan {
-          0% { top: -10%; }
-          50% { top: 110%; }
-          100% { top: -10%; }
+          0%   { top: -4px; }
+          50%  { top: calc(100% + 4px); }
+          100% { top: -4px; }
         }
         .animate-scan {
           animation: scan 3s ease-in-out infinite;
+          position: absolute;
         }
         @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
-        .animate-fade-in-up {
-          animation: fadeInUp 0.4s ease-out forwards;
-        }
-        .animate-fade-in {
-          animation: fadeInUp 0.3s ease-out forwards;
-        }
+        .animate-fade-in-up { animation: fadeInUp 0.35s ease-out forwards; }
+        .animate-fade-in    { animation: fadeInUp 0.25s ease-out forwards; }
       `}</style>
-    </div>
+    </>
   );
 };
 

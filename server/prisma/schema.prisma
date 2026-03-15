@@ -731,7 +731,7 @@ model InventoryMovement {
   userId        String    @map("user_id")
   createdAt     DateTime  @default(now()) @map("created_at")
   cabangId      String    @map("cabang_id")
-  referenceType String    @map("reference_type") @db.VarChar(50)
+  referenceType String    @map("reference_type") @db.VarChar
   cabang        Cabang    @relation(fields: [cabangId], references: [id])
   produk        Produk    @relation(fields: [produkId], references: [id])
   user          User      @relation(fields: [userId], references: [id])
@@ -806,7 +806,7 @@ model Transaksi {
   created_at             DateTime              @default(now()) @db.Timestamp(6)
   updated_at             DateTime              @updatedAt @db.Timestamp(6)
   tanggal_lunas          DateTime?             @default(now()) @db.Timestamp(6)
-  jenis_transaksi        String                @db.VarChar(50)
+  jenis_transaksi        String                @db.VarChar
   campaignId             String?               @map("campaign_id")
   created_by             String?               @map("created_by") @db.VarChar(36)
   created_by_user_Id     String?               @map("created_by_user_id") @db.VarChar(36)
@@ -1317,7 +1317,7 @@ model PembayaranHutang {
   hutangId           String   @map("hutang_id")
   tanggalBayar       DateTime @map("tanggal_bayar")
   jumlahBayar        Decimal  @map("jumlah_bayar") @db.Decimal(15, 2)
-  metodePembayaran   String?  @map("metode_pembayaran") @db.VarChar(50)
+  metodePembayaran   String?  @map("metode_pembayaran") @db.VarChar
   nomorReferensi     String?  @map("nomor_referensi") @db.VarChar(50)
   buktiUrl           String?  @map("bukti_url")
   keterangan         String?
@@ -1971,7 +1971,7 @@ model izin_cuti {
   lampiran_file                    String?         @db.VarChar(500)
   status                           StatusPengajuan @default(pending)
   catatan_approver                 String?
-  approved_by                      String          @db.VarChar(36)
+  approved_by                      String          @db.VarChar
   approved_at                      DateTime?       @db.Timestamptz(6)
   created_at                       DateTime        @default(now()) @db.Timestamptz(6)
   updated_at                       DateTime        @default(now()) @db.Timestamptz(6)
@@ -2004,7 +2004,7 @@ model komponen_gaji {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model koreksi_absensi {
   koreksi_id                             String           @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
-  absensi_id                             String           @db.VarChar(36)
+  absensi_id                             String           @db.VarChar
   user_id                                String           @db.VarChar(200)
   alasan                                 String
   waktu_masuk_baru                       DateTime?        @db.Timestamptz(6)
@@ -2033,7 +2033,7 @@ model kuota_cuti {
   kuota_tahunan Int      @default(12)
   kuota_diambil Int      @default(0)
   kuota_pending Int      @default(0)
-  kuota_sisa    Int      @default(0)
+  kuota_sisa    Int      @default(dbgenerated("(kuota_tahunan - kuota_diambil)"))
   created_at    DateTime @default(now()) @db.Timestamptz(6)
   updated_at    DateTime @default(now()) @db.Timestamptz(6)
   user          User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -2206,7 +2206,7 @@ model regu_member {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model delivery_tracking {
-  tracking_id    String    @id @default(dbgenerated("extensions.uuid_generate_v4()"))
+  tracking_id    String    @id @default(dbgenerated("gen_random_uuid()")) @db.VarChar(36)
   transaksi_id   String    @db.VarChar(36)
   driver_id      String?   @db.VarChar(36)
   status         String    @db.VarChar(20)
@@ -2228,7 +2228,7 @@ model delivery_tracking {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model driver {
-  driver_id             String              @id @default(dbgenerated("extensions.uuid_generate_v4()"))
+  driver_id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.VarChar(36)
   cabang_id             String              @db.VarChar(36)
   nama                  String              @db.VarChar(100)
   no_hp                 String              @db.VarChar(20)
@@ -2262,7 +2262,7 @@ model driver {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model order_cancellation {
-  cancellation_id     String    @id @default(dbgenerated("extensions.uuid_generate_v4()"))
+  cancellation_id     String    @id @default(dbgenerated("gen_random_uuid()")) @db.VarChar(36)
   transaksi_id        String    @db.VarChar(36)
   cancelled_by        String?   @db.VarChar(36)
   cancellation_reason String?   @db.VarChar(255)
@@ -2281,7 +2281,7 @@ model order_cancellation {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model payment_webhook_log {
-  webhook_id        String    @id @default(dbgenerated("extensions.uuid_generate_v4()"))
+  webhook_id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.VarChar(36)
   payment_reference String    @db.VarChar(255)
   webhook_source    String    @db.VarChar(50)
   event_type        String?   @db.VarChar(100)
@@ -2303,8 +2303,8 @@ model payment_webhook_log {
 }
 
 model chat_messages {
-  id            String        @id @default(dbgenerated("extensions.uuid_generate_v4()"))
-  session_id    String
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  session_id    String        @db.Uuid
   role          chat_role
   content       String
   created_at    DateTime?     @default(now()) @db.Timestamp(6)
@@ -2315,7 +2315,7 @@ model chat_messages {
 }
 
 model chat_sessions {
-  id            String          @id @default(dbgenerated("extensions.uuid_generate_v4()"))
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id       String          @db.VarChar(36)
   title         String?         @default("New Chat") @db.VarChar(255)
   created_at    DateTime?       @default(now()) @db.Timestamp(6)

@@ -95,16 +95,9 @@ export const useDeleteBotConfig = () => {
 export const useBotStatus = (botId) => {
   return useQuery({
     queryKey: ["bot-status", botId],
-    queryFn: () => whatsappService.getBotStatus(botId),
+    queryFn: () => whatsappService.loginQR(botId),
     enabled: !!botId,
-    refetchInterval: (query) => {
-      const status = query?.state?.data?.state;
-      if (status === 'connected' || status === 'logged_in') {
-        return false; // Stop auto-polling when connected
-      }
-      return 10000; // Poll every 10 seconds
-    },
-    refetchOnWindowFocus: false,
+
   });
 };
 
