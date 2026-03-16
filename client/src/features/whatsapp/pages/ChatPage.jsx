@@ -6,6 +6,7 @@ import {
   useWhatsappChats,
   useWhatsappMessages,
   useWhatsappSendMessage,
+  useWhatsappStatus,
 } from '../hooks/useWhatsapp';
 import { useCustomerSearch } from '../../../common/hooks/usePosQueries';
 import socket from '../../../common/services/socketService';
@@ -265,7 +266,7 @@ const BotSelector = ({ bots, selectedBotId, onSelect, status }) => {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 13, fontWeight: 500, color: '#4a5568', flexShrink: 0,
                 }}>
-                  {getInitials(bot.name)}
+                  {bot.name}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, color: '#e9edef', marginBottom: 2 }}>{bot.name}</div>
@@ -538,7 +539,7 @@ const ChatPage = () => {
   }, [botConfigs, selectedBotId]);
 
   // ── Status & chats ──
-  const { data: botStatus } = useBotStatus(selectedBotId);
+  const { data: botStatus } = useWhatsappStatus(selectedBotId);
 
   const { data: contacts = [], refetch: refetchChats } = useWhatsappChats({
     botId: selectedBotId,

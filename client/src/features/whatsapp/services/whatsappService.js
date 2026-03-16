@@ -83,7 +83,7 @@ const whatsappService = {
       if (!botId) {
         throw new Error('botId is required for multi-device support');
       }
-      const response = await api.get(`/whatsapp/status`, { params: { botId } });
+      const response = await api.get(`/whatsapp/status?botId=${botId}`);
       return response.data;
     } catch (error) {
       console.error("Error fetching WhatsApp bot status:", error);

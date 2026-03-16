@@ -284,10 +284,10 @@ export const useWhatsappSendMessage = () => {
 };
 
 // Hook for checking connection status
-export const useWhatsappStatus = () => {
+export const useWhatsappStatus = (botid) => {
     return useQuery({
         queryKey: ["whatsapp-status"],
-        queryFn: () => whatsappService.getBotStatus(),
+        queryFn: () => whatsappService.getBotStatus(botid),
         // Di TanStack Query v5, data dari query terakhir ada di query.state.data
         refetchInterval: (query) => {
             const status = query?.state?.data?.state;
