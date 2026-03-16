@@ -269,7 +269,7 @@ const BotSelector = ({ bots, selectedBotId, onSelect, status }) => {
               >
                 <div style={{
                   width: 36, height: 36, borderRadius: '50%',
-                  background: getAvatarColor(bot.name),
+                  background: getAvatarColor(bot.name.substring(0, 3)),
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 13, fontWeight: 500, color: '#4a5568', flexShrink: 0,
                 }}>
