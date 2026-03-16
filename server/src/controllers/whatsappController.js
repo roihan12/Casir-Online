@@ -53,6 +53,8 @@ exports.qrProxy = async (req, res) => {
     });
 
     // Forward content-type and image data
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.set('Access-Control-Allow-Origin', '*');
     res.set('Content-Type', response.headers['content-type'] || 'image/png');
     res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.send(response.data);
