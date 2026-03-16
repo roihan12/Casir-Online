@@ -26,8 +26,10 @@ const resolveQrUrl = (qrLink) => {
   if (!qrLink) return null;
   // Jika sudah absolute URL, gunakan langsung
   if (qrLink.startsWith('http')) return qrLink;
+
+  const cleanPath = qrLink.replace(/^\/api/, '');
   // Jika relative, prepend backend base URL
-  return `${API_URL}${qrLink}`;
+  return `${API_URL}${cleanPath}`;
 };
 // ─── Validation Schema ────────────────────────────────────────────────────────
 const schema = z.object({
