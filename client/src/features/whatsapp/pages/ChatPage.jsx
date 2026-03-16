@@ -273,7 +273,7 @@ const BotSelector = ({ bots, selectedBotId, onSelect, status }) => {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 13, fontWeight: 500, color: '#4a5568', flexShrink: 0,
                 }}>
-                  {bot.name}
+                  {bot.name.substring(0, 3)}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, color: '#e9edef', marginBottom: 2 }}>{bot.name}</div>
