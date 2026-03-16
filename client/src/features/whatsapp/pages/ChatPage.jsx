@@ -27,8 +27,6 @@ const ChatPage = () => {
   // Send message mutation
   const sendMessageMutation = useWhatsappSendMessage();
 
-  // Status bot
-  const { data: botStatus } = useWhatsappStatus();
 
   // Socket listener for real-time messages
   useEffect(() => {
@@ -166,11 +164,9 @@ const ChatPage = () => {
           <div className="flex items-center gap-3">
              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 relative shrink-0">
                <span className="font-bold text-sm">ME</span>
-               <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${botStatus?.state === 'connected' ? 'bg-green-500' : 'bg-red-500'}`}></span>
              </div>
              <div className="min-w-0">
                 <h2 className="font-semibold text-gray-800 truncate">WhatsApp</h2>
-                <p className="text-xs text-gray-500 truncate">{botStatus?.state === 'connected' ? 'Connected' : 'Disconnected'}</p>
              </div>
           </div>
           <div className="flex gap-1 md:gap-2 text-gray-500 shrink-0">
@@ -253,9 +249,6 @@ const ChatPage = () => {
                 <img src={selectedChat?.avatar || `https://ui-avatars.com/api/?name=${selectedChat.name || 'User'}&background=random`} alt={selectedChat?.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover cursor-pointer shrink-0" />
                 <div className="cursor-pointer min-w-0">
                 <h3 className="font-semibold text-gray-900 truncate text-sm md:text-base">{selectedChat?.name || selectedChat.jid.replace('@s.whatsapp.net', '')}</h3>
-                <p className="text-[10px] md:text-xs text-gray-500 truncate">
-                    {botStatus?.state === 'connected' ? 'Online' : 'Offline'}
-                </p>
                 </div>
             </div>
             <div className="flex items-center gap-1 md:gap-2 text-gray-600 shrink-0">
