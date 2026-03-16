@@ -19,7 +19,16 @@ import {
   FaGlobe, FaCogs, FaArrowLeft, FaTrash, FaWifi,
   FaTimesCircle, FaShieldAlt, FaBell
 } from 'react-icons/fa';
+import { API_URL } from '@common/utils/api';
 
+
+const resolveQrUrl = (qrLink) => {
+  if (!qrLink) return null;
+  // Jika sudah absolute URL, gunakan langsung
+  if (qrLink.startsWith('http')) return qrLink;
+  // Jika relative, prepend backend base URL
+  return `${API_BASE_URL}${qrLink}`;
+};
 // ─── Validation Schema ────────────────────────────────────────────────────────
 const schema = z.object({
   name: z.string().min(1, 'Nama bot wajib diisi'),
@@ -402,7 +411,7 @@ const BotConfigPage = () => {
                     <div className="relative w-52 h-52 bg-white border-2 border-gray-100 rounded-2xl flex items-center justify-center overflow-hidden mb-4 shadow-inner">
                       {status?.qr_link ? (
                         <img
-                          src={status.qr_link}
+                          src={resolveQrUrl(status.qr_link)}
                           alt="Scan QR Code"
                           className="w-full h-full object-contain p-2"
                         />
