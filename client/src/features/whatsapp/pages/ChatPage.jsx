@@ -125,8 +125,15 @@ const formatChatDate = (timestamp) => {
   return d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit' });
 };
 
-const getInitials = (name = '') =>
-  name.split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
+const getInitials = (name) => {
+  if (!name || typeof name !== 'string' || name.trim() === '') return '?';
+  return name
+    .trim()
+    .split(' ')
+    .slice(0, 2)
+    .map((w) => (w && w[0] ? w[0].toUpperCase() : ''))
+    .join('') || '?';
+};
 
 const AVATAR_COLORS = [
   '#DFD3F3', '#D3EBF3', '#D3F3E0', '#F3EDD3',
@@ -352,7 +359,7 @@ const ChatListItem = ({ contact, selected, onClick }) => {
 
 // ─── MessageBubble ────────────────────────────────────────────────────────────
 const MessageBubble = ({ msg, prevMsg, showDate }) => {
-  const isMe = msg.fromMe || msg.sender === 'me';
+  const isMe = msg.is_from_me || msg.sender === 'me';
   const text = msg.text || msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.content || '';
   const time = msg.time || formatTime(msg.messageTimestamp || msg.timestamp);
   const status = msg.status;
@@ -578,7 +585,7 @@ const ChatPage = () => {
       const msgJid = normalize(d.chat_id || d.key?.remoteJid);
 
       if (selJid && msgJid === selJid) {
-        const isMe = d.from_me || d.key?.fromMe || false;
+        const isMe = d.from_me || d.is_from_me || d.key?.fromMe || false;
         const newMsg = {
           id: d.id || d.key?.id,
           text: d.body || d.message?.conversation || d.message?.extendedTextMessage?.text || '',
@@ -646,7 +653,7 @@ const ChatPage = () => {
     return { msg, showDate: curDate !== prevDate ? curDate : null };
   });
 
-  const isConnected = botStatus?.state === 'connected';
+  const isConnected = botStatus?.state === 'logged_in';
   const selectedContactInfo = contacts.find(c => c.jid === selectedChat?.jid) || selectedChat;
 
   // ─ Responsive: on mobile, show either sidebar or chat
