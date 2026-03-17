@@ -45,7 +45,14 @@ const pelangganService = {
 
   // Get loyalty point history
   getLoyaltyPointHistory: async (pelangganId) => {
-    const response = await api.get(`/pelanggan/${pelangganId}/loyalty-points`);
+    // Correct endpoint based on loyaltyRoutes.js
+    const response = await api.get(`/loyalty/customer/${pelangganId}/history`);
+    return response.data;
+  },
+
+  // Get customer transactions
+  getCustomerTransactions: async (pelangganId, params = { page: 1, limit: 10 }) => {
+    const response = await api.get(`/pelanggan/${pelangganId}/transactions`, { params });
     return response.data;
   },
 

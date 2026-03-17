@@ -454,7 +454,7 @@ const JadwalPage = () => {
   const isLoading    = isLoadingJadwal || isLoadingUsers;
   const allCollapsed = reguGroups.length > 0 && collapsedReguIds.size === reguGroups.length;
 
-  console.log("reguGroups", reguGroups);
+
 
   // ─────────────────────────────────────────
   return (

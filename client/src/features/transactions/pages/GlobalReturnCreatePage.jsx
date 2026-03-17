@@ -60,7 +60,7 @@ const GlobalReturnCreate = () => {
         (t) => t.nomor_transaksi.toLowerCase() === formData.nomorTransaksiAsli.toLowerCase()
       );
 
-      console.log(matchedTransaction);
+      
 
       if (!matchedTransaction) {
         toast.error("Transaksi tidak ditemukan");

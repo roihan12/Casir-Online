@@ -95,7 +95,7 @@ const GlobalTransactions = () => {
     cabangId: filters.cabangId
   });
 
-  console.log(dashboardData);
+
 
   // Extract data from query results
   const transactions = transactionsData || [];

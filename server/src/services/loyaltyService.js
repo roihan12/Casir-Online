@@ -1,4 +1,5 @@
 const prisma = require("../config/db");
+const { withRls } = require("../config/db");
 const { ResponseError } = require("../error/responseError");
 const { sanitizeBigInt } = require("../utils/bigintSerializer");
 
@@ -329,10 +330,10 @@ const getLoyaltyStats = async (cabangId = null) => {
   // Total members with points
   let membersQuery = `
     SELECT 
-      COUNT(*) FILTER (WHERE poin > 0) as active_members,
-      COUNT(*) as total_customers,
-      SUM(COALESCE(poin, 0)) as total_points_balance,
-      SUM(COALESCE(lifetime_points, 0)) as total_points_earned
+      CAST(COUNT(*) FILTER (WHERE poin > 0) as int) as active_members,
+      CAST(COUNT(*) as int) as total_customers,
+      CAST(SUM(COALESCE(poin, 0)) as int) as total_points_balance,
+      CAST(SUM(COALESCE(lifetime_points, 0)) as int) as total_points_earned
     FROM pelanggan
     WHERE status = 'aktif'
   `;
@@ -345,7 +346,7 @@ const getLoyaltyStats = async (cabangId = null) => {
     SELECT 
       lt.name as tier_name,
       lt.color,
-      COUNT(p.pelanggan_id) as member_count
+      CAST(COUNT(p.pelanggan_id) as int) as member_count
     FROM loyalty_tier lt
     LEFT JOIN pelanggan p ON p.loyalty_tier_id = lt.loyalty_tier_id AND p.status = 'aktif'
     WHERE lt.is_active = TRUE
@@ -356,10 +357,10 @@ const getLoyaltyStats = async (cabangId = null) => {
   // Points activity this month
   const activityQuery = `
     SELECT 
-      SUM(CASE WHEN type = 'EARN' THEN point_didapatkan ELSE 0 END) as points_earned,
-      SUM(CASE WHEN type = 'REDEEM' THEN ABS(point_didapatkan ) ELSE 0 END) as points_redeemed,
-      COUNT(CASE WHEN type = 'EARN' THEN 1 END) as earn_transactions,
-      COUNT(CASE WHEN type = 'REDEEM' THEN 1 END) as redeem_transactions
+      CAST(SUM(CASE WHEN type = 'EARN' THEN point_didapatkan ELSE 0 END) as int) as points_earned,
+      CAST(SUM(CASE WHEN type = 'REDEEM' THEN ABS(point_didapatkan ) ELSE 0 END) as int) as points_redeemed,
+      CAST(COUNT(CASE WHEN type = 'EARN' THEN 1 END) as int) as earn_transactions,
+      CAST(COUNT(CASE WHEN type = 'REDEEM' THEN 1 END) as int) as redeem_transactions
     FROM loyalty_point_history
     WHERE created_at >= date_trunc('month', CURRENT_DATE)
   `;
@@ -370,26 +371,33 @@ const getLoyaltyStats = async (cabangId = null) => {
       lr.name,
       lr.points_required,
       lr.reward_value,
-      lr.current_redeemed as total_redeemed
+      CAST(lr.current_redeemed as int) as total_redeemed
     FROM loyalty_reward lr
     WHERE lr.is_active = TRUE
     ORDER BY lr.current_redeemed DESC
     LIMIT 5
   `;
 
-  const [members, tiers, activity, topRewards] = await Promise.all([
-    prisma.$queryRawUnsafe(membersQuery),
-    prisma.$queryRawUnsafe(tierQuery),
-    prisma.$queryRawUnsafe(activityQuery),
-    prisma.$queryRawUnsafe(topRewardsQuery)
-  ]);
+  const [members, tiers, activity, topRewards] = await withRls((tx) => 
+    Promise.all([
+      tx.$queryRawUnsafe(membersQuery),
+      tx.$queryRawUnsafe(tierQuery),
+      tx.$queryRawUnsafe(activityQuery),
+      tx.$queryRawUnsafe(topRewardsQuery)
+    ])
+  );
 
-  return sanitizeBigInt({
+  console.log(members);
+  console.log(tiers);
+  console.log(activity);
+  console.log(topRewards);
+
+  return {
     members: members[0],
     tier_distribution: tiers,
     monthly_activity: activity[0],
     top_rewards: topRewards
-  });
+  };
 };
 
 module.exports = {

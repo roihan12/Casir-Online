@@ -26,4 +26,7 @@ router.get("/stats", hasPermission(["pelanggan:read"]), pelangganController.getC
 // Get pelanggan by id
 router.get("/:id", hasPermission(["pelanggan:read"]), pelangganController.getPelangganById);
 
+// Get pelanggan transactions
+router.get("/:id/transactions", hasPermission(["pelanggan:read", "transaksi:read"]), pelangganController.getCustomerTransactions);
+
 module.exports = router;

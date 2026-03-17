@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FiAward, FiGift, FiUsers, FiTrendingUp, FiPlus, FiEdit2, FiTrash2, FiStar, FiRefreshCw } from "react-icons/fi";
+import { useAuth } from "@common/hooks/useAuth";
+import { useCabangList } from "../../cabang/hooks/useCabangQueries";
+import { Can } from "@features/common/Can";
 import {
   useLoyaltyTiers,
   useLoyaltyRewards,
   useLoyaltyStats,
+  useLoyaltyConfig,
   useCreateTier,
   useUpdateTier,
   useDeleteTier,
@@ -18,11 +22,35 @@ const LoyaltyProgramPage = () => {
   const [showRewardModal, setShowRewardModal] = useState(false);
   const [editingTier, setEditingTier] = useState(null);
   const [editingReward, setEditingReward] = useState(null);
+  const [cabangFilter, setCabangFilter] = useState("all");
+
+  const { user, isSuperAdmin } = useAuth();
+  const isAdmin = isSuperAdmin();
+
+  // Fetch all branches only if super admin
+  const { data: allCabangData } = useCabangList(1, 100, {
+    enabled: isAdmin
+  });
+  const allCabangList = allCabangData?.data || [];
+
+  const availableCabangForFilter = isAdmin
+    ? allCabangList
+    : user?.cabang?.map(c => ({ id: c.cabangId, namaCabang: c.namaCabang })) || [];
+
+  useEffect(() => {
+    if (!isAdmin && user?.cabang?.length === 1) {
+      setCabangFilter(user.cabang[0].cabangId);
+    } else {
+      setCabangFilter("all");
+    }
+  }, [isAdmin, user?.cabang]);
 
   // Queries
   const { data: tiersData, isLoading: tiersLoading, refetch: refetchTiers } = useLoyaltyTiers();
   const { data: rewardsData, isLoading: rewardsLoading, refetch: refetchRewards } = useLoyaltyRewards();
-  const { data: statsData, isLoading: statsLoading, refetch: refetchStats } = useLoyaltyStats();
+  const { data: statsData, isLoading: statsLoading, refetch: refetchStats } = useLoyaltyStats(cabangFilter === "all" ? undefined : cabangFilter);
+  // Add Config query so it respects the cabangFilter
+  const { refetch: refetchConfig } = useLoyaltyConfig(cabangFilter === "all" ? undefined : cabangFilter);
 
   // Mutations
   const createTierMutation = useCreateTier();
@@ -40,6 +68,7 @@ const LoyaltyProgramPage = () => {
     refetchTiers();
     refetchRewards();
     refetchStats();
+    refetchConfig();
   };
 
   const tabs = [
@@ -115,6 +144,26 @@ const LoyaltyProgramPage = () => {
       {/* Overview Tab */}
       {activeTab === "overview" && (
         <div className="space-y-6">
+          {availableCabangForFilter.length > 1 && (
+            <div className="flex justify-end mb-4">
+              <div className="w-full sm:w-64">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Filter Cabang</label>
+                <select
+                  value={cabangFilter}
+                  onChange={(e) => setCabangFilter(e.target.value)}
+                  className="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                >
+                  <option value="all">Semua Cabang</option>
+                  {availableCabangForFilter.map((cabang) => (
+                    <option key={cabang.id} value={cabang.id}>
+                      {cabang.namaCabang}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
           {/* Stats Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <StatCard

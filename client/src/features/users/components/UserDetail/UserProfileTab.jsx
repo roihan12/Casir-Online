@@ -29,7 +29,6 @@ const UserProfileTab = ({
   const navigate = useNavigate();
   const [localUser, setLocalUser] = useState(user);
 
-  console.log(user);
 
   const handleFaceRegistered = (result) => {
     // Update local user state when face is registered

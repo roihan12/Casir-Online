@@ -25,6 +25,12 @@ import pelangganService from "../services/pelangganService";
 import Modal from "../../common/Modal.jsx";
 import Table from "../../common/Table.jsx";
 import CustomerLoyaltyCard from "../components/CustomerLoyaltyCard";
+import { 
+  useGetCustomer, 
+  useGetCustomerTransactions, 
+  useDeleteCustomer 
+} from "../hooks/useCustomers";
+import { useGetCustomerLoyaltyHistory } from "../hooks/useLoyalty";
 
 const CustomerDetail = () => {
   const { id } = useParams();
@@ -32,52 +38,44 @@ const CustomerDetail = () => {
   const { hasRole } = useAuth();
   const isSuperAdmin = hasRole("super_admin");
 
-  const [customer, setCustomer] = useState(null);
-  const [loyaltyHistory, setLoyaltyHistory] = useState([]);
-  const [transactions, setTransactions] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [activeTab, setActiveTab] = useState("info");
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Load customer data from API
-  useEffect(() => {
-    loadCustomerData();
-  }, [id]);
+  const { 
+    data: customerResponse, 
+    isLoading: isLoadingCustomer, 
+    refetch: refetchCustomer,
+    isRefetching: isCustomerRefetching
+  } = useGetCustomer(id);
 
-  const loadCustomerData = async () => {
-    try {
-      setIsLoading(true);
-      // Get customer details
-      const customerData = await pelangganService.getPelangganById(id);
-      setCustomer(customerData);
+  const { 
+    data: transactionsResponse, 
+    isLoading: isLoadingTransactions, 
+    refetch: refetchTransactions,
+    isRefetching: isTransactionsRefetching
+  } = useGetCustomerTransactions(id);
 
-      // Get loyalty history
-      try {
-        const loyaltyData = await pelangganService.getLoyaltyPointHistory(id);
-        setLoyaltyHistory(loyaltyData);
-      } catch (error) {
-        console.error("Error loading loyalty history:", error);
-        setLoyaltyHistory([]);
-      }
+  const { 
+    data: loyaltyHistoryData, 
+    isLoading: isLoadingLoyalty, 
+    refetch: refetchLoyalty,
+    isRefetching: isLoyaltyRefetching
+  } = useGetCustomerLoyaltyHistory(id);
 
-      // In a real application, get transaction history
-      // This would be a separate API call to get transactions for this customer
-      setTransactions([]);
-    } catch (error) {
-      console.error("Error loading customer details:", error);
-      toast.error("Gagal memuat data pelanggan");
-      navigate("/customers");
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
+  const deleteCustomerMutation = useDeleteCustomer();
+
+  const customer = customerResponse?.data;
+  const loyaltyHistory = Array.isArray(loyaltyHistoryData?.data) ? loyaltyHistoryData?.data : Array.isArray(loyaltyHistoryData) ? loyaltyHistoryData : [];
+  const transactions = transactionsResponse?.data || [];
+
+  const isLoading = isLoadingCustomer;
+  const isRefreshing = isCustomerRefetching || isTransactionsRefetching || isLoyaltyRefetching;
 
   // Handle refresh
   const handleRefresh = () => {
-    setIsRefreshing(true);
-    loadCustomerData();
+    refetchCustomer();
+    refetchTransactions();
+    refetchLoyalty();
   };
 
   // Handle edit customer
@@ -91,16 +89,18 @@ const CustomerDetail = () => {
   };
 
   // Confirm delete customer
-  const confirmDeleteCustomer = async () => {
-    try {
-      await pelangganService.deletePelanggan(id);
-      setShowDeleteModal(false);
-      toast.success("Pelanggan berhasil dihapus");
-      navigate("/customers");
-    } catch (error) {
-      console.error("Error deleting customer:", error);
-      toast.error("Gagal menghapus pelanggan");
-    }
+  const confirmDeleteCustomer = () => {
+    deleteCustomerMutation.mutate(id, {
+      onSuccess: () => {
+        setShowDeleteModal(false);
+        toast.success("Pelanggan berhasil dihapus");
+        navigate("/customers");
+      },
+      onError: (error) => {
+        console.error("Error deleting customer:", error);
+        toast.error(error?.response?.data?.message || "Gagal menghapus pelanggan");
+      }
+    });
   };
 
   // Format date
@@ -179,20 +179,20 @@ const CustomerDetail = () => {
     {
       header: "Tanggal",
       accessor: "createdAt",
-      cell: (row) => formatDateTime(row.createdAt),
+      cell: (row) => formatDateTime(row.created_at),
     },
     {
       header: "Transaksi",
       accessor: "transaksiId",
       cell: (row) => (
         <div className="flex items-center">
-          {row.transaksiId ? (
+          {row.transaksi_id ? (
             <Link
-              to={`/transactions/${row.transaksiId}`}
+              to={`/transactions/${row.transaksi_id}`}
               className="text-blue-600 hover:text-blue-800 flex items-center"
             >
               <ShoppingCart className="h-4 w-4 mr-1" />
-              <span>{row.transaksiId.substring(0, 8)}...</span>
+              <span>{row.transaksi_id.substring(0, 8)}...</span>
             </Link>
           ) : (
             <span className="text-gray-500">-</span>
@@ -206,7 +206,7 @@ const CustomerDetail = () => {
       cell: (row) => (
         <div className="flex items-center">
           <Heart className="h-4 w-4 text-gray-400 mr-1" />
-          <span>{row.pointSebelumnya}</span>
+          <span>{row.point_sebelumnya}</span>
         </div>
       ),
     },
@@ -217,16 +217,16 @@ const CustomerDetail = () => {
         <div className="flex items-center">
           <span
             className={
-              row.pointDidapatkan > 0
+              row.point_didapatkan > 0
                 ? "text-green-600"
-                : row.pointDidapatkan < 0
+                : row.point_didapatkan < 0
                 ? "text-red-600"
                 : "text-gray-600"
             }
           >
-            {row.pointDidapatkan > 0
-              ? `+${row.pointDidapatkan}`
-              : row.pointDidapatkan}
+            {row.point_didapatkan > 0
+              ? `+${row.point_didapatkan}`
+              : row.point_didapatkan}
           </span>
         </div>
       ),
@@ -237,7 +237,7 @@ const CustomerDetail = () => {
       cell: (row) => (
         <div className="flex items-center">
           <Heart className="h-4 w-4 text-red-400 mr-1" />
-          <span>{row.pointAkhir}</span>
+          <span>{row.point_akhir}</span>
         </div>
       ),
     },
@@ -572,7 +572,7 @@ const CustomerDetail = () => {
                     Cabang
                   </h4>
                   <p className="text-base text-gray-900">
-                    {customer.cabang?.namaCabang || "Kantor Pusat"}
+                    {customer.cabang_id || "Kantor Pusat"}
                   </p>
                 </div>
 

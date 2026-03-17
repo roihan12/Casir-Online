@@ -42,7 +42,7 @@ const CustomerLoyaltyCard = ({ customerId }) => {
           </div>
           <div>
             <p className="text-gray-400 text-sm">Tier Loyalty</p>
-            <h3 className="text-white font-bold text-lg">{loyaltyInfo.tier_name || "Member"}</h3>
+            <h3 className="text-white font-bold text-lg">{loyaltyInfo.tier.name|| "Member"}</h3>
           </div>
         </div>
         {loyaltyInfo.tier_discount > 0 && (
@@ -64,7 +64,7 @@ const CustomerLoyaltyCard = ({ customerId }) => {
               <span>Saldo Poin</span>
             </div>
             <p className="text-3xl font-bold text-amber-400">
-              {(loyaltyInfo.points || 0).toLocaleString()}
+              {(loyaltyInfo.current_points || 0).toLocaleString()}
             </p>
           </div>
 
@@ -72,10 +72,10 @@ const CustomerLoyaltyCard = ({ customerId }) => {
           <div className="bg-white/5 rounded-xl p-4">
             <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
               <FiTrendingUp size={14} />
-              <span>Total Didapat</span>
+              <span>Total Diskon Diterima</span>
             </div>
             <p className="text-3xl font-bold text-green-400">
-              {(loyaltyInfo.lifetime_points || 0).toLocaleString()}
+              Rp. {(loyaltyInfo.total_diskon_diterima || 0).toLocaleString()}
             </p>
           </div>
         </div>

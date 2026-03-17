@@ -104,12 +104,34 @@ const getPelangganById = async (req, res, next) => {
   }
 };
 
+const getCustomerTransactions = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+    const result = await pelangganService.getCustomerTransactions(
+      req.params.id,
+      {
+        page: parseInt(page),
+        limit: parseInt(limit),
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Get customer transactions successfully",
+      data: result.data,
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createPelanggan,
   updatePelanggan,
   deletePelanggan,
   getAllPelanggan,
-  getAllPelanggan,
   getPelangganById,
   getCustomerStats,
+  getCustomerTransactions,
 };

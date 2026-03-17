@@ -195,7 +195,7 @@ const getPelangganByCabang = async (
       skip,
       take: limit,
       where: whereClause,
-      orderBy: { created_at: "desc" },
+      orderBy: { createdAt: "desc" },
     }),
     prisma.pelanggan.count({ where: whereClause }),
   ]);
@@ -215,6 +215,52 @@ const getPelangganByCabang = async (
   };
 };
 
+const getCustomerTransactions = async (
+  pelanggan_id,
+  { page = 1, limit = 10 }
+) => {
+  const skip = (page - 1) * limit;
+  const whereClause = { pelanggan_id };
+
+  const [data, total] = await Promise.all([
+    prisma.transaksi.findMany({
+      skip,
+      take: limit,
+      where: whereClause,
+      include: {
+        transaksi_detail: true,
+      },
+      orderBy: { tanggal: "desc" },
+    }),
+
+    prisma.transaksi.count({ where: whereClause }),
+  ]);
+
+  // Format response for UI compatibility
+  const formattedData = data.map((tx) => ({
+    ...tx,
+    jumlah_produk: tx.transaksi_detail ? tx.transaksi_detail.reduce(
+      (acc, detail) => acc + (detail.jumlah || detail.qty || 1),
+      0
+    ) : 0,
+    transaksi_detail: undefined, // remove to keep payload small
+  }));
+
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    data: formattedData,
+    pagination: {
+      totalItems: total,
+      totalPages,
+      currentPage: parseInt(page),
+      itemsPerPage: parseInt(limit),
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
+    },
+  };
+};
+
 module.exports = {
   createPelanggan,
   updatePelanggan,
@@ -223,4 +269,6 @@ module.exports = {
   getPelangganById,
   getPelangganByCabang,
   getCustomerStats,
+  getCustomerTransactions,
 };
+

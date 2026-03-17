@@ -898,7 +898,7 @@ const GlobalPOS = () => {
     enabled: !!currentBranch?.id && !selectedCategory,
   });
 
-  console.log("product data", productsData);
+
 
   const { data: categoriesData, isLoading: isLoadingCategories } =
     useCategories();
