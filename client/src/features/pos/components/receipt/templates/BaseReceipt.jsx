@@ -138,7 +138,7 @@ const BaseReceipt = ({
         {renderExtraSection?.()}
         {tax > 0 && (
           <div className="flex justify-between text-[11px]">
-            <span>PAJAK (10%):</span>
+            <span>PAJAK:</span>
             <span>{formatCurrency(tax || 0)}</span>
           </div>
         )}

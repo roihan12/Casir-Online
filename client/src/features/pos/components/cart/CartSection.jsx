@@ -24,6 +24,8 @@ const CartSection = ({
   setShowCustomerSearch,
   totalAmount,
   tax,
+  taxPercentage = 0,
+  taxName = "Pajak",
   discount,
   setDiscount,
   discountType,
@@ -288,7 +290,7 @@ const CartSection = ({
             )}
 
             <div className="flex justify-between text-gray-500">
-              <span>Pajak (10%)</span>
+              <span>{taxName} ({taxPercentage}%)</span>
               <span className="text-gray-800 font-bold">{formatCurrency(tax)}</span>
             </div>
 

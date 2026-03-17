@@ -117,6 +117,8 @@ const POSPage = () => {
   const [cart, setCart] = useState([]);
   const [totalAmount, setTotalAmount] = useState(0);
   const [tax, setTax] = useState(0);
+  const [taxPercentage, setTaxPercentage] = useState(0); // Dynamic from tax_config
+  const [taxName, setTaxName] = useState("PPN"); // Dynamic from tax_config
   const [discount, setDiscount] = useState(0);
   const [discountType, setDiscountType] = useState("percentage"); // "percentage" or "fixed"
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -381,12 +383,13 @@ const POSPage = () => {
     // Critical Fix #1: Null branch check
     if (!currentBranch?.id) {
       console.warn("Branch not loaded yet, skipping discount calculation");
-      // Calculate basic total without API
+      // Calculate basic total without API — use last known taxPercentage from state
       const subtotal = cart.reduce((sum, item) => {
         const price = saleMode === "wholesale" ? item.wholesale_price : item.retail_price;
         return sum + (price || 0) * (item.quantity || 0);
       }, 0);
-      const taxAmount = Math.round(Math.max(subtotal, 0) * 0.1);
+      const fallbackRate = taxPercentage / 100 || 0;
+      const taxAmount = Math.round(Math.max(subtotal, 0) * fallbackRate);
       setTotalAmount(Math.round(subtotal + taxAmount));
       setTax(taxAmount);
       return;
@@ -439,13 +442,20 @@ const POSPage = () => {
       const breakdown = response.data.data;
       setDiscountBreakdown(breakdown);
 
-      // Calculate tax (10% PPN) - applied after discounts with safeguards
-      const totalDiscount = Math.max(0, breakdown?.total_discount || 0);
-      const discountedSubtotal = Math.max(0, subtotal - totalDiscount);
-      const taxAmount = Math.round(discountedSubtotal * 0.1);
+      // Use tax calculated by backend (from tax_config — single source of truth)
+      const backendTax = parseFloat(breakdown?.total_pajak || 0);
+      const backendTotal = parseFloat(breakdown?.total_after_tax || 0);
 
-      setTotalAmount(Math.round(discountedSubtotal + taxAmount));
-      setTax(taxAmount);
+      // Update tax config state for UI display
+      if (breakdown?.tax_percentage !== undefined) {
+        setTaxPercentage(parseFloat(breakdown.tax_percentage));
+      }
+      if (breakdown?.tax_name) {
+        setTaxName(breakdown.tax_name);
+      }
+
+      setTotalAmount(Math.round(backendTotal));
+      setTax(Math.round(backendTax));
     } catch (error) {
       // Ignore aborted requests (caused by race condition cancellation)
       if (error.name === 'AbortError' || error.code === 'ERR_CANCELED') {
@@ -456,14 +466,15 @@ const POSPage = () => {
       console.error("Error calculating discounts:", error);
       toast.error(error.response?.data?.message || "Gagal menghitung diskon");
       
-      // Fallback: Reset to base calculation with safeguards
+      // Fallback: Reset to base calculation with last known tax rate
       const subtotal = cart.reduce((sum, item) => {
         const price = saleMode === "wholesale" 
           ? (item.wholesale_price || 0) 
           : (item.retail_price || 0);
         return sum + Math.round(price * Math.max(0, item.quantity || 0));
       }, 0);
-      const taxAmount = Math.round(Math.max(0, subtotal) * 0.1);
+      const fallbackRate = taxPercentage / 100 || 0;
+      const taxAmount = Math.round(Math.max(0, subtotal) * fallbackRate);
       setTotalAmount(Math.round(subtotal + taxAmount));
       setTax(taxAmount);
       setDiscountBreakdown(null);
@@ -740,7 +751,7 @@ const POSPage = () => {
                   ? (item.wholesale_price || 0)
                   : (item.retail_price || 0), // Safeguard
               diskon_persen: 0,
-              pajak_persen: 10,
+              // pajak_persen removed — backend reads from tax_config
             })),
             biaya_tambahan: 0,
             keterangan: `${
@@ -827,7 +838,7 @@ const POSPage = () => {
                   ? (item.wholesale_price || 0)
                   : (item.retail_price || 0), // Safeguard
               diskon_persen: 0,
-              pajak_persen: 10,
+              // pajak_persen removed — backend reads from tax_config
             })),
             biaya_tambahan: 0,
             keterangan: `${
@@ -1328,6 +1339,8 @@ const POSPage = () => {
             setShowCustomerSearch={setShowCustomerSearch}
             totalAmount={totalAmount}
             tax={tax}
+            taxPercentage={taxPercentage}
+            taxName={taxName}
             discount={discount}
             setDiscount={setDiscount}
             discountType={discountType}

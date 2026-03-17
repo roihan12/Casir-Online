@@ -1351,7 +1351,59 @@ const previewAllDiscounts = async (data, auditInfo) => {
     // Calculate new total discount including loyalty
     const totalDiscountWithLoyalty = parseFloat(discountResult?.total_discount || 0) + loyaltyDiscountValue;
 
-    // Return the breakdown with loyalty discount and promo errors
+    // ================================================================
+    // CALCULATE TAX PER ITEM (Production POS formula)
+    // Tax is fetched from tax_config — no hardcoded rates
+    // ================================================================
+    const taxConfigResult = await prisma.$queryRaw`
+      SELECT tax_percentage, is_tax_included, is_tax_enabled, tax_name
+      FROM tax_config 
+      WHERE cabang_id = ${cabang_id}::VARCHAR
+    `;
+
+    const taxPercentage = parseFloat(taxConfigResult[0]?.tax_percentage || 0);
+    const isTaxIncluded = taxConfigResult[0]?.is_tax_included || false;
+    const isTaxEnabled = taxConfigResult[0]?.is_tax_enabled !== false; // default true if not set
+    const taxName = taxConfigResult[0]?.tax_name || 'PPN';
+
+    let totalPajak = 0;
+
+    if (isTaxEnabled && taxPercentage > 0 && details && details.length > 0) {
+      // Per-item tax calculation: distribute discounts proportionally, then calculate tax per item
+      for (const item of details) {
+        const itemHarga = parseFloat(item.harga_satuan || 0);
+        const itemQty = parseInt(item.jumlah || 0);
+        const itemSubtotal = itemHarga * itemQty;
+
+        // Distribute total discount proportionally to this item
+        const itemDiskonShare = subtotal > 0
+          ? (itemSubtotal / subtotal) * totalDiscountWithLoyalty
+          : 0;
+
+        const itemSubtotalAfterDiscount = Math.max(0, itemSubtotal - itemDiskonShare);
+
+        // Calculate tax per item using the correct POS formula
+        let itemPajak;
+        if (isTaxIncluded) {
+          // Tax included: extract tax from price
+          itemPajak = itemSubtotalAfterDiscount - (itemSubtotalAfterDiscount / (1 + taxPercentage / 100));
+        } else {
+          // Tax excluded: add tax on top
+          itemPajak = (itemSubtotalAfterDiscount * taxPercentage) / 100;
+        }
+
+        // Round per item (POS production rule: only round at item level)
+        totalPajak += Math.round(itemPajak * 100) / 100;
+      }
+    }
+
+    // Calculate final total
+    const discountedSubtotal = Math.max(0, subtotal - totalDiscountWithLoyalty);
+    const totalAfterTax = isTaxIncluded
+      ? discountedSubtotal  // Tax already in price
+      : discountedSubtotal + totalPajak;  // Tax added on top
+
+    // Return the breakdown with loyalty discount, tax info, and promo errors
     return {
       ...discountResult,
       total_discount: totalDiscountWithLoyalty,
@@ -1360,6 +1412,13 @@ const previewAllDiscounts = async (data, auditInfo) => {
       points_redeemed: points_redeemed,
       breakdown: updatedBreakdown,
       promo_errors: promoErrors,
+      // Tax info from tax_config (single source of truth)
+      tax_percentage: taxPercentage,
+      is_tax_included: isTaxIncluded,
+      is_tax_enabled: isTaxEnabled,
+      tax_name: taxName,
+      total_pajak: Math.round(totalPajak * 100) / 100,
+      total_after_tax: Math.round(totalAfterTax),
     };
   } catch (error) {
     if (error instanceof ResponseError) {

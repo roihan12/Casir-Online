@@ -1660,12 +1660,12 @@ BEGIN
             transaksi_detail_id,
             transaksi_id, produk_id, batch_number, expired_date,
             jumlah, harga_satuan, diskon_persen, diskon_nominal,
-            subtotal, pajak_persen, total, updated_at
+            subtotal, pajak_persen, pajak_nominal, total, updated_at
         ) VALUES (
             gen_random_uuid(),
             v_transaksi_id, v_produk_id, v_batch_number, v_expired_date,
             v_jumlah, v_harga_satuan, v_diskon_persen, v_diskon_nominal,
-            v_item_subtotal, v_pajak_persen, v_item_total, now()
+            v_item_subtotal, v_pajak_persen, v_pajak_nominal, v_item_total, now()
         );
         
         IF p_jenis_transaksi = 'PEMBELIAN' THEN
