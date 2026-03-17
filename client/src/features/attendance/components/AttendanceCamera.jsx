@@ -54,11 +54,6 @@ const AttendanceCamera = ({
     loadModels();
   }, []);
 
-  console.log("modelsLoaded", modelsLoaded);
-  console.log("isStreamActive", isStreamActive);
-  console.log("videoRef", videoRef.current);
-  // console.log("livenessStatus", videoRef.current.paused);
-  // console.log("livenessMessage", videoRef.current.ended);
 
   // Use Effect to handle detection loop
  useEffect(() => {
@@ -262,16 +257,16 @@ const AttendanceCamera = ({
              </div>
           )}
 
-          {/* Video Stream */}
-          {isStreamActive && !previewPhoto && (
+          {/* Video Stream - always render so videoRef is available for startCamera */}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className={`w-full h-full object-cover transform scale-x-[-1] ${previewPhoto ? 'hidden' : ''}`}
+          />
+          {!previewPhoto && (
             <>
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover transform scale-x-[-1]" // Mirror effect
-              />
               <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none transform scale-x-[-1]" />
               
               {/* Face Frame Overlay */}

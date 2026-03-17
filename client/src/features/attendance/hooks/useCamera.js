@@ -187,6 +187,18 @@ export const useCamera = (options = {}) => {
     return 'Failed to access camera: ' + error.message;
   };
 
+  // Re-attach stream to video element when ref becomes available
+  // This handles the race condition where startCamera completes
+  // before the <video> element is rendered in the DOM
+  useEffect(() => {
+    if (videoRef?.current && streamRef.current && !videoRef.current.srcObject) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch((err) => {
+        console.error('Video play error on re-attach:', err);
+      });
+    }
+  });
+
   // Auto-start camera on mount if requested
   useEffect(() => {
     if (autoStart) {
